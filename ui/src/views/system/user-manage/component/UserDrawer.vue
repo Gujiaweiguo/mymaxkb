@@ -129,6 +129,7 @@ import useStore from '@/stores'
 import {hasPermission} from "@/utils/permission";
 import {EditionConst} from "@/utils/permission/data.ts";
 import forge from "node-forge";
+import { generateTemporaryPassword } from '@/utils/password'
 
 const {user} = useStore()
 const props = defineProps({
@@ -384,9 +385,7 @@ const open = (data: any) => {
     }))
     isEdit.value = true
   } else {
-    userManageApi.getSystemDefaultPassword().then((res: any) => {
-      userForm.value.password = res.data.password
-    })
+    userForm.value.password = generateTemporaryPassword()
   }
   if (memberFormContentRef.value) {
     memberFormContentRef.value.resetValidation()

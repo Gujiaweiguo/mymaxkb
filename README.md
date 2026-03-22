@@ -27,10 +27,14 @@ Execute the script below to start a MaxKB container using Docker:
 docker run -d --name=maxkb --restart=always -p 18080:8080 -v ~/.maxkb:/opt/maxkb 1panel/maxkb
 ```
 
-Access MaxKB web interface at `http://your_server_ip:18080` with default admin credentials:
+Before the first startup, set a bootstrap admin password through `MAXKB_DEFAULT_PASSWORD` in your environment or config file.
+
+Access MaxKB web interface at `http://your_server_ip:18080` with:
 
 - username: admin
-- password: MaxKB@123..
+- password: the bootstrap password you configured in `MAXKB_DEFAULT_PASSWORD`
+
+The bootstrap password is intended for first use only. MaxKB will require the administrator to change it after the first login.
 
 中国用户如遇到 Docker 镜像 Pull 失败问题，请参照该 [离线安装文档](https://maxkb.cn/docs/v2/installation/offline_installtion/) 进行安装。
 

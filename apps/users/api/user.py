@@ -1,18 +1,26 @@
 # coding=utf-8
 """
-    @project: MaxKB
-    @Author：虎虎
-    @file： user.py
-    @date：2025/4/14 19:23
-    @desc:
+@project: MaxKB
+@Author：虎虎
+@file： user.py
+@date：2025/4/14 19:23
+@desc:
 """
+
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter
 
 from common.mixins.api_mixin import APIMixin
 from common.result import ResultSerializer, DefaultResultSerializer
-from users.serializers.user import UserProfileResponse, CreateUserSerializer, UserManageSerializer, \
-    UserInstanceSerializer, RePasswordSerializer, CheckCodeSerializer, SendEmailSerializer
+from users.serializers.user import (
+    UserProfileResponse,
+    CreateUserSerializer,
+    UserManageSerializer,
+    UserInstanceSerializer,
+    RePasswordSerializer,
+    CheckCodeSerializer,
+    SendEmailSerializer,
+)
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
@@ -23,20 +31,21 @@ class ApiUserProfileResponse(ResultSerializer):
 
 
 class RoleSettingRequestSerializer(serializers.Serializer):
-    role_id = serializers.CharField(required=True, label=_('Role ID'))
+    role_id = serializers.CharField(required=True, label=_("Role ID"))
     workspace_ids = serializers.ListField(
         child=serializers.CharField(required=False),
         required=False,
-        label=_('Workspace IDs')
+        label=_("Workspace IDs"),
     )
 
 
 class CreateUserRequestSerializer(CreateUserSerializer):
-    role_setting = RoleSettingRequestSerializer(required=False, label=_('Role Setting'), allow_null=True, many=True)
+    role_setting = RoleSettingRequestSerializer(
+        required=False, label=_("Role Setting"), allow_null=True, many=True
+    )
 
 
 class UserProfileAPI(APIMixin):
-
     @staticmethod
     def get_response():
         return ApiUserProfileResponse
@@ -47,25 +56,29 @@ class UserProfileAPI(APIMixin):
 
     @staticmethod
     def get_parameters():
-        return [OpenApiParameter(
-            name="user_id",
-            description=_('User ID'),
-            type=OpenApiTypes.STR,
-            location=OpenApiParameter.PATH,
-            required=True,
-        )]
+        return [
+            OpenApiParameter(
+                name="user_id",
+                description=_("User ID"),
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                required=True,
+            )
+        ]
 
 
 class WorkspaceUserAPI(APIMixin):
     @staticmethod
     def get_parameters():
-        return [OpenApiParameter(
-            name="workspace_id",
-            description=_('Workspace ID'),
-            type=OpenApiTypes.STR,
-            location=OpenApiParameter.PATH,
-            required=True,
-        )]
+        return [
+            OpenApiParameter(
+                name="workspace_id",
+                description=_("Workspace ID"),
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                required=True,
+            )
+        ]
 
     @staticmethod
     def get_response():
@@ -73,8 +86,8 @@ class WorkspaceUserAPI(APIMixin):
 
 
 class WorkspaceUser(serializers.Serializer):
-    id = serializers.CharField(required=True, label=_('id'))
-    username = serializers.CharField(required=True, label=_('Username'))
+    id = serializers.CharField(required=True, label=_("id"))
+    username = serializers.CharField(required=True, label=_("Username"))
 
 
 class WorkspaceUserListResponse(ResultSerializer):
@@ -82,36 +95,24 @@ class WorkspaceUserListResponse(ResultSerializer):
         return WorkspaceUser(many=True)
 
 
-class UserPasswordResponse(APIMixin):
-
-    @staticmethod
-    def get_response():
-        return PasswordResponse
-
-
-class Password(serializers.Serializer):
-    password = serializers.CharField(required=True, label=_('Password'))
-
-
-class PasswordResponse(ResultSerializer):
-    def get_data(self):
-        return Password()
-
-
 class EditUserRequestSerializer(UserManageSerializer.UserEditInstance):
-    role_setting = RoleSettingRequestSerializer(required=False, label=_('Role Setting'), allow_null=True, many=True)
+    role_setting = RoleSettingRequestSerializer(
+        required=False, label=_("Role Setting"), allow_null=True, many=True
+    )
 
 
 class EditUserApi(APIMixin):
     @staticmethod
     def get_parameters():
-        return [OpenApiParameter(
-            name="user_id",
-            description=_('User ID'),
-            type=OpenApiTypes.STR,
-            location=OpenApiParameter.PATH,
-            required=True,
-        )]
+        return [
+            OpenApiParameter(
+                name="user_id",
+                description=_("User ID"),
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                required=True,
+            )
+        ]
 
     @staticmethod
     def get_request():
@@ -121,18 +122,23 @@ class EditUserApi(APIMixin):
 class DeleteUserApi(APIMixin):
     @staticmethod
     def get_parameters():
-        return [OpenApiParameter(
-            name="user_id",
-            description=_('User ID'),
-            type=OpenApiTypes.STR,
-            location=OpenApiParameter.PATH,
-            required=True,
-        )]
+        return [
+            OpenApiParameter(
+                name="user_id",
+                description=_("User ID"),
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                required=True,
+            )
+        ]
 
     @staticmethod
     def get_request():
-        return serializers.ListSerializer(child=serializers.CharField(required=True), required=True,
-                                          label=_('User IDs'))
+        return serializers.ListSerializer(
+            child=serializers.CharField(required=True),
+            required=True,
+            label=_("User IDs"),
+        )
 
 
 class ChangeUserPasswordApi(APIMixin):
@@ -149,13 +155,15 @@ class UserListResponse(ResultSerializer):
 class UserPageApi(APIMixin):
     @staticmethod
     def get_parameters():
-        return [OpenApiParameter(
-            name="email_or_username",
-            description=_('Email or Username'),
-            type=OpenApiTypes.STR,
-            location=OpenApiParameter.QUERY,
-            required=False,
-        )]
+        return [
+            OpenApiParameter(
+                name="email_or_username",
+                description=_("Email or Username"),
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=False,
+            )
+        ]
 
     @staticmethod
     def get_response():
@@ -165,13 +173,15 @@ class UserPageApi(APIMixin):
 class UserListApi(APIMixin):
     @staticmethod
     def get_parameters():
-        return [OpenApiParameter(
-            name="workspace_id",
-            description=_('Workspace ID'),
-            type=OpenApiTypes.STR,
-            location=OpenApiParameter.PATH,
-            required=False,
-        )]
+        return [
+            OpenApiParameter(
+                name="workspace_id",
+                description=_("Workspace ID"),
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                required=False,
+            )
+        ]
 
     @staticmethod
     def get_response():
@@ -181,17 +191,19 @@ class UserListApi(APIMixin):
 class TestWorkspacePermissionUserApi(APIMixin):
     @staticmethod
     def get_parameters():
-        return [OpenApiParameter(
-            # 参数的名称是done
-            name="workspace_id",
-            # 对参数的备注
-            description="工作空间id",
-            # 指定参数的类型
-            type=OpenApiTypes.STR,
-            location=OpenApiParameter.PATH,
-            # 指定必须给
-            required=True,
-        )]
+        return [
+            OpenApiParameter(
+                # 参数的名称是done
+                name="workspace_id",
+                # 对参数的备注
+                description="工作空间id",
+                # 指定参数的类型
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                # 指定必须给
+                required=True,
+            )
+        ]
 
 
 class ResetPasswordAPI(APIMixin):
@@ -221,7 +233,7 @@ class SendEmailAPI(APIMixin):
 
 
 class LanguageSerializer(serializers.Serializer):
-    language = serializers.CharField(required=True, label=_('Language'))
+    language = serializers.CharField(required=True, label=_("Language"))
 
 
 class SwitchUserLanguageAPI(APIMixin):

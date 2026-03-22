@@ -42,5 +42,5 @@ export default {
     dingtalk: '釘釘',
   },
   settingRole: '設定角色',
-  defaultPassword: '預設密碼',
+  defaultPassword: '臨時密碼',
 }

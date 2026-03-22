@@ -41,5 +41,5 @@ export default {
     dingtalk: '钉钉',
   },
   settingRole: '设置角色',
-  defaultPassword: '默认密码',
+  defaultPassword: '临时密码',
 }

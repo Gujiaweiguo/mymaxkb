@@ -1,0 +1,16 @@
+title = "MaxKB secret scanning rules"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Repository-specific exclusions and reviewed placeholders"
+paths = [
+  '''^\.opencode/node_modules/''',
+  '''^ui/node_modules/''',
+  '''^ui/dist/''',
+  '''^README(_CN)?\.md$''',
+  '''^AGENTS\.md$''',
+  '''^SECURITY\.md$''',
+  '''^\.env\.example$''',
+]

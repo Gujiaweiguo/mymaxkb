@@ -165,7 +165,7 @@ Do not:
 - replace repo-specific API response helpers with ad hoc response shapes
 
 ## Default admin credentials in docs
-`README.md` and `README_CN.md` both document fresh-install defaults:
+`README.md` and `README_CN.md` document fresh-install bootstrap credentials:
 - username: `admin`
-- password: `MaxKB@123..`
-Treat these as bootstrap defaults only, not long-term secure credentials.
+- password: configured through `MAXKB_DEFAULT_PASSWORD`
+Treat this as a bootstrap-only credential and rotate it on first login.

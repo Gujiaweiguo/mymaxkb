@@ -1,0 +1,5 @@
+06f834b7e34801ff79b600e400738c70391626cf:apps/users/serializers/user.py:generic-api-key:63
+ba72889a183c611ec666ba329d23e9b0a4b8c850:installer/install-python.sh:generic-api-key:14
+11f29317c84b97754a386ed1b7bd28be30a43686:ui/src/views/application/AppOverview.vue:generic-api-key:36
+11f29317c84b97754a386ed1b7bd28be30a43686:ui/src/views/application/AppOverview.vue:generic-api-key:36-L37
+apps/users/migrations/0002_user_require_password_change.py:generic-api-key:6

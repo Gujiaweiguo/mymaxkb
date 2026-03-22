@@ -1,11 +1,12 @@
 # coding=utf-8
 """
-    @project: qabot
-    @Author：虎虎
-    @file： authenticate.py
-    @date：2023/9/4 11:16
-    @desc:  认证类
+@project: qabot
+@Author：虎虎
+@file： authenticate.py
+@date：2023/9/4 11:16
+@desc:  认证类
 """
+
 from importlib import import_module
 
 from django.conf import settings
@@ -15,11 +16,35 @@ from django.utils.translation import gettext_lazy as _
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework.authentication import TokenAuthentication
 
-from common.exception.app_exception import AppAuthenticationFailed, AppEmbedIdentityFailed, AppChatNumOutOfBoundsFailed, \
-    AppApiException
+from common.exception.app_exception import (
+    AppAuthenticationFailed,
+    AppEmbedIdentityFailed,
+    AppChatNumOutOfBoundsFailed,
+    AppApiException,
+)
 from common.utils.logger import maxkb_logger
 
-token_cache = cache.caches['default']
+token_cache = cache.caches["default"]
+PASSWORD_CHANGE_ALLOWED_PATHS = {
+    "/user/profile",
+    "/user/current/reset_password",
+    "/user/logout",
+    "/user/language",
+}
+
+
+def _require_password_change(request, auth_result):
+    user, auth = auth_result
+    if getattr(user, "require_password_change", False):
+        path = request.path
+        if not any(
+            path.endswith(allowed_path)
+            for allowed_path in PASSWORD_CHANGE_ALLOWED_PATHS
+        ):
+            raise AppAuthenticationFailed(
+                1002, _("Password change required before continuing")
+            )
+    return user, auth
 
 
 class AnonymousAuthentication(TokenAuthentication):
@@ -33,8 +58,7 @@ class AnonymousAuthenticationScheme(OpenApiAuthenticationExtension):
 
     def get_security_definition(self, auto_schema):
         # 定义认证方式，这里假设匿名认证不需要凭证
-        return {
-        }
+        return {}
 
     def get_security_requirement(self, auto_schema):
         # 返回安全要求（空字典表示无需认证）
@@ -42,7 +66,7 @@ class AnonymousAuthenticationScheme(OpenApiAuthenticationExtension):
 
 
 def new_instance_by_class_path(class_path: str):
-    parts = class_path.rpartition('.')
+    parts = class_path.rpartition(".")
     package_path = parts[0]
     class_name = parts[2]
     module = import_module(package_path)
@@ -50,8 +74,12 @@ def new_instance_by_class_path(class_path: str):
     return HandlerClass()
 
 
-handles = [new_instance_by_class_path(class_path) for class_path in settings.AUTH_HANDLES]
-chat_handles = [new_instance_by_class_path(class_path) for class_path in settings.CHAT_AUTH_HANDLES]
+handles = [
+    new_instance_by_class_path(class_path) for class_path in settings.AUTH_HANDLES
+]
+chat_handles = [
+    new_instance_by_class_path(class_path) for class_path in settings.CHAT_AUTH_HANDLES
+]
 all_handles = handles + chat_handles
 
 
@@ -76,25 +104,37 @@ class TokenAuth(TokenAuthentication):
 
     # 重新 authenticate 方法，自定义认证规则
     def authenticate(self, request):
-        auth = request.META.get('HTTP_AUTHORIZATION')
+        auth = request.META.get("HTTP_AUTHORIZATION")
         # 未认证
         if auth is None:
-            raise AppAuthenticationFailed(1003, _('Not logged in, please log in first'))
+            raise AppAuthenticationFailed(1003, _("Not logged in, please log in first"))
         if not auth.startswith("Bearer "):
-            raise AppAuthenticationFailed(1002, _('Authentication information is incorrect! illegal user'))
+            raise AppAuthenticationFailed(
+                1002, _("Authentication information is incorrect! illegal user")
+            )
         try:
             token = auth[7:]
             token_details = TokenDetails(token)
             for handle in handles:
                 if handle.support(request, token, token_details.get_token_details):
-                    return handle.handle(request, token, token_details.get_token_details)
-            raise AppAuthenticationFailed(1002, _('Authentication information is incorrect! illegal user'))
+                    return _require_password_change(
+                        request,
+                        handle.handle(request, token, token_details.get_token_details),
+                    )
+            raise AppAuthenticationFailed(
+                1002, _("Authentication information is incorrect! illegal user")
+            )
         except Exception as e:
-            maxkb_logger.error(f'Exception: {e}', exc_info=True)
-            if isinstance(e, AppEmbedIdentityFailed) or isinstance(e, AppChatNumOutOfBoundsFailed) or isinstance(e,
-                                                                                                                 AppApiException):
+            maxkb_logger.error(f"Exception: {e}", exc_info=True)
+            if (
+                isinstance(e, AppEmbedIdentityFailed)
+                or isinstance(e, AppChatNumOutOfBoundsFailed)
+                or isinstance(e, AppApiException)
+            ):
                 raise e
-            raise AppAuthenticationFailed(1002, _('Authentication information is incorrect! illegal user'))
+            raise AppAuthenticationFailed(
+                1002, _("Authentication information is incorrect! illegal user")
+            )
 
 
 class ChatTokenAuth(TokenAuthentication):
@@ -102,25 +142,36 @@ class ChatTokenAuth(TokenAuthentication):
 
     # 重新 authenticate 方法，自定义认证规则
     def authenticate(self, request):
-        auth = request.META.get('HTTP_AUTHORIZATION')
+        auth = request.META.get("HTTP_AUTHORIZATION")
         # 未认证
         if auth is None:
-            raise AppAuthenticationFailed(1003, _('Not logged in, please log in first'))
+            raise AppAuthenticationFailed(1003, _("Not logged in, please log in first"))
         if not auth.startswith("Bearer "):
-            raise AppAuthenticationFailed(1002, _('Authentication information is incorrect! illegal user'))
+            raise AppAuthenticationFailed(
+                1002, _("Authentication information is incorrect! illegal user")
+            )
         try:
             token = auth[7:]
             token_details = TokenDetails(token)
             for handle in chat_handles:
                 if handle.support(request, token, token_details.get_token_details):
-                    return handle.handle(request, token, token_details.get_token_details)
-            raise AppAuthenticationFailed(1002, _('Authentication information is incorrect! illegal user'))
+                    return handle.handle(
+                        request, token, token_details.get_token_details
+                    )
+            raise AppAuthenticationFailed(
+                1002, _("Authentication information is incorrect! illegal user")
+            )
         except Exception as e:
-            maxkb_logger.error(f'Exception: {e}', exc_info=True)
-            if isinstance(e, AppEmbedIdentityFailed) or isinstance(e, AppChatNumOutOfBoundsFailed) or isinstance(e,
-                                                                                                                 AppApiException):
+            maxkb_logger.error(f"Exception: {e}", exc_info=True)
+            if (
+                isinstance(e, AppEmbedIdentityFailed)
+                or isinstance(e, AppChatNumOutOfBoundsFailed)
+                or isinstance(e, AppApiException)
+            ):
                 raise e
-            raise AppAuthenticationFailed(1002, _('Authentication information is incorrect! illegal user'))
+            raise AppAuthenticationFailed(
+                1002, _("Authentication information is incorrect! illegal user")
+            )
 
 
 class AllTokenAuth(TokenAuthentication):
@@ -128,25 +179,37 @@ class AllTokenAuth(TokenAuthentication):
 
     # 重新 authenticate 方法，自定义认证规则
     def authenticate(self, request):
-        auth = request.META.get('HTTP_AUTHORIZATION')
+        auth = request.META.get("HTTP_AUTHORIZATION")
         # 未认证
         if auth is None:
-            raise AppAuthenticationFailed(1003, _('Not logged in, please log in first'))
+            raise AppAuthenticationFailed(1003, _("Not logged in, please log in first"))
         if not auth.startswith("Bearer "):
-            raise AppAuthenticationFailed(1002, _('Authentication information is incorrect! illegal user'))
+            raise AppAuthenticationFailed(
+                1002, _("Authentication information is incorrect! illegal user")
+            )
         try:
             token = auth[7:]
             token_details = TokenDetails(token)
             for handle in all_handles:
                 if handle.support(request, token, token_details.get_token_details):
-                    return handle.handle(request, token, token_details.get_token_details)
-            raise AppAuthenticationFailed(1002, _('Authentication information is incorrect! illegal user'))
+                    return _require_password_change(
+                        request,
+                        handle.handle(request, token, token_details.get_token_details),
+                    )
+            raise AppAuthenticationFailed(
+                1002, _("Authentication information is incorrect! illegal user")
+            )
         except Exception as e:
-            maxkb_logger.error(f'Exception: {e}', exc_info=True)
-            if isinstance(e, AppEmbedIdentityFailed) or isinstance(e, AppChatNumOutOfBoundsFailed) or isinstance(e,
-                                                                                                                 AppApiException):
+            maxkb_logger.error(f"Exception: {e}", exc_info=True)
+            if (
+                isinstance(e, AppEmbedIdentityFailed)
+                or isinstance(e, AppChatNumOutOfBoundsFailed)
+                or isinstance(e, AppApiException)
+            ):
                 raise e
-            raise AppAuthenticationFailed(1002, _('Authentication information is incorrect! illegal user'))
+            raise AppAuthenticationFailed(
+                1002, _("Authentication information is incorrect! illegal user")
+            )
 
 
 class WebhookAuth(TokenAuthentication):

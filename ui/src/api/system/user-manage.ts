@@ -67,16 +67,6 @@ const putUserManagePassword: (
 
 
 /**
- * 获取系统默认密码
- */
-const getSystemDefaultPassword: (
-  loading?: Ref<boolean>
-) => Promise<Result<string>> = (loading) => {
-  return get('/user_manage/password', undefined, loading)
-}
-
-
-/**
  * 获取校验
  * @param valid_type 校验类型: application|knowledge|user
  * @param valid_count 校验数量: 5 | 50 | 2
@@ -115,7 +105,6 @@ export default {
   delUserManage,
   postUserManage,
   putUserManagePassword,
-  getSystemDefaultPassword,
   getValid,
   batchDelete,
   batchSetRolePE,

@@ -58,12 +58,12 @@
 <script setup lang="ts">
 import {ref, reactive, watch} from 'vue'
 import type {FormInstance} from 'element-plus'
-import userManageApi from '@/api/system/user-manage'
 import {MsgSuccess} from '@/utils/message'
 import {t} from '@/locales'
 import type {ListItem} from '@/api/type/common'
 import {copyClick} from '@/utils/clipboard'
 import {loadPermissionApi} from "@/utils/dynamics-api/permission-api.ts";
+import { generateTemporaryPassword } from '@/utils/password'
 
 const props = defineProps<{
   title: string,
@@ -155,9 +155,7 @@ const open = (data: any) => {
     userForm.value.user_group_ids = data.user_group_ids
     isEdit.value = true
   } else {
-    userManageApi.getSystemDefaultPassword().then((res: any) => {
-      userForm.value.password = res.data.password
-    })
+    userForm.value.password = generateTemporaryPassword()
   }
 
   visible.value = true
