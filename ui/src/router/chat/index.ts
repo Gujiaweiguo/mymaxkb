@@ -20,7 +20,7 @@ const router = createRouter({
 router.beforeEach(
   async (to: RouteLocationNormalized, from: RouteLocationNormalized, next: NavigationGuardNext) => {
     NProgress.start()
-    if (to.path === '/404' || to.name === 'Share') {
+    if (to.path === '/404' || to.name === 'Share' || to.name === 'ChatRoot' || to.name === 'NoService') {
       next()
       return
     }
@@ -29,7 +29,7 @@ router.beforeEach(
       chatUser.setAccessToken(to.params.accessToken.toString())
     } else {
       next({
-        path: '/404',
+        name: 'NoService',
       })
       return
     }
@@ -37,7 +37,9 @@ router.beforeEach(
     try {
       authentication = await chatUser.isAuthentication()
     } catch (e: any) {
-      next()
+      next({
+        name: 'NoService',
+      })
       return
     }
     const p_token = to.query.token
@@ -46,7 +48,7 @@ router.beforeEach(
     }
     const token = chatUser.getToken()
     if (authentication) {
-      if (!token && to.name != 'login') {
+      if (!token && to.name !== 'login') {
         next({
           name: 'login',
           params: {
@@ -56,7 +58,7 @@ router.beforeEach(
         })
         return
       } else {
-        if (to.name == 'login') {
+        if (to.name === 'login') {
           next()
           return
         } else {
@@ -71,6 +73,10 @@ router.beforeEach(
                   accessToken: to.params.accessToken,
                 },
                 query: to.query,
+              })
+            } else {
+              next({
+                name: 'NoService',
               })
             }
             return
@@ -89,7 +95,9 @@ router.beforeEach(
       try {
         await chatUser.anonymousAuthentication()
       } catch (e: any) {
-        next()
+        next({
+          name: 'NoService',
+        })
         return
       }
     }
@@ -104,6 +112,10 @@ router.beforeEach(
               accessToken: to.params.accessToken,
             },
             query: to.query,
+          })
+        } else {
+          next({
+            name: 'NoService',
           })
         }
         return

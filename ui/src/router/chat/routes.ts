@@ -1,6 +1,11 @@
 import type { RouteRecordRaw } from 'vue-router'
 
 export const routes: Array<RouteRecordRaw> = [
+  {
+    path: '/',
+    name: 'ChatRoot',
+    component: () => import('@/views/error/NoService.vue'),
+  },
   // 对话
   {
     path: '/:accessToken',
