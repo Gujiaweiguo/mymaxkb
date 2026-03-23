@@ -21,22 +21,59 @@ MaxKB = Max Knowledge Brain, it is an open-source platform for building enterpri
 
 ## Quick start
 
+### Option 1: Docker (Simple)
+
 Execute the script below to start a MaxKB container using Docker:
 
 ```bash
 docker run -d --name=maxkb --restart=always -p 18080:8080 -v ~/.maxkb:/opt/maxkb 1panel/maxkb
 ```
 
-Before the first startup, set a bootstrap admin password through `MAXKB_DEFAULT_PASSWORD` in your environment or config file.
+### Option 2: Docker Compose (Recommended for Local Services and Integration)
 
-Access MaxKB web interface at `http://your_server_ip:18080` with:
+```bash
+# 1. Copy and configure environment
+cp .env.example .env
+# Edit .env and set MAXKB_DEFAULT_PASSWORD (required!)
 
-- username: admin
+# 2. Initialize database
+docker compose --profile init up --abort-on-container-exit --exit-code-from maxkb-init maxkb-init
+
+# 3. Start services
+docker compose up -d
+```
+
+### Configuration
+
+**Required before first startup:**
+
+Set a bootstrap admin password through `MAXKB_DEFAULT_PASSWORD` in your environment or `.env` file. There is **no default password** - you must set one explicitly.
+
+**Access URLs:**
+
+| Service | URL |
+|---------|-----|
+| Admin UI | `http://your_server_ip:18080/admin/` |
+| Chat UI | `http://your_server_ip:18080/chat/` |
+
+**Login credentials:**
+
+- username: `admin`
 - password: the bootstrap password you configured in `MAXKB_DEFAULT_PASSWORD`
 
 The bootstrap password is intended for first use only. MaxKB will require the administrator to change it after the first login.
 
+### Important: Port Selection
+
+**Use port 18080 (default) or standard ports like 80, 443, 8080.**
+
+Avoid using port **10080** - it is blocked by Chromium-based browsers (Chrome, Edge, Brave) due to security reasons (NAT Slipstreaming vulnerability). If you must use a non-standard port, ensure it's not in the [browser's blocked port list](https://chromium.googlesource.com/chromium/src.git/+/refs/heads/master/net/base/port_util.cc).
+
 中国用户如遇到 Docker 镜像 Pull 失败问题，请参照该 [离线安装文档](https://maxkb.cn/docs/v2/installation/offline_installtion/) 进行安装。
+
+## Development Environment
+
+This repository follows a local-first development workflow. The backend should use a repo-local `.venv` managed by `uv`, and the frontend should use the local Node.js toolchain under `ui/`. Start Docker Compose only when the task requires PostgreSQL / Redis behavior, frontend-backend integration, worker-flow validation, or container-specific debugging.
 
 ## Screenshots
 

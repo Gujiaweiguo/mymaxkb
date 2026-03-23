@@ -25,7 +25,9 @@ MaxKB 三分钟视频介绍：https://www.bilibili.com/video/BV18JypYeEkj/
 
 ## 快速开始
 
-```
+### 方式一：Docker 单容器部署（生产环境推荐）
+
+```bash
 # Linux 机器
 docker run -d --name=maxkb --restart=always -p 18080:8080 -v ~/.maxkb:/opt/maxkb registry.fit2cloud.com/maxkb/maxkb
 
@@ -36,12 +38,42 @@ docker run -d --name=maxkb --restart=always -p 18080:8080 -v C:/maxkb:/opt/maxkb
 # 密码: 在配置文件或环境变量中通过 MAXKB_DEFAULT_PASSWORD 设置的初始化管理员密码
 ```
 
+### 方式二：Docker Compose 部署（适用于本地服务启动与联调）
+
+```bash
+# 1. 复制并配置环境变量
+cp .env.example .env
+# 编辑 .env 文件，设置 MAXKB_DEFAULT_PASSWORD（必须设置！）
+
+# 2. 初始化数据库
+docker compose --profile init up --abort-on-container-exit --exit-code-from maxkb-init maxkb-init
+
+# 3. 启动服务
+docker compose up -d
+
+# 访问地址: http://你的服务器IP:18080/admin/
+# 用户名: admin
+# 密码: .env 中 MAXKB_DEFAULT_PASSWORD 设置的密码
+```
+
+首次启动前，请在环境变量或配置文件中显式设置 `MAXKB_DEFAULT_PASSWORD`。**没有默认密码**，必须手动设置。该初始化管理员密码仅用于首次登录，首次登录后系统会要求立即修改密码。
+
+### 重要：端口选择
+
+**请使用 18080（默认）或标准端口如 80、443、8080。**
+
+**避免使用 10080 端口** —— 由于安全原因（NAT Slipstreaming 漏洞），Chromium 内核浏览器（Chrome、Edge、Brave）会阻止该端口，访问时会显示 `ERR_UNSAFE_PORT` 错误。如需使用非标准端口，请确保不在[浏览器阻止端口列表](https://chromium.googlesource.com/chromium/src.git/+/refs/heads/master/net/base/port_util.cc)中。
+
+## 开发环境说明
+
+本仓库默认采用本地优先的开发方式。后端建议使用 `uv` 管理的仓库内 `.venv`，前端建议使用 `ui/` 目录下的本地 Node 环境进行开发与验证。Docker Compose 仅在需要数据库、Redis、前后端联调、worker 流程验证或排查容器特有问题时按需启动，不建议将整套容器作为默认常驻环境。
+
+---
+
 - 你也可以通过 [1Panel 应用商店](https://apps.fit2cloud.com/1panel) 快速部署 MaxKB；
 - 如果是内网环境，推荐使用 [离线安装包](https://community.fit2cloud.com/#/products/maxkb/downloads) 进行安装部署；
 - MaxKB 不同产品产品版本的对比请参见：[MaxKB 产品版本对比](https://maxkb.cn/price)；
 - 如果您需要向团队介绍 MaxKB，可以使用这个 [官方 PPT 材料](https://fit2cloud.com/maxkb/download/introduce-maxkb_2026.pdf)。
-
-首次启动前，请在环境变量或配置文件中显式设置 `MAXKB_DEFAULT_PASSWORD`。该初始化管理员密码仅用于首次登录，首次登录后系统会要求立即修改密码。
 
 如你有更多问题，可以查看使用手册，或者通过论坛与我们交流。
 

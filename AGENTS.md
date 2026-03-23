@@ -16,9 +16,14 @@ No repo-local Cursor or Copilot rules were found.
 
 ## Setup
 Backend (`pyproject.toml`): Python `~=3.11.0`, package manager `uv`.
-Verified install pattern from Dockerfiles:
+Recommended local setup:
 ```bash
-pip install uv
+python -m pip install uv
+python -m uv venv .venv
+# Linux / macOS
+. .venv/bin/activate
+# Windows PowerShell
+# .venv\Scripts\Activate.ps1
 python -m uv pip install -r pyproject.toml
 ```
 Frontend lives in `ui/` and is set up with:
@@ -26,6 +31,16 @@ Frontend lives in `ui/` and is set up with:
 cd ui
 npm install
 ```
+
+## Local Environment Rule
+
+Use a local-first workflow by default.
+
+- Backend must use `uv` with the repository-local `.venv`
+- Frontend must use the local Node environment under `ui/`
+- Prefer local verification for day-to-day development
+- Docker Compose may be started only when infrastructure, integration, worker-flow validation, or container-specific debugging is required
+- Do not keep the full Compose stack running as the default daily environment
 
 ## Verified backend commands
 Supported by `main.py`:
