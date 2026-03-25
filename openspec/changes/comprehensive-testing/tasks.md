@@ -5,7 +5,7 @@
 - [x] 1.3 Add unit tests for `knowledge` module (document processing, chunking)
 - [x] 1.4 Add unit tests for `common` utilities (auth, encryption, validators)
 - [x] 1.5 Add unit tests for `system_manage` module (settings, workspaces)
-- [ ] 1.6 Add unit tests for `chat` module (chat records, messages)
+- [x] 1.6 Add unit tests for `chat` module (chat records, messages)
 
 ## 2. Backend Integration Tests
 
