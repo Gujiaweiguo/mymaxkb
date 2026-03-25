@@ -1,6 +1,6 @@
 ## 1. Backend Unit Tests
 
-- [ ] 1.1 Add unit tests for `users` module (user model, serializers, services)
+- [x] 1.1 Add unit tests for `users` module (user model, serializers, services)
 - [ ] 1.2 Add unit tests for `application` module (app model, serializers, services)
 - [ ] 1.3 Add unit tests for `knowledge` module (document processing, chunking)
 - [ ] 1.4 Add unit tests for `common` utilities (auth, encryption, validators)
@@ -42,7 +42,7 @@
 
 ## 6. Testing Infrastructure
 
-- [ ] 6.1 Configure test fixtures and factories for backend
+- [x] 6.1 Configure test fixtures and factories for backend
 - [ ] 6.2 Configure test mocks and stubs for frontend
 - [ ] 6.3 Create E2E test data setup and teardown
 - [ ] 6.4 Verify CI pipeline runs all test layers

@@ -125,3 +125,113 @@ class CommunityEditionAuthFallbackTests(TestCase):
             response.get("role_workspace"),
             {RoleConstants.ADMIN.name: ["None"]},
         )
+
+
+class UserModelTests(TestCase):
+    def test_user_creation_with_valid_data(self):
+        user = User.objects.create(
+            id=uuid.uuid7(),
+            email="test@example.com",
+            phone="1234567890",
+            nick_name="Test User",
+            username="testuser",
+            password=password_encrypt("Password1!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+
+        self.assertEqual(user.email, "test@example.com")
+        self.assertEqual(user.username, "testuser")
+        self.assertEqual(user.role, "USER")
+        self.assertTrue(user.is_active)
+
+    def test_user_str_representation(self):
+        user = User.objects.create(
+            id=uuid.uuid7(),
+            email="strtest@example.com",
+            phone="",
+            nick_name="Str Test",
+            username="strtest",
+            password=password_encrypt("Password1!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+
+        self.assertEqual(str(user), "strtest")
+
+    def test_user_role_choices(self):
+        valid_roles = ["ADMIN", "USER"]
+        for role in valid_roles:
+            user = User.objects.create(
+                id=uuid.uuid7(),
+                email=f"{role.lower()}@example.com",
+                phone="",
+                nick_name=f"{role} User",
+                username=f"{role.lower()}user",
+                password=password_encrypt("Password1!"),
+                role=role,
+                source="LOCAL",
+                is_active=True,
+            )
+            self.assertEqual(user.role, role)
+
+
+class UserSerializerTests(TestCase):
+    def test_user_list_serializer_returns_expected_fields(self):
+        user = User.objects.create(
+            id=uuid.uuid7(),
+            email="serializer@example.com",
+            phone="1234567890",
+            nick_name="Serializer Test",
+            username="serializertest",
+            password=password_encrypt("Password1!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+
+        from users.serializers.user import UserSerializer
+
+        serializer = UserSerializer(user)
+        data = serializer.data
+
+        self.assertIn("id", data)
+        self.assertIn("username", data)
+        self.assertIn("email", data)
+        self.assertIn("role", data)
+        self.assertEqual(data["username"], "serializertest")
+        self.assertEqual(data["email"], "serializer@example.com")
+
+
+class LoginSerializerTests(TestCase):
+    def test_login_serializer_validates_required_fields(self):
+        from users.serializers.login import LoginSerializer
+
+        invalid_data = {"username": "test"}
+        serializer = LoginSerializer(data=invalid_data)
+        self.assertFalse(serializer.is_valid())
+
+    def test_login_serializer_validates_correct_data(self):
+        user = User.objects.create(
+            id=uuid.uuid7(),
+            email="login@example.com",
+            phone="",
+            nick_name="Login Test",
+            username="logintest",
+            password=password_encrypt("Password1!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+
+        from users.serializers.login import LoginSerializer
+
+        valid_data = {
+            "username": "logintest",
+            "password": "Password1!",
+            "login_type": "LOCAL",
+        }
+        serializer = LoginSerializer(data=valid_data)
+        self.assertTrue(serializer.is_valid())
