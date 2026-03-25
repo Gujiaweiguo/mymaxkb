@@ -195,3 +195,4 @@ config.yml
 .opencode/node_modules/
 .opencode/bun.lock
 .ruff_cache/
+.perm_check
