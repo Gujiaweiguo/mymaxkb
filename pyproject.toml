@@ -84,6 +84,17 @@ torch = [
     { index = "macpytorch", marker = "sys_platform == 'darwin'" },
 ]
 
+[project.optional-dependencies]
+pytest = ">=8.0.0"
+pytest-django = ">=4.10.0"
+pytest-cov = ">=6.0.0"
+
+pytest-asyncio = ">=0.25.0"
+
+playwright = ">=1.50.0"
+
+httpx = ">=0.28.0"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
