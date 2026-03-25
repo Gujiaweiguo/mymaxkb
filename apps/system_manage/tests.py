@@ -255,3 +255,57 @@ class SharedResourceAuthorizationTests(TestCase):
             filter_authorized_ids("knowledge", [str(knowledge.id)], "consumer-ws"),
             [str(knowledge.id)],
         )
+
+
+class SystemSettingModelTests(TestCase):
+    def test_system_setting_creation(self):
+        from system_manage.models import SystemSetting, SettingType
+
+        setting = SystemSetting.objects.create(
+            type=SettingType.EMAIL,
+            meta={"host": "smtp.example.com", "port": 587},
+        )
+
+        self.assertEqual(setting.type, SettingType.EMAIL)
+        self.assertEqual(setting.meta["host"], "smtp.example.com")
+
+    def test_system_setting_meta_update(self):
+        from system_manage.models import SystemSetting, SettingType
+
+        setting = SystemSetting.objects.create(
+            type=SettingType.LOGIN_AUTH,
+            meta={"default_value": "LOCAL", "max_attempts": 3},
+        )
+
+        setting.meta["max_attempts"] = 5
+        setting.save()
+
+        setting.refresh_from_db()
+        self.assertEqual(setting.meta["max_attempts"], 5)
+
+
+class WorkspaceModelTests(TestCase):
+    def test_workspace_creation(self):
+        workspace = Workspace.objects.create(
+            id="test-workspace",
+            name="Test Workspace",
+        )
+
+        self.assertEqual(workspace.name, "Test Workspace")
+        self.assertEqual(workspace.id, "test-workspace")
+
+    def test_workspace_str_representation(self):
+        workspace = Workspace.objects.create(
+            id="str-workspace",
+            name="Str Workspace",
+        )
+
+        self.assertEqual(str(workspace), "Str Workspace")
+
+    def test_default_workspace_exists(self):
+        from system_manage.serializers.workspace import ensure_default_workspace
+
+        ensure_default_workspace()
+        default = Workspace.objects.get(id="default")
+
+        self.assertEqual(default.name, "Default Workspace")
