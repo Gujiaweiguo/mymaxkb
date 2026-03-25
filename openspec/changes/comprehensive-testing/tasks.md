@@ -33,8 +33,8 @@
 
 ## 5. E2E Tests
 
-- [ ] 5.1 Write E2E test for login and authentication flow
-- [ ] 5.2 Write E2E test for user creation and management
+- [x] 5.1 Write E2E test for login and authentication flow
+- [x] 5.2 Write E2E test for user creation and management
 - [ ] 5.3 Write E2E test for workspace creation and switching
 - [ ] 5.4 Write E2E test for application creation and configuration
 - [ ] 5.5 Write E2E test for knowledge base document upload
