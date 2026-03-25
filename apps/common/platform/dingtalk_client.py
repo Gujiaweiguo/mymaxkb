@@ -50,3 +50,19 @@ class DingtalkClient:
         if not isinstance(result, dict):
             raise AppApiException(500, _("Missing DingTalk user identity result"))
         return result
+
+    @classmethod
+    def send_text_message(cls, session_webhook: str, content: str) -> dict:
+        response = requests.post(
+            session_webhook,
+            headers={"Content-Type": "application/json;charset=utf-8"},
+            json={
+                "msgtype": "text",
+                "text": {"content": content},
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        data = response.json()
+        cls._raise_for_dingtalk_error(data, _("Failed to send DingTalk message"))
+        return data

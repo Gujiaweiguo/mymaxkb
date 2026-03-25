@@ -1,20 +1,33 @@
 import base64
 import binascii
 import hashlib
+from importlib import import_module
 import json
 import os
 import struct
 import time
+import traceback
+from typing import cast
 
 from Crypto.Cipher import AES
+from django.db import transaction
 from django.db.models import QuerySet
 from django.http import JsonResponse
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from application.models import Chat, ChatSourceChoices, ChatUserType
+from application.models import (
+    Application,
+    Chat,
+    ChatRecord,
+    ChatSourceChoices,
+    ChatUserType,
+)
 from application.serializers.application_platform import (
     ApplicationPlatformManageSerializer,
 )
+from common.platform.dingtalk_client import DingtalkClient
+from common.utils.logger import maxkb_logger
 from system_manage.models import SettingType
 from system_manage.serializers.platform_source import PlatformSourceManageSerializer
 
@@ -22,6 +35,7 @@ from system_manage.serializers.platform_source import PlatformSourceManageSerial
 class DingtalkCallbackSerializer:
     block_size = 32
     supported_event_types = {"user_add_org"}
+    supported_message_types = {"text"}
 
     @classmethod
     def get_callback_config(cls, application_id: str) -> dict:
@@ -177,6 +191,10 @@ class DingtalkCallbackSerializer:
 
     @classmethod
     def route_message(cls, application_id: str, payload: dict) -> None:
+        msg_type = str(payload.get("msgtype") or "").strip().lower()
+        if msg_type in cls.supported_message_types:
+            cls.handle_text_message(application_id, payload)
+            return
         event_type = str(payload.get("EventType") or "")
         if event_type in ("", "check_url"):
             return
@@ -184,6 +202,185 @@ class DingtalkCallbackSerializer:
             cls.handle_user_add_org(application_id, payload)
             return
         return
+
+    @classmethod
+    def resolve_chat_user_id(cls, payload: dict) -> str:
+        chat_user_id = str(
+            payload.get("senderStaffId") or payload.get("senderId") or ""
+        ).strip()
+        if not chat_user_id:
+            raise ValueError(str(_("Missing DingTalk callback sender")))
+        return chat_user_id
+
+    @classmethod
+    def normalize_text_payload(cls, payload: dict) -> dict[str, str]:
+        return {
+            "chat_user_id": cls.resolve_chat_user_id(payload),
+            "conversation_id": str(payload.get("conversationId") or "").strip(),
+            "msg_id": str(payload.get("msgId") or "").strip(),
+            "content": cls.get_text_content(payload),
+            "session_webhook": str(payload.get("sessionWebhook") or "").strip(),
+        }
+
+    @classmethod
+    def get_or_create_dingtalk_chat(
+        cls, application_id: str, message_payload: dict[str, str]
+    ) -> Chat:
+        chat_user_id = message_payload["chat_user_id"]
+        conversation_id = message_payload["conversation_id"]
+        chat = (
+            QuerySet(Chat)
+            .filter(
+                application_id=application_id,
+                chat_user_id=chat_user_id,
+                chat_user_type=ChatUserType.PLATFORM_USER.value,
+                source__type=ChatSourceChoices.DINGTALK.value,
+                source__conversation_id=conversation_id,
+                is_deleted=False,
+            )
+            .order_by("-create_time")
+            .first()
+        )
+        if chat is not None:
+            return cast(Chat, chat)
+        return cast(
+            Chat,
+            QuerySet(Chat).create(
+                application_id=application_id,
+                abstract=(message_payload["content"] or str(_("DingTalk text")))[:1024],
+                chat_user_id=chat_user_id,
+                chat_user_type=ChatUserType.PLATFORM_USER.value,
+                asker={"username": chat_user_id},
+                source={
+                    "type": ChatSourceChoices.DINGTALK.value,
+                    "conversation_id": conversation_id,
+                    "sender_id": chat_user_id,
+                },
+            ),
+        )
+
+    @classmethod
+    def get_text_content(cls, payload: dict) -> str:
+        text = payload.get("text")
+        if not isinstance(text, dict):
+            raise ValueError(str(_("Missing DingTalk callback content")))
+        content = str(text.get("content") or "").strip()
+        if not content:
+            raise ValueError(str(_("Missing DingTalk callback content")))
+        return content
+
+    @classmethod
+    def get_existing_text_record(cls, chat_id: str, msg_id: str):
+        if not msg_id:
+            return None
+        return (
+            QuerySet(ChatRecord).filter(chat_id=chat_id, source__msg_id=msg_id).first()
+        )
+
+    @classmethod
+    def handle_text_message(cls, application_id: str, payload: dict) -> None:
+        message_payload = cls.normalize_text_payload(payload)
+        if not message_payload["conversation_id"]:
+            raise ValueError(str(_("Missing DingTalk callback conversationId")))
+        if not message_payload["msg_id"]:
+            raise ValueError(str(_("Missing DingTalk callback msgId")))
+        with transaction.atomic():
+            QuerySet(Application).select_for_update().filter(id=application_id).first()
+            chat = cls.get_or_create_dingtalk_chat(application_id, message_payload)
+            existing_chat_record = cast(
+                ChatRecord | None,
+                cls.get_existing_text_record(str(chat.id), message_payload["msg_id"]),
+            )
+            if existing_chat_record is not None:
+                return
+            next_index = QuerySet(ChatRecord).filter(chat_id=chat.id).count() + 1
+            chat_record = QuerySet(ChatRecord).create(
+                chat_id=chat.id,
+                problem_text=message_payload["content"],
+                answer_text="",
+                index=next_index,
+                source={
+                    "type": ChatSourceChoices.DINGTALK.value,
+                    "msg_id": message_payload["msg_id"],
+                    "conversation_id": message_payload["conversation_id"],
+                    "session_webhook": message_payload["session_webhook"],
+                    "sender_id": message_payload["chat_user_id"],
+                },
+            )
+            QuerySet(Chat).filter(id=chat.id).update(
+                abstract=message_payload["content"][:1024],
+                chat_record_count=next_index,
+                update_time=timezone.now(),
+                source={
+                    "type": ChatSourceChoices.DINGTALK.value,
+                    "conversation_id": message_payload["conversation_id"],
+                    "sender_id": message_payload["chat_user_id"],
+                },
+            )
+        cls.generate_text_answer(
+            chat, chat_record, application_id, payload, message_payload
+        )
+
+    @classmethod
+    def generate_text_answer(
+        cls,
+        chat: Chat,
+        chat_record: ChatRecord,
+        application_id: str,
+        payload: dict,
+        message_payload: dict[str, str],
+    ) -> None:
+        chat_serializers_module = import_module("chat.serializers.chat")
+        chat_serializer_cls = getattr(chat_serializers_module, "ChatSerializers")
+        chat_serializer_cls(
+            data={
+                "chat_id": str(chat.id),
+                "chat_user_id": message_payload["chat_user_id"],
+                "chat_user_type": ChatUserType.PLATFORM_USER.value,
+                "application_id": application_id,
+                "ip_address": "",
+                "source": {
+                    "type": ChatSourceChoices.DINGTALK.value,
+                    "msg_id": message_payload["msg_id"],
+                    "conversation_id": message_payload["conversation_id"],
+                    "session_webhook": message_payload["session_webhook"],
+                    "sender_id": message_payload["chat_user_id"],
+                },
+            }
+        ).chat(
+            instance={
+                "message": message_payload["content"],
+                "re_chat": False,
+                "stream": False,
+                "chat_record_id": str(chat_record.id),
+                "form_data": {},
+            }
+        )
+        chat_record.refresh_from_db()
+        try:
+            cls.send_text_reply(chat_record, message_payload)
+        except Exception as exc:
+            maxkb_logger.error(
+                _("DingTalk outbound reply failed {error}{traceback}").format(
+                    error=str(exc), traceback=traceback.format_exc()
+                )
+            )
+
+    @classmethod
+    def send_text_reply(
+        cls, chat_record: ChatRecord, message_payload: dict[str, str]
+    ) -> None:
+        answer_text = str(chat_record.answer_text or "").strip()
+        if not answer_text:
+            return
+        session_webhook = message_payload.get("session_webhook", "")
+        if not session_webhook:
+            raise ValueError(
+                str(_("DingTalk outbound response is missing session webhook"))
+            )
+        DingtalkClient.send_text_message(
+            session_webhook=session_webhook, content=answer_text
+        )
 
     @classmethod
     def handle_user_add_org(cls, application_id: str, payload: dict) -> None:
