@@ -50,6 +50,28 @@ Archive a completed change in the experimental workflow.
 
    **If no tasks file exists:** Proceed without task-related warning.
 
+3.5 **Check testing contract (Global OpenSpec)**
+
+   Check if global testing contract exists at `~/.config/openspec/testing-contract.md`.
+
+   If exists, read tasks.md to verify:
+   - A testing group exists (e.g., `## N. Testing` or `## Testing`)
+   - Testing tasks are marked `[x]` (complete)
+
+   **If testing group exists but incomplete:**
+   - Display warning: "Testing group incomplete - unit, integration, or E2E tests not finished"
+   - List specific incomplete testing tasks
+   - Use **AskUserQuestion tool** to confirm user wants to proceed
+   - Proceed if user confirms
+
+   **If testing group does NOT exist:**
+   - Display warning: "No testing group found in tasks.md"
+   - Show testing contract requirements
+   - Use **AskUserQuestion tool** to confirm user wants to proceed
+   - Proceed if user confirms
+
+   **Guardrail:** Testing group presence is strongly recommended but not blocking. Incomplete testing tasks are warnings only.
+
 4. **Assess delta spec sync state**
 
    Check for delta specs at `openspec/changes/<name>/specs/`. If none exist, proceed without sync prompt.
