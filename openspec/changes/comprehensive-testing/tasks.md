@@ -13,7 +13,7 @@
 - [x] 2.2 Add integration tests for application API endpoints
 - [x] 2.3 Add integration tests for knowledge API endpoints
 - [x] 2.4 Add integration tests for workspace API endpoints
-- [ ] 2.5 Add integration tests for chat API endpoints
+- [x] 2.5 Add integration tests for chat API endpoints
 - [ ] 2.6 Add integration tests for system settings API endpoints
 
 ## 3. Frontend Unit Tests
