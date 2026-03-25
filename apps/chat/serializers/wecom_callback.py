@@ -2,6 +2,7 @@ import base64
 import binascii
 import hashlib
 from importlib import import_module
+import traceback
 import xml.etree.ElementTree as ET
 from typing import cast
 
@@ -15,6 +16,8 @@ from application.models import Chat, ChatRecord, ChatSourceChoices, ChatUserType
 from application.serializers.application_platform import (
     ApplicationPlatformManageSerializer,
 )
+from common.platform.wecom_client import WecomClient
+from common.utils.logger import maxkb_logger
 from system_manage.models import SettingType
 from system_manage.serializers.platform_source import PlatformSourceManageSerializer
 
@@ -53,6 +56,9 @@ class WecomCallbackSerializer:
             "token": str(token),
             "encoding_aes_key": str(encoding_aes_key),
             "receive_id": str(provider_config.get("corp_id") or ""),
+            "corp_id": str(provider_config.get("corp_id") or ""),
+            "agent_id": str(config.get("agent_id") or ""),
+            "secret": str(config.get("secret") or ""),
         }
 
     @classmethod
@@ -282,6 +288,38 @@ class WecomCallbackSerializer:
                 "chat_record_id": str(chat_record.id),
                 "form_data": {},
             }
+        )
+        chat_record.refresh_from_db()
+        try:
+            cls.send_text_reply(
+                payload["application_id"], payload["from_user_name"], chat_record
+            )
+        except Exception as exc:
+            maxkb_logger.error(
+                _("WeCom outbound reply failed {error}{traceback}").format(
+                    error=str(exc), traceback=traceback.format_exc()
+                )
+            )
+
+    @classmethod
+    def send_text_reply(
+        cls, application_id: str, to_user: str, chat_record: ChatRecord
+    ) -> None:
+        answer_text = str(chat_record.answer_text or "").strip()
+        if not answer_text:
+            return
+        callback_config = cls.get_callback_config(application_id)
+        agent_id = callback_config.get("agent_id", "")
+        app_secret = callback_config.get("secret", "")
+        corp_id = callback_config.get("corp_id", "")
+        if not agent_id or not app_secret or not corp_id:
+            raise ValueError(
+                str(_("WeCom outbound response is missing required credentials"))
+            )
+        WecomClient(corp_id=corp_id, app_secret=app_secret).send_text_message(
+            to_user=to_user,
+            agent_id=agent_id,
+            content=answer_text,
         )
 
     @classmethod

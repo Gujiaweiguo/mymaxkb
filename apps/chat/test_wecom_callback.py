@@ -22,6 +22,7 @@ from application.models import (
     ChatUserType,
 )
 from chat.views.wecom_callback import WecomApplicationCallbackView
+from common.exception.app_exception import AppApiException
 from common.utils.common import password_encrypt
 from system_manage.models import SettingType, SystemSetting, Workspace
 from users.models import User
@@ -166,8 +167,11 @@ class WecomApplicationCallbackTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content.decode("utf-8"), "verify-ok")
 
+    @patch("common.platform.wecom_client.WecomClient.send_text_message")
     @patch("chat.serializers.chat.ChatSerializers.chat", autospec=True)
-    def test_wecom_callback_post_returns_success_after_decrypt(self, mock_chat):
+    def test_wecom_callback_post_returns_success_after_decrypt(
+        self, mock_chat, mock_send
+    ):
         mock_chat.side_effect = self.fake_answer_chat
         encrypt = self.encrypt_message(
             "<xml><MsgType><![CDATA[text]]></MsgType><Content><![CDATA[hello]]></Content><FromUserName><![CDATA[text-user-1]]></FromUserName><MsgId>msg-1</MsgId></xml>"
@@ -201,6 +205,9 @@ class WecomApplicationCallbackTests(TestCase):
         mock_chat.assert_called_once()
         serializer_self = mock_chat.call_args[0][0]
         self.assertEqual(serializer_self.initial_data["source"]["msg_id"], "msg-1")
+        mock_send.assert_called_once_with(
+            to_user="text-user-1", agent_id="agent-id", content="mock answer: hello"
+        )
 
     def test_wecom_callback_post_supports_enter_agent_event(self):
         encrypt = self.encrypt_message(
@@ -226,8 +233,11 @@ class WecomApplicationCallbackTests(TestCase):
         self.assertEqual(chat.asker["username"], "wecom-user-1")
         self.assertEqual(chat.source["type"], ChatSourceChoices.ENTERPRISE_WECHAT.value)
 
+    @patch("common.platform.wecom_client.WecomClient.send_text_message")
     @patch("chat.serializers.chat.ChatSerializers.chat", autospec=True)
-    def test_wecom_callback_post_reuses_enter_agent_chat_for_text(self, mock_chat):
+    def test_wecom_callback_post_reuses_enter_agent_chat_for_text(
+        self, mock_chat, mock_send
+    ):
         mock_chat.side_effect = self.fake_answer_chat
         enter_encrypt = self.encrypt_message(
             "<xml><MsgType><![CDATA[event]]></MsgType><Event><![CDATA[enter_agent]]></Event><FromUserName><![CDATA[wecom-user-2]]></FromUserName></xml>"
@@ -269,9 +279,15 @@ class WecomApplicationCallbackTests(TestCase):
         self.assertEqual(chat_record.problem_text, "follow up")
         self.assertEqual(chat_record.answer_text, "mock answer: follow up")
         mock_chat.assert_called_once()
+        mock_send.assert_called_once_with(
+            to_user="wecom-user-2",
+            agent_id="agent-id",
+            content="mock answer: follow up",
+        )
 
+    @patch("common.platform.wecom_client.WecomClient.send_text_message")
     @patch("chat.serializers.chat.ChatSerializers.chat", autospec=True)
-    def test_wecom_callback_post_noops_duplicate_msg_id(self, mock_chat):
+    def test_wecom_callback_post_noops_duplicate_msg_id(self, mock_chat, mock_send):
         mock_chat.side_effect = self.fake_answer_chat
         encrypt = self.encrypt_message(
             "<xml><MsgType><![CDATA[text]]></MsgType><Content><![CDATA[hello again]]></Content><FromUserName><![CDATA[text-user-3]]></FromUserName><MsgId>msg-dup</MsgId></xml>"
@@ -303,9 +319,15 @@ class WecomApplicationCallbackTests(TestCase):
         self.assertEqual(chat_record.source["msg_id"], "msg-dup")
         self.assertEqual(chat_record.answer_text, "mock answer: hello again")
         mock_chat.assert_called_once()
+        mock_send.assert_called_once_with(
+            to_user="text-user-3",
+            agent_id="agent-id",
+            content="mock answer: hello again",
+        )
 
+    @patch("common.platform.wecom_client.WecomClient.send_text_message")
     def test_wecom_callback_post_real_text_flow_updates_same_record_and_preserves_msg_id(
-        self,
+        self, mock_send
     ):
         encrypt = self.encrypt_message(
             "<xml><MsgType><![CDATA[text]]></MsgType><Content><![CDATA[real hello]]></Content><FromUserName><![CDATA[text-user-real]]></FromUserName><MsgId>msg-real</MsgId></xml>"
@@ -335,9 +357,73 @@ class WecomApplicationCallbackTests(TestCase):
             chat_record.source["type"], ChatSourceChoices.ENTERPRISE_WECHAT.value
         )
         self.assertEqual(chat_record.source["msg_id"], "msg-real")
+        mock_send.assert_called_once()
 
+    @patch("common.platform.wecom_client.WecomClient.send_text_message")
     @patch("chat.serializers.chat.ChatSerializers.chat", autospec=True)
-    def test_wecom_callback_post_rejects_text_without_sender(self, mock_chat):
+    def test_wecom_callback_post_returns_success_when_outbound_send_raises_app_error(
+        self, mock_chat, mock_send
+    ):
+        mock_chat.side_effect = self.fake_answer_chat
+        mock_send.side_effect = AppApiException(500, "send failed")
+        encrypt = self.encrypt_message(
+            "<xml><MsgType><![CDATA[text]]></MsgType><Content><![CDATA[hello fail]]></Content><FromUserName><![CDATA[text-user-fail]]></FromUserName><MsgId>msg-fail</MsgId></xml>"
+        )
+        signature, timestamp, nonce = self.build_signature(encrypt)
+        request = self.factory.post(
+            self.build_callback_path(signature, timestamp, nonce),
+            data=f"<xml><Encrypt><![CDATA[{encrypt}]]></Encrypt></xml>",
+            content_type="text/xml",
+        )
+
+        response = WecomApplicationCallbackView.as_view()(
+            request, application_id=str(self.application.id)
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content.decode("utf-8"), "success")
+        chat = QuerySet(Chat).get(application=self.application)
+        chat_record = QuerySet(ChatRecord).get(chat_id=chat.id)
+        self.assertEqual(chat_record.answer_text, "mock answer: hello fail")
+        mock_chat.assert_called_once()
+        mock_send.assert_called_once()
+
+    @patch("common.platform.wecom_client.WecomClient.send_text_message")
+    @patch("chat.serializers.chat.ChatSerializers.chat", autospec=True)
+    def test_wecom_callback_post_returns_success_when_outbound_credentials_missing_after_local_success(
+        self, mock_chat, mock_send
+    ):
+        mock_chat.side_effect = self.fake_answer_chat
+        setting = SystemSetting.objects.get(type=SettingType.PLATFORM_SOURCE)
+        setting.meta["wecom"]["config"].pop("corp_id")
+        setting.save()
+        encrypt = self.encrypt_message(
+            "<xml><MsgType><![CDATA[text]]></MsgType><Content><![CDATA[hello no corp]]></Content><FromUserName><![CDATA[text-user-nocorp]]></FromUserName><MsgId>msg-nocorp</MsgId></xml>"
+        )
+        signature, timestamp, nonce = self.build_signature(encrypt)
+        request = self.factory.post(
+            self.build_callback_path(signature, timestamp, nonce),
+            data=f"<xml><Encrypt><![CDATA[{encrypt}]]></Encrypt></xml>",
+            content_type="text/xml",
+        )
+
+        response = WecomApplicationCallbackView.as_view()(
+            request, application_id=str(self.application.id)
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content.decode("utf-8"), "success")
+        chat = QuerySet(Chat).get(application=self.application)
+        chat_record = QuerySet(ChatRecord).get(chat_id=chat.id)
+        self.assertEqual(chat_record.answer_text, "mock answer: hello no corp")
+        mock_chat.assert_called_once()
+        mock_send.assert_not_called()
+
+    @patch("common.platform.wecom_client.WecomClient.send_text_message")
+    @patch("chat.serializers.chat.ChatSerializers.chat", autospec=True)
+    def test_wecom_callback_post_rejects_text_without_sender(
+        self, mock_chat, mock_send
+    ):
         encrypt = self.encrypt_message(
             "<xml><MsgType><![CDATA[text]]></MsgType><Content><![CDATA[hello]]></Content><MsgId>msg-3</MsgId></xml>"
         )
@@ -354,9 +440,13 @@ class WecomApplicationCallbackTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         mock_chat.assert_not_called()
+        mock_send.assert_not_called()
 
+    @patch("common.platform.wecom_client.WecomClient.send_text_message")
     @patch("chat.serializers.chat.ChatSerializers.chat", autospec=True)
-    def test_wecom_callback_post_rejects_text_without_content(self, mock_chat):
+    def test_wecom_callback_post_rejects_text_without_content(
+        self, mock_chat, mock_send
+    ):
         encrypt = self.encrypt_message(
             "<xml><MsgType><![CDATA[text]]></MsgType><FromUserName><![CDATA[text-user-2]]></FromUserName><MsgId>msg-4</MsgId></xml>"
         )
@@ -373,6 +463,7 @@ class WecomApplicationCallbackTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         mock_chat.assert_not_called()
+        mock_send.assert_not_called()
 
     def test_wecom_callback_post_noops_unsupported_event(self):
         encrypt = self.encrypt_message(

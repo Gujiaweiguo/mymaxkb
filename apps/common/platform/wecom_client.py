@@ -50,3 +50,22 @@ class WecomClient:
         data = response.json()
         self._raise_for_wecom_error(data, _("Failed to get WeCom user identity"))
         return data
+
+    def send_text_message(self, to_user: str, agent_id: str, content: str) -> dict:
+        access_token = self.get_access_token()
+        response = requests.post(
+            f"{self.BASE_URL}/message/send",
+            params={"access_token": access_token},
+            json={
+                "touser": to_user,
+                "msgtype": "text",
+                "agentid": int(agent_id),
+                "text": {"content": content},
+                "safe": 0,
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        data = response.json()
+        self._raise_for_wecom_error(data, _("Failed to send WeCom message"))
+        return data
