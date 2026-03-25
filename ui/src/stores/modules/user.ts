@@ -7,8 +7,6 @@ import {useLocalStorage} from '@vueuse/core'
 
 import {localeConfigKey, getBrowserLang} from '@/locales/index'
 import useThemeStore from './theme'
-import {defaultPlatformSetting} from '@/utils/theme'
-import useLoginStore from './login'
 
 export interface userStateTypes {
   userInfo: User | null
@@ -128,8 +126,6 @@ const useUserStore = defineStore('user', {
         this.workspace_list = workspace_list
         useLocalStorage<string>(localeConfigKey, 'en-US').value =
           ok?.data?.language || this.getLanguage()
-        const theme = useThemeStore()
-        theme.setTheme()
         return this.asyncGetProfile()
       })
     },
@@ -144,14 +140,9 @@ const useUserStore = defineStore('user', {
             this.version = ok.data.version
             this.rasKey = ok.data.ras
             const theme = useThemeStore()
-            if (this.isEE() || this.isPE()) {
-              await theme.theme()
-            } else {
-              theme.setTheme()
-              theme.themeInfo = {
-                ...defaultPlatformSetting,
-              }
-            }
+            await theme.theme().catch(() => {
+              theme.hydrateTheme()
+            })
             resolve(ok)
           })
           .catch((error) => {

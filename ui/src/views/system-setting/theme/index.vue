@@ -266,12 +266,12 @@
 
 <script lang="ts" setup>
 import { ref, reactive, onMounted, computed } from 'vue'
-import { useRouter, onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave } from 'vue-router'
 import type { FormInstance, FormRules, UploadFiles } from 'element-plus'
 import { cloneDeep } from 'lodash'
 import LoginPreview from './LoginPreview.vue'
 import { themeList, defaultSetting, defaultPlatformSetting } from '@/utils/theme'
-import ThemeApi from '@/api/system-settings/theme'
+import ThemeApi, { type SystemBrandingUpdatePayload } from '@/api/system-settings/theme'
 import { MsgSuccess, MsgError } from '@/utils/message'
 import useStore from '@/stores'
 import { t } from '@/locales'
@@ -279,9 +279,51 @@ import { PermissionConst, RoleConst } from '@/utils/permission/data'
 import { ComplexPermission } from '@/utils/permission/type'
 
 const { theme } = useStore()
-const router = useRouter()
 
-onBeforeRouteLeave((to, from) => {
+const brandingFields: Array<keyof SystemBrandingUpdatePayload> = [
+  'theme',
+  'icon',
+  'loginLogo',
+  'loginImage',
+  'title',
+  'slogan',
+]
+
+const createThemeForm = (data?: any) => {
+  return {
+    theme: '',
+    ...defaultSetting,
+    ...defaultPlatformSetting,
+    ...(data || {}),
+  }
+}
+
+const syncThemeSelector = (currentTheme?: string) => {
+  const themeValue = currentTheme || ''
+
+  themeRadio.value = themeList.some((item) => item.value === themeValue) ? themeValue : 'custom'
+  customColor.value = themeValue
+}
+
+const applyThemeForm = (data?: any) => {
+  const nextThemeForm = createThemeForm(data)
+
+  themeForm.value = cloneDeep(nextThemeForm)
+  cloneTheme.value = cloneDeep(nextThemeForm)
+  syncThemeSelector(nextThemeForm.theme)
+}
+
+const createBrandingFormData = (data: SystemBrandingUpdatePayload) => {
+  const formData = new FormData()
+
+  brandingFields.forEach((field) => {
+    formData.append(field, data[field])
+  })
+
+  return formData
+}
+
+onBeforeRouteLeave(() => {
   theme.setTheme(cloneTheme.value)
 })
 
@@ -292,16 +334,8 @@ const isDefaultTheme = computed(() => {
 
 const themeFormRef = ref<FormInstance>()
 const loading = ref(false)
-const cloneTheme = ref(null)
-const themeForm = ref<any>({
-  theme: '',
-  icon: '',
-  loginLogo: '',
-  loginImage: '',
-  title: 'MaxKB',
-  slogan: t('theme.defaultSlogan'),
-  ...defaultPlatformSetting,
-})
+const cloneTheme = ref<any>(createThemeForm())
+const themeForm = ref<any>(createThemeForm())
 const themeRadio = ref('')
 const customColor = ref('')
 
@@ -335,7 +369,8 @@ function customColorHandle(val: string) {
 
 function resetTheme() {
   theme.setTheme(cloneTheme.value)
-  themeForm.value = cloneDeep(themeInfo.value)
+  themeForm.value = cloneDeep(cloneTheme.value)
+  syncThemeSelector(themeForm.value.theme)
 }
 
 function resetForm(val: string) {
@@ -355,35 +390,31 @@ function resetForm(val: string) {
   theme.setTheme(themeForm.value)
 }
 
-const updateTheme = async (formEl: FormInstance | undefined, test?: string) => {
+const updateTheme = async (formEl: FormInstance | undefined) => {
   if (!formEl) return
-  await formEl.validate((valid, fields) => {
-    if (valid) {
-      const fd = new FormData()
-      Object.keys(themeForm.value).map((item) => {
-        fd.append(item, themeForm.value[item])
-      })
-      ThemeApi.postThemeInfo(fd, loading).then((res) => {
-        theme.theme()
-        cloneTheme.value = cloneDeep(themeForm.value)
-        MsgSuccess(t('theme.saveSuccess'))
-      })
-    }
-  })
+
+  const valid = await formEl.validate().catch(() => false)
+
+  if (!valid) {
+    return
+  }
+
+  const requestData = brandingFields.reduce((data, field) => {
+    data[field] = themeForm.value[field]
+    return data
+  }, {} as SystemBrandingUpdatePayload)
+
+  await ThemeApi.postThemeInfo(createBrandingFormData(requestData), loading)
+  await theme.theme()
+  applyThemeForm(theme.themeInfo)
+  MsgSuccess(t('theme.saveSuccess'))
 }
 
 onMounted(() => {
   // if (user.isExpire()) {
   //   router.push({path: `/application`})
   // }
-  if (themeInfo.value) {
-    themeRadio.value = themeList.some((v) => v.value === themeInfo.value.theme)
-      ? themeInfo.value.theme
-      : 'custom'
-    customColor.value = themeInfo.value.theme
-    themeForm.value = cloneDeep(themeInfo.value)
-    cloneTheme.value = cloneDeep(themeInfo.value)
-  }
+  applyThemeForm(themeInfo.value)
 })
 </script>
 

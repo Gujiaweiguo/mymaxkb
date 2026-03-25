@@ -194,8 +194,14 @@ export default {
     },
     dingtalkSetting: {
       title: '钉钉应用配置',
+      clientId: 'Client ID',
       clientIdPlaceholder: '请输入 Client ID',
+      clientSecret: 'Client Secret',
       clientSecretPlaceholder: '请输入 Client Secret',
+      token: 'Token',
+      tokenPlaceholder: '请输入 Token',
+      encodingAesKey: 'EncodingAESKey',
+      encodingAesKeyPlaceholder: '请输入 EncodingAESKey',
       urlInfo: '-机器人页面，设置 "消息接收模式" 为 HTTP模式 ，并把上面 URL 填写到"消息接收地址"中',
     },
     wechatSetting: {

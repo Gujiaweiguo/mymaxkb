@@ -150,7 +150,7 @@
           </template>
         </el-table-column>
         <el-table-column
-          v-if="user.isEE()"
+          v-if="canUseWorkspaceFilter"
           width="150"
           prop="workspace_name"
           :label="$t('views.workspace.title')"
@@ -233,6 +233,7 @@
               effect="dark"
               :content="$t('views.application.operation.toChat')"
               placement="top"
+              v-if="!isCeEdition"
             >
               <span class="mr-8">
                 <el-button
@@ -249,7 +250,7 @@
               effect="dark"
               :content="$t('views.system.resource_management.management')"
               placement="top"
-              v-if="managePermission()"
+              v-if="!isCeEdition && managePermission()"
             >
               <span class="mr-8">
                 <el-button
@@ -284,21 +285,21 @@
                   </el-dropdown-item>
                   <el-dropdown-item
                     @click.stop="exportApplication(row)"
-                    v-if="permissionPrecise.export()"
+                    v-if="!isCeEdition && permissionPrecise.export()"
                   >
                     <AppIcon iconName="app-export" class="color-secondary"></AppIcon>
                     {{ $t('common.export') }}
                   </el-dropdown-item>
                   <el-dropdown-item
                     @click.stop="openTriggerDrawer(row)"
-                    v-if="permissionPrecise.trigger_read()"
+                    v-if="!isCeEdition && permissionPrecise.trigger_read()"
                   >
                     <AppIcon iconName="app-trigger" class="color-secondary"></AppIcon>
                     {{ $t('views.trigger.title') }}
                   </el-dropdown-item>
                   <el-dropdown-item
                     @click.stop="deleteApplication(row)"
-                    v-if="permissionPrecise.delete()"
+                    v-if="!isCeEdition && permissionPrecise.delete()"
                   >
                     <AppIcon iconName="app-delete" class="color-secondary"></AppIcon>
                     {{ $t('common.delete') }}
@@ -342,6 +343,9 @@ const router = useRouter()
 const route = useRoute()
 const { user, application } = useStore()
 
+const isCeEdition = computed(() => user.isCE())
+const canUseWorkspaceFilter = computed(() => user.isEE() || (user.isCE() && user.is_admin()))
+
 const permissionPrecise = computed(() => {
   return permissionMap['application']['systemManage']
 })
@@ -357,6 +361,10 @@ const managePermission = () => {
 }
 
 const MoreFilledPermission = () => {
+  if (isCeEdition.value) {
+    return permissionPrecise.value.auth()
+  }
+
   return (
     permissionPrecise.value.export() ||
     permissionPrecise.value.delete() ||
@@ -373,6 +381,9 @@ const openTriggerDrawer = (data: any) => {
 const ResourceAuthorizationDrawerRef = ref()
 
 function openAuthorization(item: any) {
+  if (item?.workspace_id) {
+    user.setWorkspaceId(item.workspace_id)
+  }
   ResourceAuthorizationDrawerRef.value.open(item.id)
 }
 
@@ -525,7 +536,7 @@ function filterStatusChange(val: string) {
 }
 
 async function getWorkspaceList() {
-  if (user.isEE()) {
+  if (canUseWorkspaceFilter.value) {
     const res = await loadPermissionApi('workspace').getSystemWorkspaceList(loading)
     workspaceOptions.value = res.data.map((item: any) => ({
       label: item.name,

@@ -1,6 +1,6 @@
 import { SourceTypeEnum } from '@/enums/common'
 import { get_next_route } from '@/utils/permission'
-import { EditionConst, PermissionConst, RoleConst } from '@/utils/permission/data'
+import { PermissionConst, RoleConst } from '@/utils/permission/data'
 import { ComplexPermission } from '@/utils/permission/type'
 /* type 类型
     BASE = 0, '通用类型'
@@ -31,7 +31,7 @@ const DocumentRouter = {
           () => {
             const to: any = get_next_route()
             if (to.params.folderId == 'shared') {
-              return RoleConst.ADMIN
+              return false
             } else if (to.params.folderId == 'resource-management') {
             } else {
               return new ComplexPermission(
@@ -123,7 +123,7 @@ const DocumentRouter = {
           () => {
             const to: any = get_next_route()
             if (to.params.folderId == 'shared') {
-              return RoleConst.ADMIN
+              return false
             } else if (to.params.folderId == 'resource-management') {
             } else {
               return new ComplexPermission(
@@ -405,47 +405,6 @@ const DocumentRouter = {
         resourceType: SourceTypeEnum.KNOWLEDGE,
         group: 'KnowledgeDetail',
         permission: [
-          new ComplexPermission(
-            [
-              RoleConst.ADMIN,
-              () => {
-                const to: any = get_next_route()
-                if (to.params.folderId == 'shared') {
-                  return RoleConst.ADMIN
-                } else if (to.params.folderId == 'resource-management') {
-                  return RoleConst.ADMIN
-                } else {
-                  return RoleConst.WORKSPACE_MANAGE.getWorkspaceRole()
-                }
-              },
-            ],
-            [
-              () => {
-                const to: any = get_next_route()
-                if (to.params.folderId == 'shared') {
-                  return PermissionConst.SHARED_KNOWLEDGE_CHAT_USER_READ
-                } else if (to.params.folderId == 'resource-management') {
-                  return PermissionConst.RESOURCE_KNOWLEDGE_CHAT_USER_READ
-                } else {
-                  return PermissionConst.KNOWLEDGE_CHAT_USER_READ.getKnowledgeWorkspaceResourcePermission(
-                    to ? to.params.id : '',
-                  )
-                }
-              },
-              () => {
-                const to: any = get_next_route()
-                if (to.params.folder_id == 'shared') {
-                  return PermissionConst.SHARED_KNOWLEDGE_CHAT_USER_READ
-                } else if (to.params.folderId == 'resource-management') {
-                  return PermissionConst.RESOURCE_KNOWLEDGE_CHAT_USER_READ
-                } else {
-                  return PermissionConst.KNOWLEDGE_CHAT_USER_READ.getWorkspacePermissionWorkspaceManageRole()
-                }
-              },
-            ],
-            [EditionConst.IS_EE, EditionConst.IS_PE],
-            'OR',
-          ),
           () => {
             const to: any = get_next_route()
             if (to.params.folderId == 'shared') {
@@ -459,17 +418,6 @@ const DocumentRouter = {
                     to ? to.params.id : '',
                   ),
                 ],
-                [EditionConst.IS_EE, EditionConst.IS_PE],
-                'AND',
-              )
-            }
-          },
-          () => {
-            const to: any = get_next_route()
-            if (to.params.folderId == 'share') {
-              return new ComplexPermission(
-                [RoleConst.EXTENDS_USER.getWorkspaceRole()],
-                [PermissionConst.KNOWLEDGE_CHAT_USER_READ.getWorkspacePermission()],
                 [],
                 'AND',
               )
@@ -477,8 +425,46 @@ const DocumentRouter = {
           },
           () => {
             const to: any = get_next_route()
+            if (to.params.folderId == 'shared') {
+              return RoleConst.ADMIN
+            } else if (to.params.folderId == 'resource-management') {
+            } else {
+              return new ComplexPermission(
+                [RoleConst.WORKSPACE_MANAGE.getWorkspaceRole()],
+                [PermissionConst.KNOWLEDGE_CHAT_USER_READ.getWorkspacePermissionWorkspaceManageRole()],
+                [],
+                'OR',
+              )
+            }
+          },
+          () => {
+            const to: any = get_next_route()
+            if (to.params.folderId == 'shared') {
+              return false
+            } else if (to.params.folderId == 'resource-management') {
+            } else {
+              return new ComplexPermission(
+                [],
+                [
+                  PermissionConst.KNOWLEDGE_CHAT_USER_READ.getKnowledgeWorkspaceResourcePermission(
+                    to ? to.params.id : '',
+                  ),
+                ],
+                [],
+                'OR',
+              )
+            }
+          },
+          () => {
+            const to: any = get_next_route()
             if (to.params.folderId == 'share') {
-              return RoleConst.USER.getWorkspaceRole()
+              return false
+            }
+          },
+          () => {
+            const to: any = get_next_route()
+            if (to.params.folderId == 'share') {
+              return false
             }
           },
           () => {

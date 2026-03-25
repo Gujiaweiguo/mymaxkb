@@ -449,6 +449,19 @@ onBeforeMount(() => {
     }
   }
 
+  const handleWecom = () => {
+    const code = params.get('code')
+    if (code) {
+      chatUser.wecomCallback(code, accessToken).then(() => {
+        router.push({
+          name: 'chat',
+          params: {accessToken: accessToken},
+          query: route.query,
+        })
+      })
+    }
+  }
+
   const handleLark = () => {
     const appId = params.get('appId')
     const callRequestAuthCode = () => {
@@ -504,6 +517,9 @@ onBeforeMount(() => {
   }
 
   switch (client) {
+    case 'wecom':
+      handleWecom()
+      break
     case 'dingtalk':
       handleDingTalk()
       break

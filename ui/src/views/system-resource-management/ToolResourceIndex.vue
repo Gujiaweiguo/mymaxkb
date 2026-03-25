@@ -339,6 +339,13 @@
                     ></AppIcon>
                     {{ $t('views.system.resourceAuthorization.title') }}
                   </el-dropdown-item>
+                  <el-dropdown-item
+                    @click.stop="openAuthorizedWorkspaceDialog(row)"
+                    v-if="user.isCE() && permissionPrecise.auth()"
+                  >
+                    <AppIcon iconName="app-lock" class="color-secondary"></AppIcon>
+                    {{ $t('views.shared.authorized_workspace') }}
+                  </el-dropdown-item>
 
                   <el-dropdown-item
                     v-if="!row.template_id && permissionPrecise.export()"
@@ -406,6 +413,7 @@
     <AddInternalToolDialog ref="AddInternalToolDialogRef" @refresh="confirmAddInternalTool" />
     <McpToolConfigDialog ref="McpToolConfigDialogRef" @refresh="refresh" />
     <ResourceAuthorizationDrawer :type="SourceTypeEnum.TOOL" ref="ResourceAuthorizationDrawerRef" />
+    <AuthorizedWorkspaceDialog ref="AuthorizedWorkspaceDialogRef" />
     <ResourceMappingDrawer ref="resourceMappingDrawerRef"></ResourceMappingDrawer>
     <ToolRecordDrawer ref="toolRecordDrawerRef" />
     <ResourceTriggerDrawer
@@ -425,6 +433,7 @@ import ToolFormDrawer from '@/views/tool/ToolFormDrawer.vue'
 import McpToolFormDrawer from '@/views/tool/McpToolFormDrawer.vue'
 import DataSourceToolFormDrawer from '@/views/tool/DataSourceToolFormDrawer.vue'
 import ResourceAuthorizationDrawer from '@/components/resource-authorization-drawer/index.vue'
+import AuthorizedWorkspaceDialog from '@/views/system-shared/AuthorizedWorkspaceDialog.vue'
 import ResourceTriggerDrawer from '@/views/trigger/ResourceTriggerDrawer.vue'
 import { t } from '@/locales'
 import { SourceTypeEnum } from '@/enums/common'
@@ -439,7 +448,7 @@ import permissionMap from '@/permission'
 import McpToolConfigDialog from '@/views/tool/component/McpToolConfigDialog.vue'
 import ResourceMappingDrawer from '@/components/resource_mapping/index.vue'
 import ToolRecordDrawer from '@/views/tool/execution-record/TriggerRecordDrawer.vue'
-import SkillToolFormDrawer from "@/views/tool/SkillToolFormDrawer.vue";
+import SkillToolFormDrawer from '@/views/tool/SkillToolFormDrawer.vue'
 
 const { user } = useStore()
 
@@ -512,9 +521,14 @@ const openTriggerDrawer = (data: any) => {
 }
 
 const ResourceAuthorizationDrawerRef = ref()
+const AuthorizedWorkspaceDialogRef = ref<InstanceType<typeof AuthorizedWorkspaceDialog>>()
 
 function openAuthorization(item: any) {
   ResourceAuthorizationDrawerRef.value.open(item.id)
+}
+
+function openAuthorizedWorkspaceDialog(item: any) {
+  AuthorizedWorkspaceDialogRef.value?.open(item, 'Tool')
 }
 
 function exportTool(row: any) {

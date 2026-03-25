@@ -5,6 +5,8 @@ from . import views
 app_name = "user"
 # @formatter:off
 urlpatterns = [
+    path("dingtalk", views.DingtalkLoginView.as_view(), name="dingtalk_login"),
+    path("wecom", views.WecomLoginView.as_view(), name="wecom_login"),
     path("user/login", views.LoginView.as_view(), name="login"),
     path("user/profile", views.UserProfileView.as_view(), name="user_profile"),
     path("user/captcha", views.CaptchaView.as_view(), name="captcha"),

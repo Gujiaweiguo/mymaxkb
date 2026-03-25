@@ -1,5 +1,5 @@
 <template>
-  <img v-if="theme.themeInfo?.loginLogo" :src="fileURL" alt="" height="45px" class="mr-8" />
+  <img v-if="loginLogoUrl" :src="loginLogoUrl" alt="" height="45px" class="mr-8" />
   <template v-else>
     <svg
       v-if="!isDefaultTheme"
@@ -59,7 +59,7 @@
   </template>
 </template>
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import useStore from '@/stores'
 defineOptions({ name: 'LogoFull' })
 
@@ -74,17 +74,7 @@ const isDefaultTheme = computed(() => {
   return theme.isDefaultTheme()
 })
 
-const fileURL = computed(() => {
-  if (theme.themeInfo) {
-    if (typeof theme.themeInfo?.loginLogo === 'string') {
-      return theme.themeInfo?.loginLogo
-    } else {
-      return URL.createObjectURL(theme.themeInfo?.loginLogo)
-    }
-  } else {
-    return ''
-  }
-})
+const loginLogoUrl = computed(() => theme.getBrandingAssetUrl('loginLogo'))
 </script>
 <style lang="scss" scoped>
 .custom-logo-color {

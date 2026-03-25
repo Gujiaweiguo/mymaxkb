@@ -8,6 +8,32 @@
   >
     <el-form label-position="top" ref="displayFormRef" :model="form">
       <el-form-item>
+        <el-card shadow="never">
+          <div class="flex-between mb-8">
+            <span class="lighter">{{ $t('views.application.title') + ' LOGO' }}</span>
+            <el-upload
+              action="#"
+              :auto-upload="false"
+              :show-file-list="false"
+              accept="image/jpeg, image/png, image/gif"
+              :on-change="onChange"
+            >
+              <el-button size="small">
+                {{ $t('views.applicationOverview.SettingDisplayDialog.replace') }}
+              </el-button>
+            </el-upload>
+          </div>
+          <div class="flex align-center mb-8">
+            <el-avatar shape="square" :size="32" style="background: none" class="mr-12">
+              <img :src="iconUrl" alt="" />
+            </el-avatar>
+            <el-text type="info" size="small">
+              {{ $t('views.applicationOverview.SettingDisplayDialog.imageMessage') }}
+            </el-text>
+          </div>
+        </el-card>
+      </el-form-item>
+      <el-form-item>
         <span>{{
           $t('layout.language')
         }}</span>
@@ -49,10 +75,11 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import type { FormInstance } from 'element-plus'
+import type { FormInstance, UploadFiles } from 'element-plus'
 import { MsgSuccess, MsgError } from '@/utils/message'
 import { langList, t } from '@/locales'
 import { loadSharedApi } from '@/utils/dynamics-api/shared-api'
+import { resetUrl } from '@/utils/common'
 
 const route = useRoute()
 const {
@@ -72,9 +99,11 @@ const form = ref<any>({
   show_source: false,
   show_exec: false,
   language: '',
+  icon: '',
 })
 
 const detail = ref<any>(null)
+const iconUrl = ref(resetUrl('./favicon.ico'))
 
 const dialogVisible = ref<boolean>(false)
 const loading = ref(false)
@@ -85,14 +114,30 @@ watch(dialogVisible, (bool) => {
       show_source: false,
       show_exec: false,
       language: '',
+      icon: '',
     }
+    iconUrl.value = resetUrl('./favicon.ico')
   }
 })
+
+const onChange = (file: any, fileList: UploadFiles) => {
+  const isLimit = file?.size / 1024 / 1024 < 10
+  if (!isLimit) {
+    MsgError(t('common.EditAvatarDialog.fileSizeExceeded'))
+    return false
+  }
+
+  form.value.icon = file.raw
+  iconUrl.value = URL.createObjectURL(file.raw)
+}
+
 const open = (data: any, content: any) => {
   detail.value = content
   form.value.show_source = data.show_source
   form.value.show_exec = data.show_exec
   form.value.language = data.language
+  form.value.icon = data.icon || content?.icon || ''
+  iconUrl.value = resetUrl(form.value.icon, resetUrl('./favicon.ico'))
   dialogVisible.value = true
 }
 
@@ -100,8 +145,16 @@ const submit = async (formEl: FormInstance | undefined) => {
   if (!formEl) return
   await formEl.validate((valid, fields) => {
     if (valid) {
+      const fd = new FormData()
+      fd.append('show_source', String(form.value.show_source))
+      fd.append('show_exec', String(form.value.show_exec))
+      fd.append('language', form.value.language || '')
+      if (form.value.icon instanceof File) {
+        fd.append('icon', form.value.icon)
+      }
+
       loadSharedApi({ type: 'application', systemType: apiType.value })
-        .putAccessToken(id as string, form.value, loading)
+        .putAccessToken(id as string, fd, loading)
         .then(() => {
           emit('refresh')
 

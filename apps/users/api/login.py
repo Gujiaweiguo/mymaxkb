@@ -1,11 +1,12 @@
 # coding=utf-8
 """
-    @project: MaxKB
-    @Author：虎虎
-    @file： login.py
-    @date：2025/4/14 10:30
-    @desc:
+@project: MaxKB
+@Author：虎虎
+@file： login.py
+@date：2025/4/14 10:30
+@desc:
 """
+
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter
 
@@ -45,12 +46,14 @@ class LoginAPI(APIMixin):
 
     @staticmethod
     def get_parameters():
-        return [OpenApiParameter(
-            name="code",
-            type=OpenApiTypes.STR,
-            location=OpenApiParameter.PATH,
-            required=True,
-        )]
+        return [
+            OpenApiParameter(
+                name="code",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=True,
+            )
+        ]
 
 
 class ApiCaptchaResponse(ResultSerializer):

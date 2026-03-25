@@ -190,5 +190,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 edition = "CE"
 
+MODEL_HANDLES = [
+    "common.database_model_manage.handle.impl.default_base_model_handle.DefaultBaseModelHandle"
+]
+
 if os.environ.get("MAXKB_REDIS_SENTINEL_SENTINELS") is not None:
     DJANGO_REDIS_CONNECTION_FACTORY = "django_redis.pool.SentinelConnectionFactory"

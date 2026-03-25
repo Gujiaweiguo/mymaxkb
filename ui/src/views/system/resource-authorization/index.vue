@@ -11,10 +11,10 @@
       <el-divider
         class="ml-24"
         direction="vertical"
-        v-if="hasPermission(EditionConst.IS_EE, 'OR')"
+        v-if="showWorkspaceSelector"
       />
       <WorkspaceDropdown
-        v-if="hasPermission(EditionConst.IS_EE, 'OR')"
+        v-if="showWorkspaceSelector"
         :data="workspaceList"
         :currentWorkspace="currentWorkspace"
         @changeWorkspace="changeWorkspace"
@@ -242,13 +242,23 @@ function getMember(id?: string) {
 
 const workspaceList = ref<WorkspaceItem[]>([])
 const currentWorkspaceId = ref<string | undefined>('')
+const canLoadWorkspaceList = computed(() => {
+  return user.isEE() || user.isPE() || (user.isCE() && user.is_admin())
+})
+const showWorkspaceSelector = computed(() => {
+  return canLoadWorkspaceList.value && workspaceList.value.length > 0
+})
 const currentWorkspace = computed(() => {
   return workspaceList.value.find((w) => w.id == currentWorkspaceId.value)
 })
 async function getWorkspaceList() {
   const res = await loadPermissionApi('workspace').getSystemWorkspaceList(loading)
-  workspaceList.value = res.data
-  currentWorkspaceId.value = (user.getWorkspaceId() as string) || 'default'
+  workspaceList.value = res.data || []
+  const defaultWorkspaceId = (user.getWorkspaceId() as string) || 'default'
+  currentWorkspaceId.value =
+    workspaceList.value.find((workspace) => workspace.id === defaultWorkspaceId)?.id ||
+    workspaceList.value[0]?.id ||
+    defaultWorkspaceId
 }
 
 function changeWorkspace(item: WorkspaceItem) {
@@ -256,9 +266,9 @@ function changeWorkspace(item: WorkspaceItem) {
   getMember()
 }
 
-onMounted(() => {
-  if (user.isEE()) {
-    getWorkspaceList()
+onMounted(async () => {
+  if (canLoadWorkspaceList.value) {
+    await getWorkspaceList()
   }
   getMember()
 })

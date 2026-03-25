@@ -44,6 +44,10 @@ const workspacePermissionMap = {
 }
 
 export function loadPermissionApi(type: string) {
+  if (['workspace', 'chatUser', 'userGroup'].includes(type) && hasPermission([EditionConst.IS_CE, RoleConst.ADMIN], 'AND')) {
+    return systemApiMap[type]
+  }
+
   if (hasPermission([EditionConst.IS_EE, EditionConst.IS_PE], 'OR')) {
     user.getHasPermissionWorkspaceManage()
     if (hasPermission(systemPermissionMap[type as keyof typeof systemPermissionMap], 'OR')) {

@@ -22,6 +22,25 @@ template
       require-asterisk-position="right"
       ref="formRef"
     >
+      <div class="mb-16" v-if="currentPlatform.key">
+        <div class="flex align-center flex-wrap gap-8">
+          <el-tag size="small" type="info" effect="plain">
+            {{ $t(currentPlatform.isConfigured ? 'common.status.configured' : 'common.status.unconfigured') }}
+          </el-tag>
+          <el-tag
+            v-if="currentPlatform.isConfigured"
+            size="small"
+            :type="getReadinessTagType()"
+          >
+            {{ getReadinessLabel() }}
+          </el-tag>
+        </div>
+        <div v-if="showFailureReason" class="mt-8">
+          <el-text type="danger" size="small">
+            {{ `${$t('common.reason')}: ${currentPlatform.failureReason}` }}
+          </el-text>
+        </div>
+      </div>
       <el-form-item
         v-for="(value, key) in currentPlatform.config"
         :key="key"
@@ -50,11 +69,12 @@ template
 </template>
 
 <script setup lang="ts">
-import {reactive, ref} from 'vue'
-import {ElForm} from 'element-plus'
+import { computed, reactive, ref } from 'vue'
+import { ElForm } from 'element-plus'
 import platformApi from '@/api/system-settings/platform-source'
-import {MsgError, MsgSuccess} from '@/utils/message'
-import {t} from '@/locales'
+import type { ExternalIntegrationPlatformInfo } from '@/api/type/external-integration'
+import { MsgError, MsgSuccess } from '@/utils/message'
+import { t } from '@/locales'
 
 const visible = ref(false)
 const loading = ref(false)
@@ -70,8 +90,14 @@ interface Platform {
   name: string
   isActive: boolean
   isValid: boolean
+  isConfigured: boolean
+  state: string
+  failureReason: string
   config: PlatformConfig
 }
+
+const readyStates = new Set(['ready', 'enabled', 'active', 'valid', 'success'])
+const failedStates = new Set(['failed', 'invalid', 'error'])
 
 const currentPlatform = reactive<Platform>({
   key: '',
@@ -79,8 +105,15 @@ const currentPlatform = reactive<Platform>({
   name: '',
   isActive: false,
   isValid: false,
-  config: {}
+  isConfigured: false,
+  state: '',
+  failureReason: '',
+  config: {},
 })
+
+const showFailureReason = computed(
+  () => currentPlatform.isConfigured && !currentPlatform.isValid && Boolean(currentPlatform.failureReason),
+)
 
 const formatFieldName = (key?: any): string => {
   const fieldNames: { [key: string]: string } = {
@@ -88,7 +121,7 @@ const formatFieldName = (key?: any): string => {
     app_key: currentPlatform?.key != 'lark' ? 'APP Key' : 'App ID',
     app_secret: 'APP Secret',
     agent_id: 'Agent ID',
-    callback_url: t('views.application.applicationAccess.callback')
+    callback_url: t('views.application.applicationAccess.callback'),
   }
   return (
     fieldNames[key as keyof typeof fieldNames] ||
@@ -103,45 +136,45 @@ const getValidationRules = (key: any) => {
         {
           required: true,
           message: t('views.system.authentication.scanTheQRCode.appKeyPlaceholder'),
-          trigger: ['blur', 'change']
-        }
+          trigger: ['blur', 'change'],
+        },
       ]
     case 'app_secret':
       return [
         {
           required: true,
           message: t('views.system.authentication.scanTheQRCode.appSecretPlaceholder'),
-          trigger: ['blur', 'change']
-        }
+          trigger: ['blur', 'change'],
+        },
       ]
     case 'corp_id':
       return [
         {
           required: true,
           message: t('views.system.authentication.scanTheQRCode.corpIdPlaceholder'),
-          trigger: ['blur', 'change']
-        }
+          trigger: ['blur', 'change'],
+        },
       ]
     case 'agent_id':
       return [
         {
           required: true,
           message: t('views.system.authentication.scanTheQRCode.agentIdPlaceholder'),
-          trigger: ['blur', 'change']
-        }
+          trigger: ['blur', 'change'],
+        },
       ]
     case 'callback_url':
       return [
         {
           required: true,
           message: t('views.application.applicationAccess.callbackTip'),
-          trigger: ['blur', 'change']
+          trigger: ['blur', 'change'],
         },
         {
           pattern: /^https?:\/\/.+/,
           message: t('views.system.authentication.scanTheQRCode.callbackWarning'),
-          trigger: ['blur', 'change']
-        }
+          trigger: ['blur', 'change'],
+        },
       ]
     default:
       return []
@@ -151,7 +184,10 @@ const getValidationRules = (key: any) => {
 const open = async (platform: Platform) => {
   visible.value = true
   loading.value = true
-  Object.assign(currentPlatform, platform)
+  Object.assign(currentPlatform, {
+    ...platform,
+    config: { ...platform.config },
+  })
 
   // 设置默认的 callback_url
   const defaultCallbackUrl = window.location.origin + window.MaxKB.prefix
@@ -172,7 +208,7 @@ const open = async (platform: Platform) => {
         corp_id: currentPlatform.config.corp_id,
         app_key: currentPlatform.config.app_key,
         app_secret: currentPlatform.config.app_secret,
-        callback_url: defaultCallbackUrl
+        callback_url: defaultCallbackUrl,
       }
       currentPlatform.config.callback_url = `${defaultCallbackUrl}/api/dingtalk`
       break
@@ -184,7 +220,7 @@ const open = async (platform: Platform) => {
   }
   formRef.value?.clearValidate()
 }
-defineExpose({open})
+defineExpose({ open })
 
 const validateForm = () => {
   formRef.value?.validate((valid) => {
@@ -204,7 +240,15 @@ const handleClose = () => {
 
 function validateConnection() {
   platformApi.validateConnection(currentPlatform, loading).then((res: any) => {
-    if (res.data) {
+    if (typeof res.data === 'object' && res.data !== null) {
+      applyPlatformReadiness(res.data)
+    } else if (typeof res.data === 'boolean') {
+      currentPlatform.isValid = res.data
+      currentPlatform.state = res.data ? 'ready' : currentPlatform.state
+      currentPlatform.failureReason = res.data ? '' : currentPlatform.failureReason
+    }
+
+    if (resolveValidationResult(res.data)) {
       MsgSuccess(t('views.system.authentication.scanTheQRCode.validateSuccess'))
     } else {
       MsgError(t('views.system.authentication.scanTheQRCode.validateFailed'))
@@ -224,6 +268,76 @@ function saveConfig() {
     visible.value = false
     formRef.value?.clearValidate()
   })
+}
+
+function applyPlatformReadiness(data: ExternalIntegrationPlatformInfo<PlatformConfig>) {
+  const state = normalizeState(data.state)
+  const config = data.config ? { ...currentPlatform.config, ...data.config } : currentPlatform.config
+  const isConfigured =
+    typeof data.is_configured === 'boolean' ? data.is_configured : hasConfiguredValue(config)
+
+  Object.assign(currentPlatform, {
+    isConfigured,
+    isValid:
+      typeof data.is_valid === 'boolean'
+        ? data.is_valid
+        : state
+          ? readyStates.has(state)
+          : isConfigured,
+    isActive: typeof data.is_active === 'boolean' ? data.is_active : currentPlatform.isActive,
+    state,
+    failureReason: typeof data.failure_reason === 'string' ? data.failure_reason : '',
+    config,
+  })
+}
+
+function hasConfiguredValue(config: PlatformConfig) {
+  return Object.entries(config).some(
+    ([field, value]) => field !== 'callback_url' && String(value ?? '').trim().length > 0,
+  )
+}
+
+function normalizeState(state?: string | null) {
+  return typeof state === 'string' ? state.toLowerCase() : ''
+}
+
+function resolveValidationResult(data: ExternalIntegrationPlatformInfo<PlatformConfig> | boolean) {
+  if (typeof data === 'boolean') {
+    return data
+  }
+
+  const state = normalizeState(data?.state)
+  if (typeof data?.is_valid === 'boolean') {
+    return data.is_valid
+  }
+
+  return state
+    ? readyStates.has(state)
+    : typeof data?.is_configured === 'boolean'
+      ? data.is_configured
+      : hasConfiguredValue(data?.config || currentPlatform.config)
+}
+
+function getReadinessLabel() {
+  if (currentPlatform.isValid) {
+    return t('common.status.ready')
+  }
+
+  return t(
+    Boolean(currentPlatform.failureReason) || failedStates.has(currentPlatform.state)
+      ? 'common.status.fail'
+      : 'common.status.notReady',
+  )
+}
+
+function getReadinessTagType() {
+  if (currentPlatform.isValid) {
+    return 'success'
+  }
+
+  return Boolean(currentPlatform.failureReason) || failedStates.has(currentPlatform.state)
+    ? 'danger'
+    : 'warning'
 }
 </script>
 

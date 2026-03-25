@@ -190,6 +190,24 @@
                 </el-form-item>
               </div>
             </el-form>
+            <div class="mb-24" v-if="canReadChatUser">
+              <h4 class="title-decoration-1 mb-16">
+                {{ $t('views.chatUser.title') }}
+              </h4>
+              <el-card shadow="never" class="w-full layout-bg" style="--el-card-padding: 0">
+                <div class="p-16-24 flex-between align-center cursor" @click="toChatUser">
+                  <div class="mr-16">
+                    <div>{{ $t('views.chatUser.title') }}</div>
+                    <el-text type="info">
+                      {{ $t('views.chatUser.knowledgeTitleTip') }}
+                    </el-text>
+                  </div>
+                  <el-button type="primary" link @click.stop="toChatUser">
+                    {{ $t('common.setting') }}
+                  </el-button>
+                </div>
+              </el-card>
+            </div>
             <div class="text-right">
               <el-button
                 @click="submit"
@@ -207,7 +225,7 @@
 </template>
 <script setup lang="ts">
 import { ref, onMounted, reactive, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import BaseForm from '@/views/knowledge/component/BaseForm.vue'
 import { MsgSuccess, MsgConfirm } from '@/utils/message'
 import { t } from '@/locales'
@@ -216,8 +234,9 @@ import permissionMap from '@/permission'
 import { loadSharedApi } from '@/utils/dynamics-api/shared-api'
 
 const route = useRoute()
+const router = useRouter()
 const {
-  params: { id, folderId },
+  params: { id, folderId, type },
 } = route as any
 
 const apiType = computed(() => {
@@ -232,6 +251,18 @@ const apiType = computed(() => {
 
 const permissionPrecise = computed(() => {
   return permissionMap['knowledge'][apiType.value]
+})
+
+const canReadChatUser = computed(() => {
+  if (apiType.value === 'workspace') {
+    return permissionMap['knowledge']['workspace'].knowledge_chat_user_read(id)
+  }
+
+  if (apiType.value === 'systemManage') {
+    return permissionMap['knowledge']['systemManage'].knowledge_chat_user_read()
+  }
+
+  return false
 })
 
 const isShared = computed(() => {
@@ -365,6 +396,17 @@ function getDetail() {
         form.value = res.data.meta
       }
     })
+}
+
+function toChatUser() {
+  router.push({
+    name: 'KnowledgeChatUser',
+    params: {
+      id,
+      folderId,
+      type,
+    },
+  })
 }
 
 onMounted(() => {

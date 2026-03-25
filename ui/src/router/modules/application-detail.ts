@@ -1,7 +1,7 @@
 import { SourceTypeEnum } from '@/enums/common'
 import { get_next_route } from '@/utils/permission'
 
-import { EditionConst, PermissionConst, RoleConst } from '@/utils/permission/data'
+import { PermissionConst, RoleConst } from '@/utils/permission/data'
 import { ComplexPermission } from '@/utils/permission/type'
 
 const ApplicationDetailRouter = {
@@ -119,13 +119,13 @@ const ApplicationDetailRouter = {
           () => {
             const to: any = get_next_route()
             if (to.params.from == 'resource-management') { } else {
-              return new ComplexPermission([RoleConst.USER], [PermissionConst.APPLICATION.getApplicationWorkspaceResourcePermission(to ? to.params.id : '',)], [EditionConst.IS_EE, EditionConst.IS_PE], 'AND')
+               return new ComplexPermission([RoleConst.USER], [PermissionConst.APPLICATION.getApplicationWorkspaceResourcePermission(to ? to.params.id : '',)], [], 'AND')
             }
           },
           () => {
             const to: any = get_next_route()
             if (to.params.from == 'resource-management') { } else {
-              return new ComplexPermission([RoleConst.WORKSPACE_MANAGE.getWorkspaceRole(),], [PermissionConst.APPLICATION_ACCESS_READ.getWorkspacePermissionWorkspaceManageRole()], [EditionConst.IS_EE, EditionConst.IS_PE], 'OR')
+               return new ComplexPermission([RoleConst.WORKSPACE_MANAGE.getWorkspaceRole(),], [PermissionConst.APPLICATION_ACCESS_READ.getWorkspacePermissionWorkspaceManageRole()], [], 'OR')
             }
           },
           () => {
@@ -135,7 +135,7 @@ const ApplicationDetailRouter = {
                 const to: any = get_next_route()
                 return PermissionConst.APPLICATION_ACCESS_READ.getApplicationWorkspaceResourcePermission(
                   to ? to.params.id : '',)
-              }], [EditionConst.IS_EE, EditionConst.IS_PE], 'OR')
+               }], [], 'OR')
             }
           },
           () => {
@@ -165,20 +165,20 @@ const ApplicationDetailRouter = {
           () => {
             const to: any = get_next_route()
             if (to.params.from == 'resource-management') { } else {
-              return new ComplexPermission([RoleConst.USER], [PermissionConst.APPLICATION.getApplicationWorkspaceResourcePermission(to ? to.params.id : '',)], [EditionConst.IS_EE, EditionConst.IS_PE], 'AND')
+               return new ComplexPermission([RoleConst.USER], [PermissionConst.APPLICATION.getApplicationWorkspaceResourcePermission(to ? to.params.id : '',)], [], 'AND')
             }
           },
           () => {
             const to: any = get_next_route()
             if (to.params.from == 'resource-management') { } else {
-              return new ComplexPermission([RoleConst.WORKSPACE_MANAGE.getWorkspaceRole()], [PermissionConst.APPLICATION_CHAT_USER_READ.getWorkspacePermissionWorkspaceManageRole()], [EditionConst.IS_EE, EditionConst.IS_PE], 'OR')
+               return new ComplexPermission([RoleConst.WORKSPACE_MANAGE.getWorkspaceRole()], [PermissionConst.APPLICATION_CHAT_USER_READ.getWorkspacePermissionWorkspaceManageRole()], [], 'OR')
             }
           },
           () => {
             const to: any = get_next_route()
             if (to.params.from == 'resource-management') { } else {
-              return new ComplexPermission([], [PermissionConst.APPLICATION_CHAT_USER_READ.getApplicationWorkspaceResourcePermission(
-                to ? to.params.id : '',)], [EditionConst.IS_EE, EditionConst.IS_PE], 'OR')
+               return new ComplexPermission([], [PermissionConst.APPLICATION_CHAT_USER_READ.getApplicationWorkspaceResourcePermission(
+                to ? to.params.id : '',)], [], 'OR')
             }
           },
           () => {

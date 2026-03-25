@@ -22,6 +22,23 @@
     <el-button type="primary" class="mb-16" @click="createApiKey">
       {{ $t('common.create') }}
     </el-button>
+    <el-card v-if="createdSecretKey" shadow="never" class="layout-bg mb-16">
+      <el-text type="info" class="color-secondary">{{ $t('layout.apiKey') }}</el-text>
+      <div
+        class="complex-input flex align-center w-full created-api-key"
+        style="background-color: var(--el-disabled-bg-color)"
+      >
+        <el-input class="complex-input__left" :model-value="createdSecretKey" readonly />
+        <el-tooltip :content="$t('common.copy')" placement="top">
+          <el-button text @click="copyClick(createdSecretKey)">
+            <AppIcon iconName="app-copy" class="color-secondary"></AppIcon>
+          </el-button>
+        </el-tooltip>
+        <el-button text @click="clearCreatedSecretKey">
+          {{ $t('common.cancel') }}
+        </el-button>
+      </div>
+    </el-card>
     <app-table
       :data="apiKey"
       :loading="loading"
@@ -40,7 +57,13 @@
                 {{ row.secret_key }}
               </span>
             </el-tooltip>
-            <el-button type="primary" text @click="copyClick(row.secret_key)" class="copy-btn">
+            <el-button
+              v-if="!isMaskedSecretKey(row.secret_key)"
+              type="primary"
+              text
+              @click="copyClick(row.secret_key)"
+              class="copy-btn"
+            >
               <AppIcon iconName="app-copy"></AppIcon>
             </el-button>
           </div>
@@ -151,6 +174,7 @@ const SettingAPIKeyDialogRef = ref()
 const dialogVisible = ref<boolean>(false)
 const loading = ref(false)
 const apiKey = ref<any>(null)
+const createdSecretKey = ref('')
 const orderBy = ref<string>('')
 const paginationConfig = reactive({
   current_page: 1,
@@ -161,8 +185,13 @@ const paginationConfig = reactive({
 watch(dialogVisible, (bool) => {
   if (!bool) {
     apiKey.value = null
+    createdSecretKey.value = ''
   }
 })
+
+function clearCreatedSecretKey() {
+  createdSecretKey.value = ''
+}
 
 function handleSizeChange() {
   paginationConfig.current_page = 1
@@ -206,6 +235,7 @@ function changeState(bool: boolean, row: any) {
 
 function createApiKey() {
   systemKeyApi.postAPIKey(loading).then((res) => {
+    createdSecretKey.value = res.data?.secret_key || ''
     MsgSuccess(t('common.createSuccess'))
     getApiKeyList()
   })
@@ -237,6 +267,10 @@ function getExpiryClass(expireTime: any) {
   }
 }
 
+function isMaskedSecretKey(secretKey: string) {
+  return secretKey?.includes('*')
+}
+
 function handleSortChange({prop, order}: { prop: string; order: string }) {
   orderBy.value = order === 'ascending' ? prop : `-${prop}`
   getApiKeyList()
@@ -266,6 +300,10 @@ defineExpose({open})
   .copy-btn {
     flex-shrink: 0; /* 复制按钮不收缩 */
   }
+}
+
+.created-api-key {
+  margin-top: var(--app-base-px);
 }
 
 </style>

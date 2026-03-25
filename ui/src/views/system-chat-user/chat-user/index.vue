@@ -25,6 +25,7 @@
           </el-button>
           <el-button
             @click="syncUsers"
+            v-if="!user.isCE()"
             v-hasPermission="
               new ComplexPermission([RoleConst.ADMIN], [PermissionConst.CHAT_USER_SYNC], [], 'OR')
             "
@@ -339,6 +340,9 @@ import { PermissionConst, RoleConst } from '@/utils/permission/data'
 import { ComplexPermission } from '@/utils/permission/type'
 import { hasPermission } from '@/utils/permission'
 import { loadPermissionApi } from '@/utils/dynamics-api/permission-api.ts'
+import useStore from '@/stores'
+
+const { user } = useStore()
 
 const search_type = ref('username')
 const search_form = ref<{

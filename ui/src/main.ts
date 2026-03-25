@@ -11,6 +11,7 @@ import router from '@/router'
 import i18n from '@/locales'
 import Components from '@/components'
 import directives from '@/directives'
+import useThemeStore from '@/stores/modules/theme'
 import { getDefaultWhiteList } from 'xss'
 import { config, XSSPlugin } from 'md-editor-v3'
 import screenfull from 'screenfull'
@@ -90,7 +91,10 @@ config({
   },
 })
 const app = createApp(App)
-app.use(createPinia())
+const pinia = createPinia()
+
+app.use(pinia)
+useThemeStore(pinia).hydrateTheme()
 for (const [key, component] of Object.entries(ElementPlusIcons)) {
   app.component(key, component)
 }

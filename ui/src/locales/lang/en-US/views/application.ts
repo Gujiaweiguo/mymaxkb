@@ -202,8 +202,14 @@ export default {
     },
     dingtalkSetting: {
       title: 'DingTalk Configuration',
+      clientId: 'Client ID',
       clientIdPlaceholder: 'Please enter client ID',
+      clientSecret: 'Client Secret',
       clientSecretPlaceholder: 'Please enter client secret',
+      token: 'Token',
+      tokenPlaceholder: 'Please enter token',
+      encodingAesKey: 'EncodingAESKey',
+      encodingAesKeyPlaceholder: 'Please enter EncodingAESKey',
       urlInfo:
         '-On the robot page, set the "Message Receiving Mode" to HTTP mode, and fill in the above URL into the "Message Receiving Address"',
     },

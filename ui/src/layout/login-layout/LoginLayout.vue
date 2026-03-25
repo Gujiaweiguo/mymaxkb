@@ -62,21 +62,11 @@ const currentLanguage = computed(() => {
   return langList.value?.filter((v: any) => v.value === user.getLanguage())?.[0]?.label
 })
 
-const fileURL = computed(() => {
-  if (theme.themeInfo?.loginImage) {
-    if (typeof theme.themeInfo?.loginImage === 'string') {
-      return theme.themeInfo?.loginImage
-    } else {
-      return URL.createObjectURL(theme.themeInfo?.loginImage)
-    }
-  } else {
-    return ''
-  }
-})
+const loginImageUrl = computed(() => theme.getBrandingAssetUrl('loginImage'))
 
 const loginImage = computed(() => {
-  if (theme.themeInfo?.loginImage) {
-    return `${fileURL.value}`
+  if (loginImageUrl.value) {
+    return loginImageUrl.value
   } else {
     const imgName = getThemeImg(theme.themeInfo?.theme)
     const imgPath = `${window.MaxKB.prefix}/theme/${imgName}.jpg`

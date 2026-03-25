@@ -35,7 +35,7 @@
               </el-input>
             </el-form-item>
           </div>
-          <div class="mb-24" v-if="loginMode !== 'LDAP' && identifyCode">
+          <div class="mb-24" v-if="showCaptcha">
             <el-form-item prop="captcha">
               <div class="flex-between w-full">
                 <el-input
@@ -88,7 +88,7 @@
       <div class="text-center mt-16">
         <template v-for="item in modeList">
           <el-button
-            v-if="item !== '' && loginMode !== item && item !== 'QR_CODE'"
+            v-if="item !== '' && currentLoginMode !== item && item !== 'QR_CODE'"
             circle
             :key="item"
             class="login-button-circle color-secondary"
@@ -112,7 +112,7 @@
             <img src="@/assets/icon_qr_outlined.svg" width="25px"/>
           </el-button>
           <el-button
-            v-if="item === '' && loginMode !== ''"
+            v-if="item === '' && currentLoginMode !== 'LOCAL'"
             circle
             :key="item"
             class="login-button-circle color-secondary"
@@ -158,6 +158,14 @@ const loginForm = ref<LoginRequest>({
   captcha: '',
 })
 
+const defaultAuthSetting = {
+  max_attempts: 1,
+  default_value: 'LOCAL',
+  login_methods: ['LOCAL'],
+}
+
+const qrCodeLoginMethods = ['lark', 'wecom', 'dingtalk']
+
 const rules = ref<FormRules<LoginRequest>>({
   username: [
     {
@@ -180,6 +188,15 @@ const rules = ref<FormRules<LoginRequest>>({
       trigger: 'blur',
     },
   ],
+})
+
+const currentLoginMode = computed(() => loginMode.value || 'LOCAL')
+const enableCaptcha = computed(() => {
+  return currentLoginMode.value === 'LOCAL' && authSetting.value?.max_attempts !== -1
+})
+
+const showCaptcha = computed(() => {
+  return enableCaptcha.value && !!identifyCode.value
 })
 
 const loginHandle = () => {
@@ -224,9 +241,15 @@ const loginHandle = () => {
 }
 
 function makeCode(username?: string) {
+  if (!enableCaptcha.value) {
+    identifyCode.value = ''
+    return
+  }
   loginApi.getCaptcha(username).then((res: any) => {
     if (res && res.data && res.data.captcha) {
       identifyCode.value = res.data.captcha
+    } else {
+      identifyCode.value = ''
     }
   }).catch((error) => {
     console.error('Failed to get captcha:', error)
@@ -234,78 +257,98 @@ function makeCode(username?: string) {
 }
 
 function handleUsernameBlur(username: string) {
+  if (!enableCaptcha.value) {
+    identifyCode.value = ''
+    return
+  }
   makeCode(username)
+}
+
+function getQrCodeOptionLabel(item: string) {
+  return item === 'wecom'
+    ? t('views.system.authentication.scanTheQRCode.wecom')
+    : item === 'dingtalk'
+      ? t('views.system.authentication.scanTheQRCode.dingtalk')
+      : t('views.system.authentication.scanTheQRCode.lark')
+}
+
+function normalizeLoginAuthSetting(data?: any) {
+  const loginMethods = Array.isArray(data?.login_methods)
+    ? data.login_methods.filter((item: string) => typeof item === 'string' && item)
+    : []
+  const normalizedLoginMethods = loginMethods.length ? loginMethods : [...defaultAuthSetting.login_methods]
+  const defaultValue = normalizedLoginMethods.includes(data?.default_value)
+    ? data.default_value
+    : normalizedLoginMethods.includes('LOCAL')
+      ? 'LOCAL'
+      : normalizedLoginMethods[0]
+
+  return {
+    ...defaultAuthSetting,
+    ...data,
+    login_methods: normalizedLoginMethods,
+    default_value: defaultValue,
+    max_attempts:
+      typeof data?.max_attempts === 'number' ? data.max_attempts : defaultAuthSetting.max_attempts,
+  }
+}
+
+function applyLoginMethods(loginMethods: string[]) {
+  modeList.value = [...loginMethods]
+  orgOptions.value = []
+  showQrCodeTab.value = false
+
+  if (modeList.value.includes('LOCAL')) {
+    modeList.value = ['LOCAL', ...modeList.value.filter((item) => item !== 'LOCAL')]
+  } else if (modeList.value.includes('LDAP')) {
+    modeList.value = ['LDAP', ...modeList.value.filter((item) => item !== 'LDAP')]
+  }
+
+  QrList.value = modeList.value.filter((item) => qrCodeLoginMethods.includes(item))
+  modeList.value = modeList.value.filter((item) => !qrCodeLoginMethods.includes(item))
+
+  if (QrList.value.length > 0) {
+    orgOptions.value = QrList.value.map((item) => ({
+      key: item,
+      value: getQrCodeOptionLabel(item),
+    }))
+
+    if (!modeList.value.includes('LOCAL') && !modeList.value.includes('LDAP')) {
+      showQrCodeTab.value = true
+    }
+
+    modeList.value = ['QR_CODE', ...modeList.value]
+  }
 }
 
 onBeforeMount(() => {
   user.asyncGetProfile().then((res) => {
-    // 企业版和专业版：第三方登录
-    if (user.isPE() || user.isEE()) {
-      authApi.getLoginAuthSetting().then((res) => {
-        if (Object.keys(res.data).length > 0) {
-          authSetting.value = res.data;
+    authApi.getLoginAuthSetting().then((res) => {
+      authSetting.value = normalizeLoginAuthSetting(res.data)
+
+      const params = route.query
+      if (params.login_mode !== 'manual') {
+        applyLoginMethods(authSetting.value.login_methods)
+
+        const defaultMode = authSetting.value.default_value
+        if (qrCodeLoginMethods.includes(defaultMode)) {
+          changeMode('QR_CODE', false)
+          defaultQrTab.value = defaultMode
         } else {
-          authSetting.value = {
-            max_attempts: 1,
-            default_value: 'LOCAL',
-          }
+          changeMode(defaultMode, false)
         }
-        const params = route.query
-        if (params.login_mode !== 'manual') {
-          if (authSetting.value?.login_methods) {
-            modeList.value = authSetting.value?.login_methods
-            if (modeList.value.includes('LOCAL')) {
-              modeList.value = ['LOCAL', ...modeList.value.filter((item) => item !== 'LOCAL')]
-            } else if (modeList.value.includes('LDAP')) {
-              modeList.value = ['LDAP', ...modeList.value.filter((item) => item !== 'LDAP')]
-            }
-            loginMode.value = modeList.value[0] || 'LOCAL'
-            if (!modeList.value.includes('LOCAL') && !modeList.value.includes('LDAP')) {
-              loginMode.value = ''
-            }
-            if (modeList.value.length == 1 && ['CAS', 'OIDC', 'OAuth2', 'SAML2'].includes(modeList.value[0])) {
-              redirectAuth(modeList.value[0])
-            }
-            // 这里的modeList 是oauth2 cas ldap oidc 这四个 还会有 lark wecom dingtalk
-            // 获取到的 modeList中除'CAS', 'OIDC', 'OAuth2' LOCAL之外的登录方式
-            QrList.value = modeList.value.filter(
-              (item) => !['CAS', 'OIDC', 'OAuth2', 'LOCAL', 'LDAP', 'SAML2'].includes(item),
-            )
-            // modeList需要去掉lark wecom dingtalk
-            modeList.value = modeList.value.filter((item) => !['lark', 'wecom', 'dingtalk'].includes(item))
-            if (QrList.value.length > 0) {
-              QrList.value.forEach((item) => {
-                orgOptions.value.push({
-                  key: item,
-                  value:
-                    item === 'wecom'
-                      ? t('views.system.authentication.scanTheQRCode.wecom')
-                      : item === 'dingtalk'
-                        ? t('views.system.authentication.scanTheQRCode.dingtalk')
-                        : t('views.system.authentication.scanTheQRCode.lark'),
-                })
-              })
-              if (!modeList.value.includes('LOCAL') && !modeList.value.includes('LDAP')) {
-                showQrCodeTab.value = true
-              }
-              modeList.value = ['QR_CODE', ...modeList.value]
-            }
-          }
-          const defaultMode = authSetting.value.default_value
-          if (['lark', 'wecom', 'dingtalk'].includes(defaultMode)) {
-            changeMode('QR_CODE', false)
-            defaultQrTab.value = defaultMode
-          } else {
-            changeMode(defaultMode, false)
-          }
-        }
-      })
-    } else {
-      authSetting.value = {
-        max_attempts: 1,
-        default_value: 'LOCAL',
       }
-    }
+    }).catch(() => {
+      authSetting.value = normalizeLoginAuthSetting()
+
+      const params = route.query
+      if (params.login_mode !== 'manual') {
+        applyLoginMethods(authSetting.value.login_methods)
+
+        const defaultMode = authSetting.value.default_value
+        changeMode(defaultMode, false)
+      }
+    })
   })
 })
 
@@ -407,6 +450,7 @@ function changeMode(val: string, needMessage: boolean = true) {
     password: '',
     captcha: '',
   }
+  identifyCode.value = ''
   redirectAuth(val, needMessage)
   loginFormRef.value?.clearValidate()
 }
@@ -473,6 +517,15 @@ onMounted(() => {
     }
   }
 
+  const handleWecom = () => {
+    const code = params.get('code')
+    if (code) {
+      login.wecomCallback(code).then(() => {
+        router.push({name: 'home'})
+      })
+    }
+  }
+
   const handleLark = () => {
     const appId = params.get('appId')
     const callRequestAuthCode = () => {
@@ -520,6 +573,9 @@ onMounted(() => {
   }
 
   switch (client) {
+    case 'wecom':
+      handleWecom()
+      break
     case 'dingtalk':
       handleDingTalk()
       break

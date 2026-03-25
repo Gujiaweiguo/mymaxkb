@@ -40,6 +40,7 @@ from system_manage.models import (
     SystemSetting,
     SettingType,
     AuthTargetType,
+    WorkspaceMember,
     WorkspaceUserResourcePermission,
 )
 from users.models import User
@@ -412,6 +413,9 @@ class UserManageSerializer(serializers.Serializer):
                     user["role_workspace"] = user_role_workspace_mapping.get(
                         user_id, []
                     )
+            else:
+                for user in result["records"]:
+                    user.update(get_community_user_role_payload(user))
             return result
 
     @transaction.atomic
@@ -431,12 +435,12 @@ class UserManageSerializer(serializers.Serializer):
             role=RoleConstants.USER.name,
             source=instance.get("source", "LOCAL"),
             is_active=True,
-            require_password_change=instance.get("source", "LOCAL") == "LOCAL",
+            require_password_change=False,  # TODO: Implement proper first-login password change flow in frontend
         )
         update_user_role(instance, user, user_id)
         set_default_permission(user.id, instance)
         user.save()
-        return UserInstanceSerializer(user).data
+        return get_community_user_manage_response(user)
 
     class UserEditInstance(serializers.Serializer):
         email = serializers.EmailField(
@@ -559,7 +563,7 @@ class UserManageSerializer(serializers.Serializer):
             self._update_user_fields(user, instance)
             update_user_role(instance, user, user_id)
             user.save()
-            return UserInstanceSerializer(user).data
+            return get_community_user_manage_response(user)
 
         @staticmethod
         def _check_admin_modification(user, instance):
@@ -604,7 +608,7 @@ class UserManageSerializer(serializers.Serializer):
                     "is_active": user.is_active,
                     "role_setting": role_setting,
                 }
-            return UserInstanceSerializer(user).data
+            return get_community_user_manage_response(user)
 
         def re_password(self, instance, with_valid=True):
             if with_valid:
@@ -632,6 +636,12 @@ class UserManageSerializer(serializers.Serializer):
                 workspace_user_role_mapping_model.objects.filter(
                     workspace_id=workspace_id
                 )
+                .values_list("user_id", flat=True)
+                .distinct()
+            )
+        elif workspace_id != "default":
+            user_ids = (
+                WorkspaceMember.objects.filter(workspace_id=workspace_id)
                 .values_list("user_id", flat=True)
                 .distinct()
             )
@@ -671,6 +681,19 @@ class UserManageSerializer(serializers.Serializer):
 
             # 将字典值转换为列表形式
             return list(user_dict.values())
+        if workspace_id != "default":
+            workspace_members = WorkspaceMember.objects.filter(
+                workspace_id=workspace_id
+            ).select_related("user")
+            return [
+                {
+                    "id": member.user.id,
+                    "nick_name": member.user.nick_name,
+                    "email": member.user.email,
+                    "roles": [member.role_id],
+                }
+                for member in workspace_members
+            ]
         user_list = User.objects.exclude(role=RoleConstants.ADMIN.name)
         return [
             {
@@ -782,6 +805,30 @@ def update_user_role(instance, user, user_id=None):
             )
         permission_version, permission_get_key = Cache_Version.PERMISSION_LIST.value
         cache.delete(permission_get_key(str(user.id)), version=permission_version)
+
+
+def get_community_user_workspace_ids(role: str):
+    if role == RoleConstants.ADMIN.name:
+        return ["None"]
+    return ["default"]
+
+
+def get_community_user_role_payload(user):
+    role = user.get("role") if isinstance(user, dict) else user.role
+    role_name = role if isinstance(role, str) and role else RoleConstants.USER.name
+    workspace_ids = get_community_user_workspace_ids(role_name)
+    return {
+        "role_name": [role_name],
+        "role_setting": [{"role_id": role_name, "workspace_ids": workspace_ids}],
+        "role_workspace": {role_name: workspace_ids},
+    }
+
+
+def get_community_user_manage_response(user):
+    return {
+        **UserInstanceSerializer(user).data,
+        **get_community_user_role_payload(user),
+    }
 
 
 def set_default_permission(user_id, instance):

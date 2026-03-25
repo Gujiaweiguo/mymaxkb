@@ -16,7 +16,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import LDAP from './component/LDAP.vue'
 import CAS from './component/CAS.vue'
@@ -32,7 +32,7 @@ const { user } = useStore()
 const router = useRouter()
 
 const activeName = ref('SETTING')
-const tabList = [
+const allTabList = [
   {
     label: t('views.system.setting'),
     name: "SETTING",
@@ -69,6 +69,14 @@ const tabList = [
     component: SCAN,
   },
 ]
+
+const tabList = computed(() => {
+  if (user.isCE()) {
+    return allTabList.filter((item) => item.name === 'SETTING')
+  }
+
+  return allTabList
+})
 
 onMounted(() => {
   if (user.isExpire()) {

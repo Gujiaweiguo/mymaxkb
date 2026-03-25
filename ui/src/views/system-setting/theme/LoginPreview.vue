@@ -3,7 +3,7 @@
     <div class="header">
       <div class="tag flex-between">
         <div class="flex align-center">
-          <img v-if="props.data.icon" :src="fileURL" alt="" height="20px" class="mr-8" />
+          <img v-if="props.data.icon && iconUrl" :src="iconUrl" alt="" height="20px" class="mr-8" />
           <img v-else src="@/assets/logo/logo.svg" height="24px" class="mr-8" />
           <span class="ellipsis">{{ data.title }}</span>
         </div>
@@ -53,27 +53,20 @@
 
 <script lang="ts" setup>
 import { computed } from 'vue'
-import LoginLayout from "@/layout/login-layout/LoginLayout.vue";
-import LoginContainer from "@/layout/login-layout/LoginContainer.vue";
+import LoginLayout from '@/layout/login-layout/LoginLayout.vue'
+import LoginContainer from '@/layout/login-layout/LoginContainer.vue'
+import useStore from '@/stores'
+
+const { theme } = useStore()
 
 const props = defineProps({
   data: {
     type: Object,
-    default: null
-  }
+    default: null,
+  },
 })
 
-const fileURL = computed(() => {
-  if (props.data.icon) {
-    if (typeof props.data.icon === 'string') {
-      return props.data.icon
-    } else {
-      return URL.createObjectURL(props.data.icon)
-    }
-  } else {
-    return ''
-  }
-})
+const iconUrl = computed(() => theme.getBrandingAssetUrl('icon'))
 </script>
 
 <style lang="scss" scoped>

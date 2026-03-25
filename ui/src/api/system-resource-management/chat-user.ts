@@ -5,7 +5,7 @@ import type { ChatUserGroupItem, ChatUserGroupUserItem, putUserGroupUserParams }
 import type { pageRequest, PageList } from '@/api/type/common'
 
 
-const prefix = '/system/resource/knowledge'
+const prefix = '/system/resource'
 /**
  * 获取共享知识库用户组列表
  */

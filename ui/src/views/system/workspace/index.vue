@@ -94,7 +94,7 @@
               {{ currentWorkspace?.user_count }}
             </span>
           </div>
-          <Member :currentWorkspace="currentWorkspace" />
+          <Member v-if="showMemberPanel" :currentWorkspace="currentWorkspace" />
         </div>
       </div>
     </el-card>
@@ -104,14 +104,14 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { t } from '@/locales'
 import { i18n_name } from '@/utils/common'
 import Member from './component/Member.vue'
 import CreateOrUpdateWorkspaceDialog from './component/CreateOrUpdateWorkspaceDialog.vue'
 import type { WorkspaceItem } from '@/api/type/workspace'
 import { MsgSuccess, MsgConfirm } from '@/utils/message'
-import { PermissionConst, RoleConst } from '@/utils/permission/data'
+import { EditionConst, PermissionConst, RoleConst } from '@/utils/permission/data'
 import { hasPermission } from '@/utils/permission/index'
 import { loadPermissionApi } from '@/utils/dynamics-api/permission-api.ts'
 
@@ -120,6 +120,12 @@ const loading = ref(false)
 const list = ref<WorkspaceItem[]>([])
 const filterList = ref<WorkspaceItem[]>([]) // 搜索过滤后列表
 const currentWorkspace = ref<WorkspaceItem>()
+const showMemberPanel = computed(() => {
+  return (
+    hasPermission([EditionConst.IS_EE, EditionConst.IS_PE], 'OR') ||
+    (hasPermission(EditionConst.IS_CE, 'OR') && currentWorkspace.value?.id !== 'default')
+  )
+})
 
 async function getWorkspace() {
   try {

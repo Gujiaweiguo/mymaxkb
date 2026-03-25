@@ -15,6 +15,21 @@
       label-position="top"
       require-asterisk-position="right"
     >
+      <div class="mb-16" v-if="supportsReadiness">
+        <div class="flex align-center flex-wrap gap-8">
+          <el-tag size="small" type="info" effect="plain">
+            {{ $t(readiness.isConfigured ? 'common.status.configured' : 'common.status.unconfigured') }}
+          </el-tag>
+          <el-tag v-if="readiness.isConfigured" size="small" :type="getReadinessTagType()">
+            {{ getReadinessLabel() }}
+          </el-tag>
+        </div>
+        <div v-if="showFailureReason" class="mt-8">
+          <el-text type="danger" size="small">
+            {{ `${$t('common.reason')}: ${readiness.failureReason}` }}
+          </el-text>
+        </div>
+      </div>
       <h4 class="title-decoration-1 mb-16">{{ infoTitle }}</h4>
 
       <template v-for="(item, key) in configFields[configType]" :key="key">
@@ -111,12 +126,33 @@
 import { ref, reactive, computed } from 'vue'
 import type { FormInstance } from 'element-plus'
 import { useRoute } from 'vue-router'
+import type {
+  ExternalIntegrationPlatformInfo,
+  ExternalIntegrationPlatformStatus,
+} from '@/api/type/external-integration'
 import { MsgError, MsgSuccess } from '@/utils/message'
 import { copyClick } from '@/utils/clipboard'
 import { t } from '@/locales'
 import { loadSharedApi } from '@/utils/dynamics-api/shared-api'
 
 type PlatformType = 'wechat' | 'dingtalk' | 'wecom' | 'lark' | 'slack' | 'wecomBot'
+
+interface PlatformReadinessState {
+  isConfigured: boolean
+  isValid: boolean
+  state: string
+  failureReason: string
+}
+
+interface DrawerPlatformStatus extends PlatformReadinessState {
+  key: PlatformType
+  exists: boolean
+  supportsReadiness: boolean
+}
+
+const readyStates = new Set(['ready', 'enabled', 'active', 'valid', 'success'])
+const failedStates = new Set(['failed', 'invalid', 'error'])
+const readinessPlatformTypes = new Set<PlatformType>(['wecom', 'dingtalk', 'lark'])
 
 const route = useRoute()
 
@@ -136,6 +172,12 @@ const visible = ref(false)
 const loading = ref(false)
 const dataLoaded = ref(false)
 const configType = ref<PlatformType>('wechat')
+const readiness = reactive<PlatformReadinessState>({
+  isConfigured: false,
+  isValid: false,
+  state: '',
+  failureReason: '',
+})
 
 const form = reactive<any>({
   wechat: {
@@ -146,7 +188,13 @@ const form = reactive<any>({
     is_certification: false,
     callback_url: '',
   },
-  dingtalk: { client_id: '', client_secret: '', callback_url: '' },
+  dingtalk: {
+    client_id: '',
+    client_secret: '',
+    token: '',
+    encoding_aes_key: '',
+    callback_url: '',
+  },
   wecom: {
     app_id: '',
     agent_id: '',
@@ -207,6 +255,20 @@ const rules = reactive<{ [propName: string]: any }>({
       {
         required: true,
         message: t('views.application.applicationAccess.dingtalkSetting.clientSecretPlaceholder'),
+        trigger: 'blur',
+      },
+    ],
+    token: [
+      {
+        required: true,
+        message: t('views.application.applicationAccess.dingtalkSetting.tokenPlaceholder'),
+        trigger: 'blur',
+      },
+    ],
+    encoding_aes_key: [
+      {
+        required: true,
+        message: t('views.application.applicationAccess.dingtalkSetting.encodingAesKeyPlaceholder'),
         trigger: 'blur',
       },
     ],
@@ -322,8 +384,22 @@ const configFields: { [propName: string]: { [propName: string]: any } } = {
     },
   },
   dingtalk: {
-    client_id: { label: 'Client ID', placeholder: '' },
-    client_secret: { label: 'Client Secret', placeholder: '' },
+    client_id: {
+      label: t('views.application.applicationAccess.dingtalkSetting.clientId'),
+      placeholder: t('views.application.applicationAccess.dingtalkSetting.clientIdPlaceholder'),
+    },
+    client_secret: {
+      label: t('views.application.applicationAccess.dingtalkSetting.clientSecret'),
+      placeholder: t('views.application.applicationAccess.dingtalkSetting.clientSecretPlaceholder'),
+    },
+    token: {
+      label: t('views.application.applicationAccess.dingtalkSetting.token'),
+      placeholder: t('views.application.applicationAccess.dingtalkSetting.tokenPlaceholder'),
+    },
+    encoding_aes_key: {
+      label: t('views.application.applicationAccess.dingtalkSetting.encodingAesKey'),
+      placeholder: t('views.application.applicationAccess.dingtalkSetting.encodingAesKeyPlaceholder'),
+    },
   },
   wecom: {
     app_id: {
@@ -395,6 +471,10 @@ const passwordVisible = reactive<Record<string, boolean>>(
 )
 
 const isPasswordField = (key: any) => passwordFields.has(key)
+const supportsReadiness = computed(() => readinessPlatformTypes.has(configType.value))
+const showFailureReason = computed(
+  () => supportsReadiness.value && readiness.isConfigured && !readiness.isValid && Boolean(readiness.failureReason),
+)
 
 const closeDrawer = () => {
   visible.value = false
@@ -420,11 +500,12 @@ const submit = async () => {
   })
 }
 
-const open = async (id: string, type: PlatformType) => {
+const open = async (id: string, type: PlatformType, platform?: DrawerPlatformStatus) => {
   visible.value = true
   configType.value = type
   loading.value = true
   dataLoaded.value = false
+  resetReadiness(platform)
   formRef.value?.resetFields()
   try {
     const res = await loadSharedApi({
@@ -432,7 +513,8 @@ const open = async (id: string, type: PlatformType) => {
       systemType: apiType.value,
     }).getPlatformConfig(id, type)
     if (res.data) {
-      form[configType.value] = res.data
+      applyReadinessMeta(res.data, platform)
+      form[configType.value] = getConfigPayload(res.data)
     }
     dataLoaded.value = true
   } catch {
@@ -445,4 +527,66 @@ const open = async (id: string, type: PlatformType) => {
 }
 
 defineExpose({ open })
+
+function resetReadiness(platform?: DrawerPlatformStatus) {
+  readiness.isConfigured = platform?.exists ?? false
+  readiness.isValid = platform?.isValid ?? false
+  readiness.state = platform?.state ?? ''
+  readiness.failureReason = platform?.failureReason ?? ''
+}
+
+function applyReadinessMeta(
+  payload: ExternalIntegrationPlatformInfo | ExternalIntegrationPlatformStatus,
+  platform?: DrawerPlatformStatus,
+) {
+  const state = normalizeState(payload?.state)
+  const isConfigured =
+    'exists' in payload && typeof payload.exists === 'boolean'
+      ? payload.exists
+      : typeof payload?.is_configured === 'boolean'
+        ? payload.is_configured
+        : platform?.exists ?? readiness.isConfigured
+
+  readiness.isConfigured = isConfigured
+  readiness.isValid =
+    typeof payload?.is_valid === 'boolean'
+      ? payload.is_valid
+      : state
+        ? readyStates.has(state)
+        : isConfigured
+  readiness.state = state
+  readiness.failureReason = typeof payload?.failure_reason === 'string' ? payload.failure_reason : ''
+}
+
+function getConfigPayload(payload: ExternalIntegrationPlatformInfo | Record<string, any>) {
+  if ('config' in payload && payload.config && typeof payload.config === 'object') {
+    return payload.config
+  }
+
+  return payload
+}
+
+function normalizeState(state?: string | null) {
+  return typeof state === 'string' ? state.toLowerCase() : ''
+}
+
+function getReadinessLabel() {
+  if (readiness.isValid) {
+    return t('common.status.ready')
+  }
+
+  return t(
+    Boolean(readiness.failureReason) || failedStates.has(readiness.state)
+      ? 'common.status.fail'
+      : 'common.status.notReady',
+  )
+}
+
+function getReadinessTagType() {
+  if (readiness.isValid) {
+    return 'success'
+  }
+
+  return Boolean(readiness.failureReason) || failedStates.has(readiness.state) ? 'danger' : 'warning'
+}
 </script>

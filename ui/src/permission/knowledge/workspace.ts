@@ -429,7 +429,23 @@ const workspace = {
       ],
       'OR',
     ),
-  knowledge_chat_user_read: (source_id: string) => false,
+  knowledge_chat_user_read: (source_id: string) =>
+    hasPermission(
+      [
+        new ComplexPermission(
+          [RoleConst.USER],
+          [PermissionConst.KNOWLEDGE.getKnowledgeWorkspaceResourcePermission(source_id)],
+          [],
+          'AND',
+        ),
+        RoleConst.WORKSPACE_MANAGE.getWorkspaceRole,
+        PermissionConst.KNOWLEDGE_CHAT_USER_READ.getKnowledgeWorkspaceResourcePermission(
+          source_id,
+        ),
+        PermissionConst.KNOWLEDGE_CHAT_USER_READ.getWorkspacePermissionWorkspaceManageRole,
+      ],
+      'OR',
+    ),
   knowledge_chat_user_edit: (source_id: string) =>
     hasPermission(
       [

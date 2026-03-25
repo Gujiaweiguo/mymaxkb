@@ -1,10 +1,10 @@
 # coding=utf-8
 """
-    @project: MaxKB
-    @Author：虎虎
-    @file： chat_authentication_api.py
-    @date：2025/6/6 19:59
-    @desc:
+@project: MaxKB
+@Author：虎虎
+@file： chat_authentication_api.py
+@date：2025/6/6 19:59
+@desc:
 """
 
 from django.utils.translation import gettext_lazy as _
@@ -37,16 +37,17 @@ class ChatAuthenticationAPI(APIMixin):
 
 
 class ChatAuthenticationProfileAPI(APIMixin):
-
     @staticmethod
     def get_parameters():
-        return [OpenApiParameter(
-            name="access_token",
-            description=_("access_token"),
-            type=OpenApiTypes.STR,
-            location='query',
-            required=True,
-        )]
+        return [
+            OpenApiParameter(
+                name="access_token",
+                description=_("access_token"),
+                type=OpenApiTypes.STR,
+                location="query",
+                required=True,
+            )
+        ]
 
 
 class ChatOpenAPI(APIMixin):

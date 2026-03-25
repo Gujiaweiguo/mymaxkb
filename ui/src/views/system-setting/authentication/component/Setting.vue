@@ -244,6 +244,11 @@ const systemLoginMethods = ref<Array<{ label: string; value: string }>>([])
 const loading = ref(false)
 // 明确允许 null，避免未挂载时访问出错
 const authFormRef = ref<FormInstance | null>(null)
+const ceLoginMethodOptions = ['LOCAL']
+const localLoginMethodOption = {
+  label: 'LOCAL',
+  value: 'LOCAL',
+}
 
 const form = ref<any>({
   default_value: 'LOCAL',
@@ -310,6 +315,11 @@ const submit = async () => {
 const roleOptions = ref<Array<{ id: string; name: string; type?: string }>>([])
 const workspaceOptions = ref<Array<{ id: string; name: string }>>([])
 const {user} = useStore()
+const ceDefaultRoleOption = {
+  id: 'USER',
+  name: t('views.role.user'),
+  type: 'USER',
+}
 const selectedRoleType = ref<string>('') // 存储选中角色类型，用于控制 workspace 显示
 const showWorkspaceSelector = computed(() => selectedRoleType.value !== 'ADMIN')
 const showPermissionSelector = computed(() => selectedRoleType.value === 'USER')
@@ -350,6 +360,48 @@ const handleRoleChange = (roleId: string) => {
     form.value.workspace_id = 'default'
   }
 }
+
+const filterSystemLoginMethods = (methods: Array<{ label: string; value: string }> = []) => {
+  if (!user.isCE()) {
+    return methods
+  }
+
+  const filteredMethods = methods.filter((method) => ceLoginMethodOptions.includes(method.value))
+  return filteredMethods.length ? filteredMethods : [localLoginMethodOption]
+}
+
+const normalizeLoginMethods = (
+  loginMethods: string[] | undefined,
+  systemOptions: Array<{ label: string; value: string }>,
+) => {
+  const supportedLoginMethods = new Set(systemOptions.map((item) => item.value))
+  const filteredLoginMethods = Array.isArray(loginMethods)
+    ? loginMethods.filter((item) => supportedLoginMethods.has(item))
+    : []
+
+  if (filteredLoginMethods.length > 0) {
+    return filteredLoginMethods
+  }
+
+  if (supportedLoginMethods.has('LOCAL')) {
+    return ['LOCAL']
+  }
+
+  return systemOptions[0]?.value ? [systemOptions[0].value] : []
+}
+
+const normalizeDefaultLoginMethod = (defaultValue: string | undefined, loginMethods: string[]) => {
+  if (defaultValue && loginMethods.includes(defaultValue)) {
+    return defaultValue
+  }
+
+  if (loginMethods.includes('LOCAL')) {
+    return 'LOCAL'
+  }
+
+  return loginMethods[0] || ''
+}
+
 const handleLoginMethodsChange = (values: string[]) => {
   // 根据选中的登录方式过滤 systemLoginMethods
   loginMethods.value = systemLoginMethods.value.filter(method =>
@@ -405,9 +457,16 @@ onMounted(async () => {
       name: item.name,
       type: item.type,
     }))
+    if (user.isCE() && roleOptions.value.length === 0) {
+      roleOptions.value = [ceDefaultRoleOption]
+    }
 
     // 处理 setting（合并默认值，避免访问未定义）
     const data = settingRes?.data ?? {}
+    systemLoginMethods.value = filterSystemLoginMethods(
+      Array.isArray(data.system_options) ? data.system_options : [],
+    )
+    const selectedLoginMethods = normalizeLoginMethods(data.login_methods, systemLoginMethods.value)
     form.value = {
       ...form.value,
       ...data,
@@ -416,9 +475,10 @@ onMounted(async () => {
       role_id: data.role_id ?? form.value.role_id ?? 'USER',
       workspace_id: data.workspace_id ?? form.value.workspace_id ?? 'default',
       permission: data.permission ?? form.value.permission ?? 'NOT_AUTH',
+      login_methods: selectedLoginMethods,
+      default_value: normalizeDefaultLoginMethod(data.default_value, selectedLoginMethods),
     }
-    loginMethods.value = Array.isArray(data.auth_types) ? data.auth_types : []
-    systemLoginMethods.value = Array.isArray(data.system_options) ? data.system_options : []
+    handleLoginMethodsChange(form.value.login_methods)
 
     // 处理 workspace 列表（如果需要）
     if (isEE && workspaceRes) {

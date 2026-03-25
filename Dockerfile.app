@@ -7,6 +7,9 @@ ARG PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.11-slim-bookworm
 FROM ${NODE_IMAGE} AS web-build
 
 ARG NPM_REGISTRY=https://registry.npmmirror.com
+ARG NODE_OPTIONS=--max-old-space-size=4096
+
+ENV NODE_OPTIONS=${NODE_OPTIONS}
 
 WORKDIR /build/ui
 

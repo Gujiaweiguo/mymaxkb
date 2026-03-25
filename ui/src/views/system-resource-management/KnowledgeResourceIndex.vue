@@ -242,6 +242,13 @@
                     {{ $t('views.system.resourceAuthorization.title') }}
                   </el-dropdown-item>
                   <el-dropdown-item
+                    @click.stop="openAuthorizedWorkspaceDialog(row)"
+                    v-if="user.isCE() && permissionPrecise.auth()"
+                  >
+                    <AppIcon iconName="app-lock" class="color-secondary"></AppIcon>
+                    {{ $t('views.shared.authorized_workspace') }}
+                  </el-dropdown-item>
+                  <el-dropdown-item
                     @click.stop="exportKnowledge(row)"
                     v-if="permissionPrecise.export()"
                   >
@@ -284,6 +291,7 @@
       :type="SourceTypeEnum.KNOWLEDGE"
       ref="ResourceAuthorizationDrawerRef"
     />
+    <AuthorizedWorkspaceDialog ref="AuthorizedWorkspaceDialogRef" />
     <ResourceMappingDrawer ref="resourceMappingDrawerRef"></ResourceMappingDrawer>
   </div>
 </template>
@@ -296,6 +304,7 @@ import UserApi from '@/api/user/user'
 import SyncWebDialog from '@/views/knowledge/component/SyncWebDialog.vue'
 import GenerateRelatedDialog from '@/components/generate-related-dialog/index.vue'
 import ResourceAuthorizationDrawer from '@/components/resource-authorization-drawer/index.vue'
+import AuthorizedWorkspaceDialog from '@/views/system-shared/AuthorizedWorkspaceDialog.vue'
 import { datetimeFormat } from '@/utils/time'
 import { loadPermissionApi } from '@/utils/dynamics-api/permission-api.ts'
 import permissionMap from '@/permission'
@@ -365,9 +374,14 @@ const paginationConfig = reactive({
 })
 
 const ResourceAuthorizationDrawerRef = ref()
+const AuthorizedWorkspaceDialogRef = ref<InstanceType<typeof AuthorizedWorkspaceDialog>>()
 
 function openAuthorization(item: any) {
   ResourceAuthorizationDrawerRef.value.open(item.id)
+}
+
+function openAuthorizedWorkspaceDialog(item: any) {
+  AuthorizedWorkspaceDialogRef.value?.open(item, 'Knowledge')
 }
 
 const exportKnowledge = (item: any) => {

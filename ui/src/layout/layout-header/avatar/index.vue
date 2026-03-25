@@ -75,7 +75,7 @@
             v-if="
               hasPermission(
                 new ComplexPermission(
-                  [RoleConst.ADMIN, RoleConst.ADMIN, RoleConst.WORKSPACE_MANAGE, RoleConst.USER],
+                  [RoleConst.ADMIN],
                   [PermissionConst.SYSTEM_API_KEY_EDIT],
                   [EditionConst.IS_EE, EditionConst.IS_PE],
                   'OR',
