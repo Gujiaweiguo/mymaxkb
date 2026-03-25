@@ -2,7 +2,7 @@
 
 - [x] 1.1 Add unit tests for `users` module (user model, serializers, services)
 - [x] 1.2 Add unit tests for `application` module (app model, serializers, services)
-- [ ] 1.3 Add unit tests for `knowledge` module (document processing, chunking)
+- [x] 1.3 Add unit tests for `knowledge` module (document processing, chunking)
 - [ ] 1.4 Add unit tests for `common` utilities (auth, encryption, validators)
 - [ ] 1.5 Add unit tests for `system_manage` module (settings, workspaces)
 - [ ] 1.6 Add unit tests for `chat` module (chat records, messages)
