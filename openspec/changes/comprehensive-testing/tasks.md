@@ -35,10 +35,10 @@
 
 - [x] 5.1 Write E2E test for login and authentication flow
 - [x] 5.2 Write E2E test for user creation and management
-- [ ] 5.3 Write E2E test for workspace creation and switching
-- [ ] 5.4 Write E2E test for application creation and configuration
-- [ ] 5.5 Write E2E test for knowledge base document upload
-- [ ] 5.6 Write E2E test for chat interaction
+- [x] 5.3 Write E2E test for workspace creation and switching
+- [x] 5.4 Write E2E test for application creation and configuration
+- [x] 5.5 Write E2E test for knowledge base document upload
+- [x] 5.6 Write E2E test for chat interaction
 
 ## 6. Testing Infrastructure
 
