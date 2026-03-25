@@ -25,7 +25,7 @@
 
 ## 4. Frontend Component Tests
 
-- [ ] 4.1 Add component tests for Login/Authentication views
+- [x] 4.1 Add component tests for Login/Authentication views
 - [ ] 4.2 Add component tests for User Management views
 - [ ] 4.3 Add component tests for Application Management views
 - [ ] 4.4 Add component tests for Knowledge Base views
