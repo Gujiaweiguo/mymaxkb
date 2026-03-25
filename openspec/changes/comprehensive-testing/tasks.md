@@ -9,10 +9,10 @@
 
 ## 2. Backend Integration Tests
 
-- [ ] 2.1 Add integration tests for user API endpoints (CRUD, auth)
-- [ ] 2.2 Add integration tests for application API endpoints
-- [ ] 2.3 Add integration tests for knowledge API endpoints
-- [ ] 2.4 Add integration tests for workspace API endpoints
+- [x] 2.1 Add integration tests for user API endpoints (CRUD, auth)
+- [x] 2.2 Add integration tests for application API endpoints
+- [x] 2.3 Add integration tests for knowledge API endpoints
+- [x] 2.4 Add integration tests for workspace API endpoints
 - [ ] 2.5 Add integration tests for chat API endpoints
 - [ ] 2.6 Add integration tests for system settings API endpoints
 
