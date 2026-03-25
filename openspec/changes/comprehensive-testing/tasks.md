@@ -18,10 +18,10 @@
 
 ## 3. Frontend Unit Tests
 
-- [ ] 3.1 Add unit tests for composables (useAuth, usePermission, etc.)
-- [ ] 3.2 Add unit tests for store modules (user, application, knowledge)
-- [ ] 3.3 Add unit tests for utility functions (formatting, validation)
-- [ ] 3.4 Add unit tests for API client functions
+- [x] 3.1 Add unit tests for composables (useAuth, usePermission, etc.)
+- [x] 3.2 Add unit tests for store modules (user, application, knowledge)
+- [x] 3.3 Add unit tests for utility functions (formatting, validation)
+- [x] 3.4 Add unit tests for API client functions
 
 ## 4. Frontend Component Tests
 
