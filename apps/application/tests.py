@@ -64,3 +64,120 @@ class SystemResourceApplicationQueryTests(TestCase):
         self.assertEqual(page["total"], 1)
         self.assertEqual(page["records"][0]["id"], app_a.id)
         self.assertEqual(page["records"][0]["workspace_id"], "workspace-a")
+
+
+class ApplicationModelTests(TestCase):
+    def create_user(self, username: str):
+        return User.objects.create(
+            id=uuid.uuid7(),
+            email=f"{username}@example.com",
+            phone="",
+            nick_name=f"{username}-nick",
+            username=username,
+            password=password_encrypt("Secret1!"),
+            role="ADMIN",
+            source="LOCAL",
+            is_active=True,
+        )
+
+    def test_application_creation(self):
+        user = self.create_user("app-creator")
+        folder = ApplicationFolder.objects.create(
+            id="test-folder",
+            name="Test Folder",
+            user=user,
+            workspace_id="default",
+        )
+        app = Application.objects.create(
+            id=uuid.uuid7(),
+            name="Test App",
+            desc="Test Description",
+            user=user,
+            folder=folder,
+            workspace_id="default",
+            type=ApplicationTypeChoices.SIMPLE,
+            icon="./favicon.ico",
+        )
+
+        self.assertEqual(app.name, "Test App")
+        self.assertEqual(app.type, ApplicationTypeChoices.SIMPLE)
+        self.assertEqual(app.workspace_id, "default")
+
+    def test_application_str_representation(self):
+        user = self.create_user("str-user")
+        folder = ApplicationFolder.objects.create(
+            id="str-folder",
+            name="Str Folder",
+            user=user,
+            workspace_id="default",
+        )
+        app = Application.objects.create(
+            id=uuid.uuid7(),
+            name="Str App",
+            desc="Desc",
+            user=user,
+            folder=folder,
+            workspace_id="default",
+            type=ApplicationTypeChoices.SIMPLE,
+            icon="./favicon.ico",
+        )
+
+        self.assertEqual(str(app), "Str App")
+
+
+class ApplicationFolderModelTests(TestCase):
+    def create_user(self, username: str):
+        return User.objects.create(
+            id=uuid.uuid7(),
+            email=f"{username}@example.com",
+            phone="",
+            nick_name=f"{username}-nick",
+            username=username,
+            password=password_encrypt("Secret1!"),
+            role="ADMIN",
+            source="LOCAL",
+            is_active=True,
+        )
+
+    def test_folder_creation(self):
+        user = self.create_user("folder-user")
+        folder = ApplicationFolder.objects.create(
+            id="new-folder",
+            name="New Folder",
+            user=user,
+            workspace_id="default",
+        )
+
+        self.assertEqual(folder.name, "New Folder")
+        self.assertEqual(folder.user, user)
+
+    def test_folder_with_applications(self):
+        user = self.create_user("folder-app-user")
+        folder = ApplicationFolder.objects.create(
+            id="app-folder",
+            name="App Folder",
+            user=user,
+            workspace_id="default",
+        )
+        Application.objects.create(
+            id=uuid.uuid7(),
+            name="App 1",
+            desc="Desc 1",
+            user=user,
+            folder=folder,
+            workspace_id="default",
+            type=ApplicationTypeChoices.SIMPLE,
+            icon="./favicon.ico",
+        )
+        Application.objects.create(
+            id=uuid.uuid7(),
+            name="App 2",
+            desc="Desc 2",
+            user=user,
+            folder=folder,
+            workspace_id="default",
+            type=ApplicationTypeChoices.SIMPLE,
+            icon="./favicon.ico",
+        )
+
+        self.assertEqual(folder.application_set.count(), 2)
