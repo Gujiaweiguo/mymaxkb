@@ -62,6 +62,7 @@
     "vue3-menus": "^1.1.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tsconfig/node22": "^22.0.1",
     "@types/crypto-js": "^4.2.2",
     "@types/file-saver": "^2.0.7",
@@ -72,6 +73,7 @@
     "@vitejs/plugin-vue-jsx": "^4.1.2",
     "@vue/eslint-config-prettier": "^10.2.0",
     "@vue/eslint-config-typescript": "^14.5.0",
+    "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.7.0",
     "eslint": "^9.22.0",
     "eslint-plugin-vue": "~10.0.0",
@@ -84,6 +86,7 @@
     "unplugin-vue-define-options": "^3.0.0-beta.8",
     "vite": "^6.2.4",
     "vite-plugin-vue-devtools": "^7.7.2",
+    "vitest": "^4.1.1",
     "vue-tsc": "^2.2.8"
   }
 }
