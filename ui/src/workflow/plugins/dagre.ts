@@ -60,7 +60,6 @@ export default class Dagre {
     })
 
     layoutData.nodes?.forEach((node: any) => {
-      // @ts-expect-error: pass node data
       const { model } = node
       model.set_position({ x: node.x, y: node.y })
     })
