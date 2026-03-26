@@ -75,6 +75,16 @@ Avoid using port **10080** - it is blocked by Chromium-based browsers (Chrome, E
 
 This repository follows a local-first development workflow. The backend should use a repo-local `.venv` managed by `uv`, and the frontend should use the local Node.js toolchain under `ui/`. Start Docker Compose only when the task requires PostgreSQL / Redis behavior, frontend-backend integration, worker-flow validation, or container-specific debugging.
 
+Default local development convention:
+
+- start PostgreSQL and Redis with `docker compose -f docker-compose.dev.yml up -d`
+- copy `.env.local-dev.example` to `.env.local-dev` and load it before starting Django
+- run backend locally from `.venv`
+- run frontend locally from `ui/`
+- run Playwright against the local app stack
+
+See `DEVELOPMENT.md` for the full workflow.
+
 ## Screenshots
 
 <table style="border-collapse: collapse; border: 1px solid black;">
