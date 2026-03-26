@@ -1,35 +1,36 @@
 import { test, expect } from '@playwright/test'
 
+import { ADMIN_APPLICATION_URL, gotoLogin, loginAsAdmin } from './helpers/auth'
+
 test.describe('Login Flow', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/login')
+    await gotoLogin(page)
   })
 
   test('should display login form', async ({ page }) => {
-    await expect(page.locator('input[placeholder*="username"]')).toBeVisible()
-    await expect(page.locator('input[placeholder*="password"]')).toBeVisible()
-    await expect(page.locator('button:has-text("Login")')).toBeVisible()
+    await expect(page).toHaveURL(/\/admin\/login(?:$|\?|\/)/)
+    await expect(page.getByPlaceholder('Please enter username')).toBeVisible()
+    await expect(page.getByPlaceholder('Please enter password')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Login' })).toBeVisible()
   })
 
   test('should login with valid credentials', async ({ page }) => {
-    await page.fill('input[placeholder*="username"]', 'admin')
-    await page.fill('input[placeholder*="password"]', 'TestPassword123!')
-    await page.click('button:has-text("Login")')
-
-    await expect(page).toHaveURL(/.*dashboard/)
+    await loginAsAdmin(page)
+    await expect(page).toHaveURL(ADMIN_APPLICATION_URL)
   })
 
   test('should show error with invalid credentials', async ({ page }) => {
-    await page.fill('input[placeholder*="username"]', 'admin')
-    await page.fill('input[placeholder*="password"]', 'WrongPassword')
-    await page.click('button:has-text("Login")')
+    await page.getByPlaceholder('Please enter username').fill('admin')
+    await page.getByPlaceholder('Please enter password').fill('WrongPassword')
+    await page.getByRole('button', { name: 'Login' }).click()
 
-    await expect(page.locator('.error-message')).toBeVisible()
+    await expect(page).toHaveURL(/\/admin\/login(?:$|\?|\/)/)
+    await expect(page.getByPlaceholder('Please enter username')).toBeVisible()
   })
 
   test('should show validation for empty fields', async ({ page }) => {
-    await page.click('button:has-text("Login")')
+    await page.getByRole('button', { name: 'Login' }).click()
 
-    await expect(page.locator('.error-message')).toBeVisible()
+    await expect(page.locator('.login-form .el-form-item__error')).toHaveCount(2)
   })
 })

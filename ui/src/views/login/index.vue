@@ -332,10 +332,10 @@ onBeforeMount(() => {
 
         const defaultMode = authSetting.value.default_value
         if (qrCodeLoginMethods.includes(defaultMode)) {
-          changeMode('QR_CODE', false)
+          changeMode('QR_CODE', false, false)
           defaultQrTab.value = defaultMode
         } else {
-          changeMode(defaultMode, false)
+          changeMode(defaultMode, false, false)
         }
       }
     }).catch(() => {
@@ -346,7 +346,7 @@ onBeforeMount(() => {
         applyLoginMethods(authSetting.value.login_methods)
 
         const defaultMode = authSetting.value.default_value
-        changeMode(defaultMode, false)
+        changeMode(defaultMode, false, false)
       }
     })
   })
@@ -437,7 +437,7 @@ function redirectAuth(authType: string, needMessage: boolean = true) {
   })
 }
 
-function changeMode(val: string, needMessage: boolean = true) {
+function changeMode(val: string, needMessage: boolean = true, resetForm: boolean = true) {
   loginMode.value = val === 'LDAP' ? val : ''
   if (val === 'QR_CODE') {
     loginMode.value = val
@@ -445,14 +445,18 @@ function changeMode(val: string, needMessage: boolean = true) {
     return
   }
   showQrCodeTab.value = false
-  loginForm.value = {
-    username: '',
-    password: '',
-    captcha: '',
+  if (resetForm) {
+    loginForm.value = {
+      username: '',
+      password: '',
+      captcha: '',
+    }
+    identifyCode.value = ''
   }
-  identifyCode.value = ''
   redirectAuth(val, needMessage)
-  loginFormRef.value?.clearValidate()
+  if (resetForm) {
+    loginFormRef.value?.clearValidate()
+  }
 }
 
 // onBeforeMount(() => {
