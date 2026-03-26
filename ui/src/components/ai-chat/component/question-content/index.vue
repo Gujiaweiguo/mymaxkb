@@ -294,7 +294,7 @@ function sendReQuestionMessage(event?: any) {
         ? props.chatRecord.upload_meta
         : props.chatRecord.execution_details?.find((detail) => detail.type === 'start-node')
 
-      const updatedRecord = {
+      const updatedRecord: chatType = {
         ...props.chatRecord,
         problem_text: editText.value,
         answer_text_list: reset_answer_text_list([...props.chatRecord.answer_text_list]),
@@ -340,9 +340,10 @@ const insertNewlineAtCursor = (event?: any) => {
   })
 }
 
-const reset_answer_text_list = (answer_text_list: any) => {
+const reset_answer_text_list = (answer_text_list: chatType['answer_text_list']) => {
   answer_text_list.splice(0, answer_text_list.length)
   answer_text_list.push([])
+  return answer_text_list
 }
 
 onMounted(() => {})
