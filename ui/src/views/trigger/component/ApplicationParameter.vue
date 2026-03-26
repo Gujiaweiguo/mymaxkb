@@ -33,7 +33,7 @@
                 trigger.trigger_setting.body.length
               "
               :model-value="localModelValue[f.field].source"
-              @update:model-value="(val) => updateFieldValue(f.field, 'source', val)"
+              @update:model-value="(val: 'reference' | 'custom') => updateFieldValue(f.field, 'source', val)"
               size="small"
               style="width: 85px"
             >
@@ -46,7 +46,7 @@
         <el-cascader
           v-if="localModelValue[f.field].source === 'reference'"
           :model-value="localModelValue[f.field].value"
-          @update:model-value="(val) => updateFieldValue(f.field, 'value', val)"
+          @update:model-value="(val: string[]) => updateFieldValue(f.field, 'value', val)"
           :options="options"
           :placeholder="$t('common.selectPlaceholder')"
           :props="props"
@@ -55,7 +55,7 @@
         <el-input
           v-else
           :model-value="localModelValue[f.field].value"
-          @update:model-value="(val) => updateFieldValue(f.field, 'value', val)"
+          @update:model-value="(val: string) => updateFieldValue(f.field, 'value', val)"
           :placeholder="$t('common.inputPlaceholder')"
         />
       </el-form-item>
@@ -85,7 +85,7 @@
                 trigger.trigger_setting.body.length
               "
               :model-value="localModelValue['user_input_field_list'][f.field].source"
-              @update:model-value="(val) => updateUserInputFieldValue(f.field, 'source', val)"
+              @update:model-value="(val: 'reference' | 'custom') => updateUserInputFieldValue(f.field, 'source', val)"
               size="small"
               style="width: 85px"
             >
@@ -98,7 +98,7 @@
         <el-cascader
           v-if="localModelValue['user_input_field_list'][f.field].source === 'reference'"
           :model-value="localModelValue['user_input_field_list'][f.field].value"
-          @update:model-value="(val) => updateUserInputFieldValue(f.field, 'value', val)"
+          @update:model-value="(val: string[]) => updateUserInputFieldValue(f.field, 'value', val)"
           :options="options"
           :placeholder="$t('common.selectPlaceholder')"
           :props="props"
@@ -107,7 +107,7 @@
         <el-input
           v-else
           :model-value="localModelValue['user_input_field_list'][f.field].value"
-          @update:model-value="(val) => updateUserInputFieldValue(f.field, 'value', val)"
+          @update:model-value="(val: string) => updateUserInputFieldValue(f.field, 'value', val)"
           :placeholder="$t('common.inputPlaceholder')"
         />
       </el-form-item>
@@ -133,7 +133,7 @@
               :teleported="false"
               v-if="localModelValue['api_input_field_list'][f.field] && showSource"
               :model-value="localModelValue['api_input_field_list'][f.field].source"
-              @update:model-value="(val) => updateApiInputFieldValue(f.field, 'source', val)"
+              @update:model-value="(val: 'reference' | 'custom') => updateApiInputFieldValue(f.field, 'source', val)"
               size="small"
               style="width: 85px"
             >
@@ -146,7 +146,7 @@
         <el-cascader
           v-if="localModelValue['api_input_field_list'][f.field].source === 'reference'"
           :model-value="localModelValue['api_input_field_list'][f.field].value"
-          @update:model-value="(val) => updateApiInputFieldValue(f.field, 'value', val)"
+          @update:model-value="(val: string[]) => updateApiInputFieldValue(f.field, 'value', val)"
           :options="options"
           :placeholder="$t('common.selectPlaceholder')"
           :props="props"
@@ -155,7 +155,7 @@
         <el-input
           v-else
           :model-value="localModelValue['api_input_field_list'][f.field].value"
-          @update:model-value="(val) => updateApiInputFieldValue(f.field, 'value', val)"
+          @update:model-value="(val: string) => updateApiInputFieldValue(f.field, 'value', val)"
           :placeholder="$t('common.inputPlaceholder')"
         />
       </el-form-item>

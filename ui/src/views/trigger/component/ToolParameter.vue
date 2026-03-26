@@ -33,7 +33,7 @@
                 trigger.trigger_setting.body.length
               "
               :model-value="localModelValue[f.field].source"
-              @update:model-value="(val) => updateFieldValue(f.field, 'source', val)"
+              @update:model-value="(val: 'reference' | 'custom') => updateFieldValue(f.field, 'source', val)"
               size="small"
               style="width: 85px"
             >
@@ -46,7 +46,7 @@
         <el-cascader
           v-if="localModelValue[f.field].source === 'reference'"
           :model-value="localModelValue[f.field].value"
-          @update:model-value="(val) => updateFieldValue(f.field, 'value', val)"
+          @update:model-value="(val: string[]) => updateFieldValue(f.field, 'value', val)"
           :options="options"
           :placeholder="$t('common.selectPlaceholder')"
           :props="props"
@@ -55,7 +55,7 @@
         <el-input
           v-else
           :model-value="localModelValue[f.field].value"
-          @update:model-value="(val) => updateFieldValue(f.field, 'value', val)"
+          @update:model-value="(val: string) => updateFieldValue(f.field, 'value', val)"
           :placeholder="$t('common.inputPlaceholder')"
         />
       </el-form-item>
