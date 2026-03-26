@@ -132,8 +132,10 @@ import { groupBy } from 'lodash'
 import { providerList as providerOptions } from '../../items/model/provider-data'
 import { relatedObject } from '@/utils/array'
 
-const getSelectModelList = inject('getSelectModelList') as () => any[]
-const getModelParamsForm = inject('getModelParamsForm') as () => any
+const getSelectModelList = inject<(params: { model_type: string }) => Promise<any>>(
+  'getSelectModelList',
+)
+const getModelParamsForm = inject<(modelId: string) => Promise<any>>('getModelParamsForm')
 
 const props = defineProps<{
   modelValue: any
