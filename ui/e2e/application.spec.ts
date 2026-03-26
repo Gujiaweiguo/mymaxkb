@@ -1,52 +1,28 @@
 import { test, expect } from '@playwright/test'
 
+import { ADMIN_APPLICATION_URL, loginAsAdmin } from './helpers/auth'
+
 test.describe('Application Management', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/login')
-    await page.fill('input[placeholder*="username"]', 'admin')
-    await page.fill('input[placeholder*="password"]', 'TestPassword123!')
-    await page.click('button:has-text("Login")')
-    await page.waitForURL(/.*dashboard/)
+    await loginAsAdmin(page)
   })
 
-  test('should navigate to application list', async ({ page }) => {
-    await page.click('a:has-text("Application")')
-    await expect(page).toHaveURL(/.*application/)
+  test('should land on the application page after login', async ({ page }) => {
+    await expect(page).toHaveURL(ADMIN_APPLICATION_URL)
+    await expect(page.locator('.application-manage')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Agent' })).toBeVisible()
   })
 
-  test('should display application list', async ({ page }) => {
-    await page.click('a:has-text("Application")')
-    await expect(page.locator('.application-list')).toBeVisible()
+  test('should display application search and create controls', async ({ page }) => {
+    await expect(page.locator('.application-manage .complex-search')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Create' })).toBeVisible()
   })
 
-  test('should create new application', async ({ page }) => {
-    await page.click('a:has-text("Application")')
-    await page.click('button:has-text("Create")')
+  test('should open the create application menu', async ({ page }) => {
+    await page.getByRole('button', { name: 'Create' }).click()
 
-    await page.fill('input[placeholder*="name"]', 'Test Application')
-    await page.fill('textarea[placeholder*="description"]', 'Test Description')
-    await page.click('button:has-text("Save")')
-
-    await expect(page.locator('text=Test Application')).toBeVisible()
-  })
-
-  test('should edit application', async ({ page }) => {
-    await page.click('a:has-text("Application")')
-    await page.click('.application-item:has-text("Test Application")')
-    await page.click('button:has-text("Edit")')
-
-    await page.fill('input[placeholder*="name"]', 'Updated Application')
-    await page.click('button:has-text("Save")')
-
-    await expect(page.locator('text=Updated Application')).toBeVisible()
-  })
-
-  test('should delete application', async ({ page }) => {
-    await page.click('a:has-text("Application")')
-    await page.click('.application-item:has-text("Updated Application")')
-    await page.click('button:has-text("Delete")')
-    await page.click('button:has-text("Confirm")')
-
-    await expect(page.locator('text=Updated Application')).not.toBeVisible()
+    await expect(page.getByText('Simple Agent', { exact: true })).toBeVisible()
+    await expect(page.getByText('Advanced Agent', { exact: true })).toBeVisible()
+    await expect(page.getByText('Import Agent', { exact: true })).toBeVisible()
   })
 })

@@ -4,7 +4,7 @@ import { get, post, del } from '@/request/index'
 import type { WorkspaceItem, CreateWorkspaceMemberParamsItem, WorkspaceMemberItem } from '@/api/type/workspace'
 import type { pageRequest, PageList } from '@/api/type/common'
 
-const prefix = '/system/workspace'
+const prefix = '/workspace'
 
 /**
  * 获取首页的工作空间下拉列表

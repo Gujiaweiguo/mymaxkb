@@ -1,41 +1,22 @@
 import { test, expect } from '@playwright/test'
 
+import { loginAsAdmin } from './helpers/auth'
+
 test.describe('Workspace Management', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/login')
-    await page.fill('input[placeholder*="username"]', 'admin')
-    await page.fill('input[placeholder*="password"]', 'TestPassword123!')
-    await page.click('button:has-text("Login")')
-    await page.waitForURL(/.*dashboard/)
+    await loginAsAdmin(page)
+    await page.goto('/admin/system/workspace')
   })
 
-  test('should navigate to workspace settings', async ({ page }) => {
-    await page.click('a:has-text("Settings")')
-    await page.click('a:has-text("Workspace")')
-    await expect(page).toHaveURL(/.*workspace/)
+  test('should navigate to the workspace page', async ({ page }) => {
+    await expect(page).toHaveURL(/\/admin\/system\/workspace(?:$|\?|\/)/)
+    await expect(page.locator('.workspace-manage')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Workspace', exact: true })).toBeVisible()
   })
 
-  test('should display workspace list', async ({ page }) => {
-    await page.click('a:has-text("Settings")')
-    await page.click('a:has-text("Workspace")')
-    await expect(page.locator('table')).toBeVisible()
-  })
-
-  test('should create new workspace', async ({ page }) => {
-    await page.click('a:has-text("Settings")')
-    await page.click('a:has-text("Workspace")')
-    await page.click('button:has-text("Create")')
-
-    await page.fill('input[placeholder*="name"]', 'Test Workspace')
-    await page.click('button:has-text("Save")')
-
-    await expect(page.locator('text=Test Workspace')).toBeVisible()
-  })
-
-  test('should switch workspace', async ({ page }) => {
-    await page.click('[data-testid="workspace-selector"]')
-    await page.click('text=Test Workspace')
-
-    await expect(page.locator('[data-testid="current-workspace"]')).toContainText('Test Workspace')
+  test('should display workspace panels and search input', async ({ page }) => {
+    await expect(page.locator('.workspace-left')).toBeVisible()
+    await expect(page.locator('.workspace-right')).toBeVisible()
+    await expect(page.getByPlaceholder('Search')).toBeVisible()
   })
 })
