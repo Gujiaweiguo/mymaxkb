@@ -1,7 +1,7 @@
 <template>
   <el-form
     @submit.prevent
-    :model="modelValue"
+    :model="localModelValue"
     label-position="top"
     require-asterisk-position="right"
     label-width="auto"
@@ -10,7 +10,7 @@
   >
     <template v-for="f in base_field_list" :key="f.field">
       <el-form-item
-        v-if="modelValue[f.field]"
+        v-if="localModelValue[f.field]"
         :label="$t('workflow.nodes.startNode.question')"
         :prop="`${f.field}.value`"
         :rules="{
@@ -28,11 +28,12 @@
             <el-select
               :teleported="false"
               v-if="
-                modelValue[f.field] &&
+                localModelValue[f.field] &&
                 trigger.trigger_type === 'EVENT' &&
                 trigger.trigger_setting.body.length
               "
-              v-model="modelValue[f.field].source"
+              :model-value="localModelValue[f.field].source"
+              @update:model-value="(val) => updateFieldValue(f.field, 'source', val)"
               size="small"
               style="width: 85px"
             >
@@ -43,8 +44,9 @@
         </template>
 
         <el-cascader
-          v-if="modelValue[f.field].source === 'reference'"
-          v-model="modelValue[f.field].value"
+          v-if="localModelValue[f.field].source === 'reference'"
+          :model-value="localModelValue[f.field].value"
+          @update:model-value="(val) => updateFieldValue(f.field, 'value', val)"
           :options="options"
           :placeholder="$t('common.selectPlaceholder')"
           :props="props"
@@ -52,14 +54,15 @@
         />
         <el-input
           v-else
-          v-model="modelValue[f.field].value"
+          :model-value="localModelValue[f.field].value"
+          @update:model-value="(val) => updateFieldValue(f.field, 'value', val)"
           :placeholder="$t('common.inputPlaceholder')"
         />
       </el-form-item>
     </template>
     <template v-for="f in user_input_field_list" :key="f.field">
       <el-form-item
-        v-if="modelValue['user_input_field_list'] && modelValue['user_input_field_list'][f.field]"
+        v-if="localModelValue['user_input_field_list'] && localModelValue['user_input_field_list'][f.field]"
         :label="$t('workflow.nodes.startNode.question')"
         :prop="`user_input_field_list.${f.field}.value`"
         :rules="{
@@ -77,11 +80,12 @@
             <el-select
               :teleported="false"
               v-if="
-                modelValue['user_input_field_list'][f.field] &&
+                localModelValue['user_input_field_list'][f.field] &&
                 trigger.trigger_type === 'EVENT' &&
                 trigger.trigger_setting.body.length
               "
-              v-model="modelValue['user_input_field_list'][f.field].source"
+              :model-value="localModelValue['user_input_field_list'][f.field].source"
+              @update:model-value="(val) => updateUserInputFieldValue(f.field, 'source', val)"
               size="small"
               style="width: 85px"
             >
@@ -92,8 +96,9 @@
         </template>
 
         <el-cascader
-          v-if="modelValue['user_input_field_list'][f.field].source === 'reference'"
-          v-model="modelValue['user_input_field_list'][f.field].value"
+          v-if="localModelValue['user_input_field_list'][f.field].source === 'reference'"
+          :model-value="localModelValue['user_input_field_list'][f.field].value"
+          @update:model-value="(val) => updateUserInputFieldValue(f.field, 'value', val)"
           :options="options"
           :placeholder="$t('common.selectPlaceholder')"
           :props="props"
@@ -101,14 +106,15 @@
         />
         <el-input
           v-else
-          v-model="modelValue['user_input_field_list'][f.field].value"
+          :model-value="localModelValue['user_input_field_list'][f.field].value"
+          @update:model-value="(val) => updateUserInputFieldValue(f.field, 'value', val)"
           :placeholder="$t('common.inputPlaceholder')"
         />
       </el-form-item>
     </template>
     <template v-for="f in api_input_field_list" :key="f.field">
       <el-form-item
-        v-if="modelValue['api_input_field_list'] && modelValue['api_input_field_list'][f.field]"
+        v-if="localModelValue['api_input_field_list'] && localModelValue['api_input_field_list'][f.field]"
         :label="$t('workflow.nodes.startNode.question')"
         :prop="`api_input_field_list.${f.field}.value`"
         :rules="{
@@ -125,8 +131,9 @@
             </div>
             <el-select
               :teleported="false"
-              v-if="modelValue['api_input_field_list'][f.field] && showSource"
-              v-model="modelValue['api_input_field_list'][f.field].source"
+              v-if="localModelValue['api_input_field_list'][f.field] && showSource"
+              :model-value="localModelValue['api_input_field_list'][f.field].source"
+              @update:model-value="(val) => updateApiInputFieldValue(f.field, 'source', val)"
               size="small"
               style="width: 85px"
             >
@@ -137,8 +144,9 @@
         </template>
 
         <el-cascader
-          v-if="modelValue['api_input_field_list'][f.field].source === 'reference'"
-          v-model="modelValue['api_input_field_list'][f.field].value"
+          v-if="localModelValue['api_input_field_list'][f.field].source === 'reference'"
+          :model-value="localModelValue['api_input_field_list'][f.field].value"
+          @update:model-value="(val) => updateApiInputFieldValue(f.field, 'value', val)"
           :options="options"
           :placeholder="$t('common.selectPlaceholder')"
           :props="props"
@@ -146,7 +154,8 @@
         />
         <el-input
           v-else
-          v-model="modelValue['api_input_field_list'][f.field].value"
+          :model-value="localModelValue['api_input_field_list'][f.field].value"
+          @update:model-value="(val) => updateApiInputFieldValue(f.field, 'value', val)"
           :placeholder="$t('common.inputPlaceholder')"
         />
       </el-form-item>
@@ -154,12 +163,53 @@
   </el-form>
 </template>
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, reactive } from 'vue'
 import { type FormInstance } from 'element-plus'
 import { t } from '@/locales'
 const applicationParameterFormRef = ref<FormInstance>()
 const props = defineProps<{ application?: any; modelValue: any; trigger: any }>()
 const emit = defineEmits(['update:modelValue'])
+
+const localModelValue = reactive({ ...props.modelValue })
+
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    Object.assign(localModelValue, newVal)
+  },
+  { deep: true }
+)
+
+function updateFieldValue(field: string, key: string, value: any) {
+  if (!localModelValue[field]) {
+    localModelValue[field] = {}
+  }
+  localModelValue[field][key] = value
+  emit('update:modelValue', { ...localModelValue })
+}
+
+function updateUserInputFieldValue(field: string, key: string, value: any) {
+  if (!localModelValue['user_input_field_list']) {
+    localModelValue['user_input_field_list'] = {}
+  }
+  if (!localModelValue['user_input_field_list'][field]) {
+    localModelValue['user_input_field_list'][field] = {}
+  }
+  localModelValue['user_input_field_list'][field][key] = value
+  emit('update:modelValue', { ...localModelValue })
+}
+
+function updateApiInputFieldValue(field: string, key: string, value: any) {
+  if (!localModelValue['api_input_field_list']) {
+    localModelValue['api_input_field_list'] = {}
+  }
+  if (!localModelValue['api_input_field_list'][field]) {
+    localModelValue['api_input_field_list'][field] = {}
+  }
+  localModelValue['api_input_field_list'][field][key] = value
+  emit('update:modelValue', { ...localModelValue })
+}
+
 const showSource = computed(() => {
   return props.trigger.trigger_type === 'EVENT' && props.trigger.trigger_setting.body.length > 0
 })

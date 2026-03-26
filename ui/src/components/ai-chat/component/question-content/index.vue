@@ -278,28 +278,29 @@ const cancelReQuestion = () => {
   isReQuestion.value = false
 }
 
-const emit = defineEmits(['reQuestion'])
+const emit = defineEmits(['reQuestion', 'update:chatRecord'])
 const quickInputRef = ref()
 function sendReQuestionMessage(event?: any) {
   const isMobile = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
     navigator.userAgent,
   )
-  // 如果是移动端，且按下回车键，不直接发送
   if ((isMobile || mode === 'mobile') && event?.key === 'Enter') {
-    // 阻止默认事件
     return
   }
   if (!event?.ctrlKey && !event?.shiftKey && !event?.altKey && !event?.metaKey) {
-    // 如果没有按下组合键，则会阻止默认事件
     event?.preventDefault()
     if (editText.value.trim() && editText.value.trim() !== props.chatRecord.problem_text.trim()) {
       const container = props.chatRecord?.upload_meta
         ? props.chatRecord.upload_meta
         : props.chatRecord.execution_details?.find((detail) => detail.type === 'start-node')
 
-      props.chatRecord.problem_text = editText.value
-      reset_answer_text_list(props.chatRecord.answer_text_list)
-      props.chatRecord.write_ed = false
+      const updatedRecord = {
+        ...props.chatRecord,
+        problem_text: editText.value,
+        answer_text_list: reset_answer_text_list([...props.chatRecord.answer_text_list]),
+        write_ed: false,
+      }
+      emit('update:chatRecord', updatedRecord)
 
       isReQuestion.value = false
       props.sendMessage(
@@ -315,11 +316,10 @@ function sendReQuestionMessage(event?: any) {
             ? props.chatRecord.record_id
             : props.chatRecord.id,
         },
-        props.chatRecord,
+        updatedRecord,
       )
     }
   } else {
-    // 如果同时按下ctrl/shift/cmd/opt +enter，则会换行
     insertNewlineAtCursor(event)
   }
 }

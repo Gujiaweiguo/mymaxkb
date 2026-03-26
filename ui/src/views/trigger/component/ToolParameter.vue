@@ -1,7 +1,7 @@
 <template>
   <el-form
     @submit.prevent
-    :model="modelValue"
+    :model="localModelValue"
     label-position="top"
     require-asterisk-position="right"
     label-width="auto"
@@ -10,7 +10,7 @@
   >
     <template v-for="f in input_field_list" :key="f.field">
       <el-form-item
-        v-if="modelValue[f.field]"
+        v-if="localModelValue[f.field]"
         :label="$t('workflow.nodes.startNode.question')"
         :prop="`${f.field}.value`"
         :rules="{
@@ -28,11 +28,12 @@
             <el-select
               :teleported="false"
               v-if="
-                modelValue[f.field] &&
+                localModelValue[f.field] &&
                 trigger.trigger_type === 'EVENT' &&
                 trigger.trigger_setting.body.length
               "
-              v-model="modelValue[f.field].source"
+              :model-value="localModelValue[f.field].source"
+              @update:model-value="(val) => updateFieldValue(f.field, 'source', val)"
               size="small"
               style="width: 85px"
             >
@@ -43,8 +44,9 @@
         </template>
 
         <el-cascader
-          v-if="modelValue[f.field].source === 'reference'"
-          v-model="modelValue[f.field].value"
+          v-if="localModelValue[f.field].source === 'reference'"
+          :model-value="localModelValue[f.field].value"
+          @update:model-value="(val) => updateFieldValue(f.field, 'value', val)"
           :options="options"
           :placeholder="$t('common.selectPlaceholder')"
           :props="props"
@@ -52,7 +54,8 @@
         />
         <el-input
           v-else
-          v-model="modelValue[f.field].value"
+          :model-value="localModelValue[f.field].value"
+          @update:model-value="(val) => updateFieldValue(f.field, 'value', val)"
           :placeholder="$t('common.inputPlaceholder')"
         />
       </el-form-item>
@@ -60,11 +63,30 @@
   </el-form>
 </template>
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, reactive } from 'vue'
 import { type FormInstance } from 'element-plus'
 const toolParameterFormRef = ref<FormInstance>()
 const props = defineProps<{ tool?: any; modelValue: any; trigger: any }>()
 const emit = defineEmits(['update:modelValue'])
+
+const localModelValue = reactive({ ...props.modelValue })
+
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    Object.assign(localModelValue, newVal)
+  },
+  { deep: true }
+)
+
+function updateFieldValue(field: string, key: string, value: any) {
+  if (!localModelValue[field]) {
+    localModelValue[field] = {}
+  }
+  localModelValue[field][key] = value
+  emit('update:modelValue', { ...localModelValue })
+}
+
 const showSource = computed(() => {
   return props.trigger.trigger_type === 'EVENT' && props.trigger.trigger_setting.body.length > 0
 })

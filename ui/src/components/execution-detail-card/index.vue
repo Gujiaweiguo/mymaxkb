@@ -1,8 +1,8 @@
 <template>
   <el-card class="mb-8" shadow="never" style="--el-card-padding: 12px 16px">
-    <div class="flex-between cursor" @click="data['show'] = !data['show']">
+    <div class="flex-between cursor" @click="toggleShow">
       <div class="flex align-center">
-        <el-icon class="mr-8 arrow-icon" :class="data['show'] ? 'rotate-90' : ''">
+        <el-icon class="mr-8 arrow-icon" :class="showState ? 'rotate-90' : ''">
           <CaretRight />
         </el-icon>
         <component
@@ -532,7 +532,6 @@
                   ref="dynamicsFormRef"
                   :render_data="data.form_field_list"
                   label-suffix=":"
-                  v-model="data.form_data"
                   :model="data.form_data"
                 ></DynamicsForm>
               </div>
@@ -1310,5 +1309,9 @@ const isKnowLedge = computed(() => props.type === 'knowledge')
 const currentLoopNode = ref(0)
 const currentParagraph = ref(0)
 const currentWriteContent = ref(0)
+const showState = ref(props.data?.show ?? true)
+const toggleShow = () => {
+  showState.value = !showState.value
+}
 </script>
 <style lang="scss" scoped></style>

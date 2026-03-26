@@ -114,7 +114,9 @@ const fileHandleChange = (file: any, fileList: UploadFiles) => {
   })
 }
 function deleteFile(index: number) {
-  props.modelValue.splice(index, 1)
+  const newValue = [...props.modelValue]
+  newValue.splice(index, 1)
+  emit('update:modelValue', newValue)
 }
 
 const handlePreview = (bool: boolean) => {

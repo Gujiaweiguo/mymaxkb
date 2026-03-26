@@ -18,7 +18,8 @@
       >
         <el-switch
           :loading="changeStateloading"
-          v-model="data.is_active"
+          :model-value="data.is_active"
+          @update:model-value="handleStateChange"
           :before-change="() => changeState(data)"
           size="small"
           v-if="permissionPrecise.doc_edit(id)"
@@ -231,6 +232,10 @@ async function changeState(row: any) {
     .catch(() => {
       return false
     })
+}
+
+function handleStateChange() {
+  changeState(props.data)
 }
 
 const GenerateRelatedDialogRef = ref<InstanceType<typeof GenerateRelatedDialog>>()

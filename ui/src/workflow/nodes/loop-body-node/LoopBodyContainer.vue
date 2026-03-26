@@ -208,11 +208,13 @@ function enlargeHandle() {
     height.value =
       (props.nodeModel.graphModel.height - 100) / props.nodeModel.graphModel.transformModel.SCALE_Y
     const width = window.innerWidth / props.nodeModel.graphModel.transformModel.SCALE_X
+    // eslint-disable-next-line vue/no-mutating-props
     props.nodeModel.width = width
     props.nodeModel.setHeight(height.value)
   } else {
     height.value = 600
     const width = 1920
+    // eslint-disable-next-line vue/no-mutating-props
     props.nodeModel.width = width
     props.nodeModel.setHeight(height.value)
   }

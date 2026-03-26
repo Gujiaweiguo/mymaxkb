@@ -473,7 +473,7 @@ const keyWord = ref('')
 const currentKeyWord = ref(false)
 const selectOn = (kw: string) => {
   keyWord.value = kw
-  props.nodeModel.isSelected = false
+  props.nodeModel.setSelected(false)
   currentKeyWord.value = false
 }
 /**
