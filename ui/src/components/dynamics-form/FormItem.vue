@@ -187,9 +187,10 @@ onMounted(() => {
   props.initDefaultData(props.formfield)
   initTrigger(props.formfield, props.formfield.relation_trigger_field_dict)
   initTrigger(props.formfield.label, props.formfield.label?.relation_trigger_field_dict)
-  isString(props.formfield.label)
-    ? undefined
-    : onTrigger(props.formfield.label, props.formfield.label.relation_trigger_field_dict)
+  const isLabelString = isString(props.formfield.label)
+  if (!isLabelString) {
+    onTrigger(props.formfield.label, props.formfield.label.relation_trigger_field_dict)
+  }
   onTrigger(props.formfield, props.formfield.relation_trigger_field_dict)
 })
 const onTrigger = (self: any, trigger_field_dict?: Dict<any>) => {

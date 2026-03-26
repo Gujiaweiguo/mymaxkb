@@ -9,7 +9,7 @@
     separator=" > "
     clearable
   >
-    <template #default="{ node, data }">
+    <template #default="{ data }">
       <span class="flex align-center" @wheel="wheel">
         <component
           :is="iconComponent(`${data.type}-icon`)"

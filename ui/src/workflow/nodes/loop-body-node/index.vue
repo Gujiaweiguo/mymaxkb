@@ -113,7 +113,6 @@ const renderGraphData = (data?: any) => {
       let translateX = lf.value.graphModel.transformModel.TRANSLATE_X
       let translateY = lf.value.graphModel.transformModel.TRANSLATE_Y
       const [x, y] = point
-      props.nodeModel.graphModel.transformModel
       scaleX *= props.nodeModel.graphModel.transformModel.SCALE_X
       scaleY *= props.nodeModel.graphModel.transformModel.SCALE_Y
       translateX *= props.nodeModel.graphModel.transformModel.SCALE_X

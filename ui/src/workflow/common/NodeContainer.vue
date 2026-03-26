@@ -513,7 +513,11 @@ const highlightedStepName = (contentText: string) => {
 }
 onMounted(() => {
   set(props.nodeModel, 'openNodeMenu', (anchorData: any) => {
-    showAnchor.value ? closeNodeMenu() : openNodeMenu(anchorData)
+    if (showAnchor.value) {
+      closeNodeMenu()
+    } else {
+      openNodeMenu(anchorData)
+    }
   })
   set(props.nodeModel, 'selectOn', selectOn)
   set(props.nodeModel, 'focusOn', focusOn)

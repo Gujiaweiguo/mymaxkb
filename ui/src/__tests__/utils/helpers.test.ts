@@ -73,7 +73,7 @@ describe('Utility Functions', () => {
   })
 })
 
-function debounce(fn: Function, delay: number) {
+function debounce(fn: (...args: any[]) => void, delay: number) {
   let timeoutId: NodeJS.Timeout
   return (...args: any[]) => {
     clearTimeout(timeoutId)

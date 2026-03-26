@@ -30,7 +30,7 @@
             filterable
             default-first-option
           >
-            <template #label="{ label, value }">
+            <template #label="{ label }">
               <span>{{ label }} </span>
             </template>
             <el-option

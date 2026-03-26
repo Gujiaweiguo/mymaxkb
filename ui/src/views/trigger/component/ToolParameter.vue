@@ -8,7 +8,7 @@
     hide-required-asterisk
     ref="toolParameterFormRef"
   >
-    <template v-for="(f, index) in input_field_list" :key="f.field">
+    <template v-for="f in input_field_list" :key="f.field">
       <el-form-item
         v-if="modelValue[f.field]"
         :label="$t('workflow.nodes.startNode.question')"

@@ -8,7 +8,7 @@
     hide-required-asterisk
     ref="applicationParameterFormRef"
   >
-    <template v-for="(f, index) in base_field_list" :key="f.field">
+    <template v-for="f in base_field_list" :key="f.field">
       <el-form-item
         v-if="modelValue[f.field]"
         :label="$t('workflow.nodes.startNode.question')"
@@ -57,7 +57,7 @@
         />
       </el-form-item>
     </template>
-    <template v-for="(f, index) in user_input_field_list" :key="f.field">
+    <template v-for="f in user_input_field_list" :key="f.field">
       <el-form-item
         v-if="modelValue['user_input_field_list'] && modelValue['user_input_field_list'][f.field]"
         :label="$t('workflow.nodes.startNode.question')"
@@ -106,7 +106,7 @@
         />
       </el-form-item>
     </template>
-    <template v-for="(f, index) in api_input_field_list" :key="f.field">
+    <template v-for="f in api_input_field_list" :key="f.field">
       <el-form-item
         v-if="modelValue['api_input_field_list'] && modelValue['api_input_field_list'][f.field]"
         :label="$t('workflow.nodes.startNode.question')"
