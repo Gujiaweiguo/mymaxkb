@@ -13,12 +13,12 @@ PROJECT_DIR = os.path.dirname(BASE_DIR)
 VERSION = "2.0.0"
 
 # load environment variables from .env file
-load_dotenv()
+load_dotenv(os.path.join(PROJECT_DIR, ".env"))
 LOG_DIR = os.environ.get("MAXKB_LOG_DIR", os.path.join("/", "opt", "maxkb", "logs"))
 # print(os.getenv('MAXKB_CONFIG'))
 if os.getenv("MAXKB_CONFIG") is not None:
-    CONFIG = ConfigManager.load_user_config(root_path=PROJECT_DIR)
+    config_root_path = PROJECT_DIR
 else:
-    CONFIG = ConfigManager.load_user_config(
-        root_path=os.path.abspath("/opt/maxkb/conf")
-    )
+    config_root_path = os.path.abspath("/opt/maxkb/conf")
+
+CONFIG = ConfigManager.load_user_config(root_path=config_root_path)

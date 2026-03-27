@@ -14,5 +14,7 @@ from .auth import *
 from .lib import *
 from .mem import *
 
+TEST_RUNNER = "maxkb.test_runner.MaxKBDiscoverRunner"
+
 
 CONFIG.get_required_secret("RSA_PASSPHRASE")
