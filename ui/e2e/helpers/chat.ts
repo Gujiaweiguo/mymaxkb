@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { expect, type Page } from '@playwright/test'
 
 import { loginAsAdmin } from './auth'
+import type { ResourceTracker } from './data'
 
 const DEFAULT_WORKSPACE_ID = 'default'
 const DEFAULT_SILICONCLOUD_BASE = 'https://api.siliconflow.cn/v1'
@@ -210,7 +211,14 @@ async function getApplicationAccessToken(session: AdminSession, applicationId: s
   return response.data.access_token
 }
 
-export async function provisionRemoteChatAccess(page: Page) {
+export type ProvisionedChatResources = {
+  accessToken: string
+  chatUrl: string
+  modelId: string
+  applicationId: string
+}
+
+export async function provisionRemoteChatAccess(page: Page): Promise<ProvisionedChatResources> {
   const config = await getChatProviderConfig()
   if (!config) {
     throw new Error('Missing SiliconCloud configuration. Set SILICONCLOUD_API_KEY in .env.local-dev.')
@@ -225,7 +233,21 @@ export async function provisionRemoteChatAccess(page: Page) {
   return {
     accessToken,
     chatUrl: `${getChatBaseUrl()}/${accessToken}?mode=pc`,
+    modelId,
+    applicationId,
   }
+}
+
+export async function provisionRemoteChatAccessWithCleanup(
+  page: Page,
+  resourceTracker: ResourceTracker
+): Promise<ProvisionedChatResources> {
+  const resources = await provisionRemoteChatAccess(page)
+  
+  resourceTracker.track({ type: 'model', id: resources.modelId })
+  resourceTracker.track({ type: 'application', id: resources.applicationId })
+  
+  return resources
 }
 
 export async function expectChatShell(page: Page) {
