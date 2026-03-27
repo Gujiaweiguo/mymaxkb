@@ -21,6 +21,7 @@ jobs:
           "**/migrations/**",
           "**/loopEdge.ts",
           "**/edge.ts",
+          "**/provider-data.ts",
         ]
         EOF
     - name: Check spelling
