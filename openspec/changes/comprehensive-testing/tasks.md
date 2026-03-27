@@ -45,7 +45,7 @@
 - [x] 6.1 Configure test fixtures and factories for backend
 - [x] 6.2 Configure test mocks and stubs for frontend
 - [x] 6.3 Create E2E test data setup and teardown
-- [ ] 6.4 Verify CI pipeline runs all test layers [workflow configured locally; no successful remote CI run captured yet]
+- [x] 6.4 Verify CI pipeline runs all test layers
 - [x] 6.5 Document testing procedures in README
 
 ## 7. Testing (REQUIRED)
@@ -65,6 +65,8 @@
   - Result: Playwright 14/14 passed (1.1m)
   - Added shared E2E resource tracking and cleanup fixtures under `ui/e2e/fixtures/` and `ui/e2e/helpers/`
   - Verified cleanup-dependent chat flow passes on two consecutive reruns
-- [ ] 7.4 Verify CI runs all test layers successfully
-  - Status: workflow is now configured for backend Django tests, frontend type-check/lint/Vitest, and Playwright E2E
-  - Pending: actual GitHub Actions run must succeed before this item can be checked
+- [x] 7.4 Verify CI runs all test layers successfully
+  - Result: GitHub Actions CI run `23628097501` passed on PR #3 (`fix/comprehensive-testing-validation` -> `v2`)
+  - Backend Tests: pass (1m39s)
+  - Frontend Tests: pass (1m49s)
+  - E2E Tests: pass (5m20s)
