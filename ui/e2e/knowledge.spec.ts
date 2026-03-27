@@ -68,6 +68,30 @@ async function ensureEmbeddingModel(page, resourceTracker) {
   })
 }
 
+async function hasAvailableEmbeddingPrerequisite(page) {
+  const providerConfig = await getChatProviderConfig()
+  if (providerConfig) {
+    return true
+  }
+
+  return page.evaluate(async () => {
+    const token = localStorage.getItem('token')
+    const workspaceId = localStorage.getItem('workspace_id') || 'default'
+    if (!token) {
+      return false
+    }
+
+    const response = await fetch(`/admin/api/workspace/${workspaceId}/knowledge/model`, {
+      headers: {
+        AUTHORIZATION: `Bearer ${token}`,
+        'Accept-Language': 'en-US',
+      },
+    })
+    const body = await response.json()
+    return Boolean(body?.data?.[0]?.id)
+  })
+}
+
 async function getKnowledgeTarget(page, resourceTracker, knowledgeName: string) {
   const embeddingModelId = await ensureEmbeddingModel(page, resourceTracker)
 
@@ -174,6 +198,11 @@ test.describe('Knowledge Base Management', () => {
   })
 
   test('should upload a document into a knowledge base', async ({ page, resourceTracker }) => {
+    test.skip(
+      !(await hasAvailableEmbeddingPrerequisite(page)),
+      'Requires an existing embedding model or SiliconCloud credentials to provision one.',
+    )
+
     const knowledgeName = uniqueKnowledgeName()
     const { id: knowledgeId } = await getKnowledgeTarget(page, resourceTracker, knowledgeName)
 

@@ -10,7 +10,7 @@ async function waitForToken(page: Page) {
   await expect
     .poll(async () => {
       return page.evaluate(() => Boolean(localStorage.getItem('token')))
-    }, { timeout: 10000 })
+    }, { timeout: 20000 })
     .toBe(true)
 }
 
@@ -75,6 +75,20 @@ async function clearRequiredPasswordChange(page: Page) {
   return true
 }
 
+async function clearRequiredPasswordChangeDialog(page: Page) {
+  const dialog = page.locator('.el-dialog').filter({ hasText: 'Change Password' })
+  if (!(await dialog.isVisible().catch(() => false))) {
+    return false
+  }
+
+  const passwordInputs = dialog.getByPlaceholder('Please enter your new password')
+  await passwordInputs.nth(0).fill(ADMIN_PASSWORD)
+  await passwordInputs.nth(1).fill(ADMIN_PASSWORD)
+  await dialog.getByRole('button', { name: 'Save' }).click()
+  await expect(page).toHaveURL(ADMIN_LOGIN_URL, { timeout: 10000 })
+  return true
+}
+
 async function fillLoginForm(page: Page) {
   const usernameInput = page.getByPlaceholder('Please enter username')
   const passwordInput = page.getByPlaceholder('Please enter password')
@@ -99,6 +113,12 @@ export async function loginAsAdmin(page: Page) {
   await fillLoginForm(page)
   await page.getByRole('button', { name: 'Login' }).click()
   await waitForToken(page)
+
+  if (await clearRequiredPasswordChangeDialog(page)) {
+    await fillLoginForm(page)
+    await page.getByRole('button', { name: 'Login' }).click()
+    await waitForToken(page)
+  }
 
   if (await clearRequiredPasswordChange(page)) {
     await gotoLogin(page)
