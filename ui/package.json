@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "build-only": "vite build",
     "build-only-chat": "vite build --mode chat",
+    "test": "vitest run",
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
     "format": "prettier --write src/"

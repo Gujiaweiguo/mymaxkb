@@ -1,11 +1,30 @@
 import json
 import uuid_utils.compat as uuid
+from django.core import signing
+from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from common.constants.authentication_type import AuthenticationType
+from common.constants.cache_version import Cache_Version
 from application.models import Application, ApplicationFolder, ApplicationTypeChoices
 from common.utils.common import password_encrypt
+from maxkb.const import CONFIG
 from users.models import User
+
+
+def set_system_user_auth(client: APIClient, user: User):
+    token = signing.dumps(
+        {
+            "username": user.username,
+            "id": str(user.id),
+            "email": user.email,
+            "type": AuthenticationType.SYSTEM_USER.value,
+        }
+    )
+    version, get_key = Cache_Version.TOKEN.value
+    cache.set(get_key(token), user, timeout=CONFIG.get_session_timeout(), version=version)
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
 
 class ApplicationAPIIntegrationTests(TestCase):
@@ -13,10 +32,10 @@ class ApplicationAPIIntegrationTests(TestCase):
         self.client = APIClient()
         self.admin_user = User.objects.create(
             id=uuid.uuid7(),
-            email="admin@example.com",
+            email="app-test-admin@example.com",
             phone="",
-            nick_name="Admin User",
-            username="admin",
+            nick_name="App Test Admin",
+            username="app-test-admin",
             password=password_encrypt("Admin123!"),
             role="ADMIN",
             source="LOCAL",
@@ -28,11 +47,11 @@ class ApplicationAPIIntegrationTests(TestCase):
             user=self.admin_user,
             workspace_id="default",
         )
-        self.client.force_authenticate(user=self.admin_user, token="test-token")
+        set_system_user_auth(self.client, self.admin_user)
 
     def test_create_application(self):
         response = self.client.post(
-            "/api/application/application",
+            "/admin/api/workspace/default/application",
             {
                 "name": "Test App",
                 "desc": "Test Description",
@@ -58,7 +77,7 @@ class ApplicationAPIIntegrationTests(TestCase):
             icon="./favicon.ico",
         )
 
-        response = self.client.get("/api/application/application")
+        response = self.client.get("/admin/api/workspace/default/application")
 
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
@@ -77,7 +96,7 @@ class ApplicationAPIIntegrationTests(TestCase):
         )
 
         response = self.client.get(
-            f"/api/application/application/{app.id}"
+            f"/admin/api/workspace/default/application/{app.id}"
         )
 
         self.assertEqual(response.status_code, 200)
@@ -97,7 +116,7 @@ class ApplicationAPIIntegrationTests(TestCase):
         )
 
         response = self.client.put(
-            f"/api/application/application/{app.id}",
+            f"/admin/api/workspace/default/application/{app.id}",
             {"name": "Updated App Name"},
             format="json",
         )
@@ -117,7 +136,7 @@ class ApplicationAPIIntegrationTests(TestCase):
         )
 
         response = self.client.delete(
-            f"/api/application/application/{app.id}"
+            f"/admin/api/workspace/default/application/{app.id}"
         )
 
         self.assertEqual(response.status_code, 200)
@@ -128,20 +147,20 @@ class ApplicationFolderIntegrationTests(TestCase):
         self.client = APIClient()
         self.admin_user = User.objects.create(
             id=uuid.uuid7(),
-            email="admin@example.com",
+            email="folder-test-admin@example.com",
             phone="",
-            nick_name="Admin User",
-            username="admin",
+            nick_name="Folder Test Admin",
+            username="folder-test-admin",
             password=password_encrypt("Admin123!"),
             role="ADMIN",
             source="LOCAL",
             is_active=True,
         )
-        self.client.force_authenticate(user=self.admin_user, token="test-token")
+        set_system_user_auth(self.client, self.admin_user)
 
     def test_create_folder(self):
         response = self.client.post(
-            "/api/application/folder",
+            "/admin/api/workspace/default/APPLICATION/folder",
             {"name": "New Folder", "workspace_id": "default"},
             format="json",
         )
@@ -151,7 +170,7 @@ class ApplicationFolderIntegrationTests(TestCase):
         self.assertIn("data", data)
 
     def test_get_folder_list(self):
-        response = self.client.get("/api/application/folder")
+        response = self.client.get("/admin/api/workspace/default/APPLICATION/folder")
 
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
@@ -166,7 +185,7 @@ class ApplicationFolderIntegrationTests(TestCase):
         )
 
         response = self.client.delete(
-            f"/api/application/folder/{folder.id}"
+            f"/admin/api/workspace/default/APPLICATION/folder/{folder.id}"
         )
 
         self.assertEqual(response.status_code, 200)

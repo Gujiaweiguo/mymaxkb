@@ -136,6 +136,9 @@ class Knowledge(AppModelMixin):
     class Meta:
         db_table = "knowledge"
 
+    def __str__(self) -> str:
+        return str(self.name)
+
 
 class KnowledgeWorkflow(AppModelMixin):
     """

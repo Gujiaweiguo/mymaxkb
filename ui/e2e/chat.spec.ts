@@ -1,15 +1,19 @@
-import { expect, test } from '@playwright/test'
+import { testWithCleanup as test, expect } from './fixtures'
 
-import { expectChatShell, getChatProviderConfig, provisionRemoteChatAccess } from './helpers/chat'
+import {
+  expectChatShell,
+  getChatProviderConfig,
+  provisionRemoteChatAccessWithCleanup,
+} from './helpers/chat'
 
 test.describe('Chat Interaction', () => {
-  test('should open a published remote-backed chat application', async ({ page }) => {
+  test('should open a published remote-backed chat application', async ({ page, resourceTracker }) => {
     test.skip(
       !(await getChatProviderConfig()),
       'Requires SiliconCloud credentials in .env.local-dev to provision a remote-backed chat application.',
     )
 
-    const { chatUrl } = await provisionRemoteChatAccess(page)
+    const { chatUrl } = await provisionRemoteChatAccessWithCleanup(page, resourceTracker)
 
     await page.goto(chatUrl)
     await expect(page).toHaveURL(/\/[^/?]+\?mode=pc$/)

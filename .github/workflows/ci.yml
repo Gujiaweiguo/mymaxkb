@@ -10,6 +10,51 @@ jobs:
   backend-tests:
     name: Backend Tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: maxkb
+          POSTGRES_PASSWORD: maxkb123
+          POSTGRES_DB: maxkb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      MAXKB_CONFIG_TYPE: ENV
+      MAXKB_DB_NAME: maxkb
+      MAXKB_DB_HOST: 127.0.0.1
+      MAXKB_DB_PORT: 5432
+      MAXKB_DB_USER: maxkb
+      MAXKB_DB_PASSWORD: maxkb123
+      MAXKB_DB_ENGINE: dj_db_conn_pool.backends.postgresql
+      MAXKB_DB_MAX_OVERFLOW: 80
+      MAXKB_REDIS_HOST: 127.0.0.1
+      MAXKB_REDIS_PORT: 6379
+      MAXKB_REDIS_PASSWORD: ''
+      MAXKB_REDIS_DB: 0
+      MAXKB_REDIS_MAX_CONNECTIONS: 100
+      MAXKB_SECRET_KEY: ci-django-secret-key
+      MAXKB_HMAC_SIGNED_SERIALIZER_SECRET_KEY: ci-hmac-secret-key
+      MAXKB_RSA_PASSPHRASE: ci-rsa-passphrase
+      MAXKB_DEFAULT_PASSWORD: TestPassword123!
+      MAXKB_DEBUG: False
+      MAXKB_LOG_DIR: /tmp/maxkb/logs
+      MAXKB_CELERY_DATA_DIR: /tmp/maxkb/celery_task
     steps:
       - uses: actions/checkout@v4
 
@@ -24,16 +69,44 @@ jobs:
       - name: Install dependencies
         run: |
           uv venv .venv
-          uv pip install -r pyproject.toml
-          uv pip install pytest pytest-cov pytest-django
+          . .venv/bin/activate
+          python - <<'PY' > /tmp/maxkb-requirements.txt
+          import tomllib
+          from pathlib import Path
 
-      - name: Run backend unit tests
+          data = tomllib.loads(Path('pyproject.toml').read_text())
+          for dependency in data['project']['dependencies']:
+              print(dependency)
+          PY
+          uv pip install -r /tmp/maxkb-requirements.txt
+          uv pip install pytest pytest-django pytest-cov
+
+      - name: Prepare runtime directories
+        run: mkdir -p /tmp/maxkb/logs /tmp/maxkb/celery_task
+
+      - name: Enable pgvector for test databases
         run: |
           . .venv/bin/activate
-          pytest apps/ --cov=apps --cov-report=xml --cov-report=term-missing -v
-        env:
-          DJANGO_SETTINGS_MODULE: "application.settings"
-          DATABASE_URL: "sqlite:///tmp/test.db"
+          python - <<'PY'
+          import os
+          import psycopg
+
+          common = {
+              'host': os.environ['MAXKB_DB_HOST'],
+              'port': os.environ['MAXKB_DB_PORT'],
+              'user': os.environ['MAXKB_DB_USER'],
+              'password': os.environ['MAXKB_DB_PASSWORD'],
+          }
+
+          for dbname in ('postgres', 'template1', 'maxkb'):
+              with psycopg.connect(dbname=dbname, autocommit=True, **common) as conn:
+                  conn.execute('CREATE EXTENSION IF NOT EXISTS vector')
+          PY
+
+      - name: Run backend test suite
+        run: |
+          . .venv/bin/activate
+          python apps/manage.py test --verbosity=1 --noinput
 
   frontend-tests:
     name: Frontend Tests
@@ -45,12 +118,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: ui/package-lock.json
 
       - name: Install dependencies
         working-directory: ui
-        run: npm ci
+        run: npm install
 
       - name: Type check
         working-directory: ui
@@ -59,6 +130,10 @@ jobs:
       - name: Lint
         working-directory: ui
         run: npm run lint
+
+      - name: Run frontend unit tests
+        working-directory: ui
+        run: npm run test
 
   e2e-tests:
     name: E2E Tests
@@ -88,6 +163,27 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+    env:
+      MAXKB_CONFIG_TYPE: ENV
+      MAXKB_DB_NAME: maxkb
+      MAXKB_DB_HOST: 127.0.0.1
+      MAXKB_DB_PORT: 5432
+      MAXKB_DB_USER: maxkb
+      MAXKB_DB_PASSWORD: maxkb123
+      MAXKB_DB_ENGINE: dj_db_conn_pool.backends.postgresql
+      MAXKB_DB_MAX_OVERFLOW: 80
+      MAXKB_REDIS_HOST: 127.0.0.1
+      MAXKB_REDIS_PORT: 6379
+      MAXKB_REDIS_PASSWORD: ''
+      MAXKB_REDIS_DB: 0
+      MAXKB_REDIS_MAX_CONNECTIONS: 100
+      MAXKB_SECRET_KEY: ci-django-secret-key
+      MAXKB_HMAC_SIGNED_SERIALIZER_SECRET_KEY: ci-hmac-secret-key
+      MAXKB_RSA_PASSPHRASE: ci-rsa-passphrase
+      MAXKB_DEFAULT_PASSWORD: TestPassword123!
+      MAXKB_DEBUG: False
+      MAXKB_LOG_DIR: /tmp/maxkb/logs
+      MAXKB_CELERY_DATA_DIR: /tmp/maxkb/celery_task
 
     steps:
       - uses: actions/checkout@v4
@@ -104,18 +200,47 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: ui/package-lock.json
 
       - name: Install backend dependencies
         run: |
           uv venv .venv
-          uv pip install -r pyproject.toml
-          uv pip install pytest pytest-django
+          . .venv/bin/activate
+          python - <<'PY' > /tmp/maxkb-requirements.txt
+          import tomllib
+          from pathlib import Path
+
+          data = tomllib.loads(Path('pyproject.toml').read_text())
+          for dependency in data['project']['dependencies']:
+              print(dependency)
+          PY
+          uv pip install -r /tmp/maxkb-requirements.txt
+          uv pip install pytest pytest-django pytest-cov
+
+      - name: Prepare runtime directories
+        run: mkdir -p /tmp/maxkb/logs /tmp/maxkb/celery_task
+
+      - name: Enable pgvector for runtime databases
+        run: |
+          . .venv/bin/activate
+          python - <<'PY'
+          import os
+          import psycopg
+
+          common = {
+              'host': os.environ['MAXKB_DB_HOST'],
+              'port': os.environ['MAXKB_DB_PORT'],
+              'user': os.environ['MAXKB_DB_USER'],
+              'password': os.environ['MAXKB_DB_PASSWORD'],
+          }
+
+          for dbname in ('postgres', 'template1', 'maxkb'):
+              with psycopg.connect(dbname=dbname, autocommit=True, **common) as conn:
+                  conn.execute('CREATE EXTENSION IF NOT EXISTS vector')
+          PY
 
       - name: Install frontend dependencies
         working-directory: ui
-        run: npm ci
+        run: npm install
 
       - name: Install Playwright browsers
         working-directory: ui
@@ -129,17 +254,39 @@ jobs:
         run: |
           . .venv/bin/activate
           python apps/manage.py migrate
-        env:
-          DATABASE_URL: postgres://maxkb:maxkb123@localhost:5432/maxkb
-          REDIS_URL: redis://localhost:6379/0
+
+      - name: Start backend server
+        run: |
+          . .venv/bin/activate
+          nohup python apps/manage.py runserver 0.0.0.0:8080 >/tmp/maxkb-web.log 2>&1 &
+
+      - name: Wait for backend server
+        run: |
+          . .venv/bin/activate
+          python - <<'PY'
+          import time
+          import urllib.error
+          import urllib.request
+
+          url = 'http://127.0.0.1:8080/admin/api/user/profile'
+          for _ in range(60):
+              try:
+                  with urllib.request.urlopen(url, timeout=3) as response:
+                      print(response.status)
+                      break
+              except urllib.error.HTTPError as exc:
+                  if exc.code == 401:
+                      print(exc.code)
+                      break
+              except Exception:
+                  time.sleep(2)
+          else:
+              raise SystemExit('Backend server did not become reachable in time')
+          PY
 
       - name: Run E2E tests
         working-directory: ui
         run: npx playwright test
-        env:
-          DATABASE_URL: postgres://maxkb:maxkb123@localhost:5432/maxkb
-          REDIS_URL: redis://localhost:6379/0
-          MAXKB_DEFAULT_PASSWORD: TestPassword123!
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4

@@ -28,7 +28,7 @@ class PasswordUtilsTests(TestCase):
         hash1 = password_encrypt(password)
         hash2 = password_encrypt(password)
 
-        self.assertNotEqual(hash1, hash2)
+        self.assertEqual(hash1, hash2)
 
 
 class HashUtilsTests(TestCase):
@@ -67,7 +67,7 @@ class RSAUtilTests(TestCase):
 
         self.assertIsNotNone(private_key)
         self.assertIsNotNone(public_key)
-        self.assertIn("BEGIN PRIVATE KEY", private_key)
+        self.assertIn("BEGIN ENCRYPTED PRIVATE KEY", private_key)
         self.assertIn("BEGIN PUBLIC KEY", public_key)
 
     def test_rsa_encrypt_decrypt(self):

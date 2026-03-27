@@ -52,6 +52,58 @@ cd ui
 npx playwright test
 ```
 
+## Testing Workflow
+
+### Backend tests
+
+Use the repo-root Django command after loading `.env.local-dev`:
+
+```bash
+set -a
+source .env.local-dev
+set +a
+.venv/bin/python apps/manage.py test --verbosity=1 --noinput
+```
+
+### Frontend unit and component tests
+
+```bash
+cd ui
+npm run test
+npm run type-check
+npm run lint
+```
+
+### E2E rerun guidance
+
+Playwright starts the two Vite frontends automatically, but it still requires the backend on port `8080` plus PostgreSQL and Redis.
+
+```bash
+set -a
+source .env.local-dev
+set +a
+.venv/bin/python main.py dev web
+```
+
+Then run:
+
+```bash
+cd ui
+npx playwright test
+```
+
+Note: the remote-backed chat spec depends on `SILICONCLOUD_API_KEY` from `.env.local-dev`. Without it, that chat scenario is skipped while the rest of the suite can still run.
+
+### CI alignment
+
+CI is expected to use the same test layers and command shapes as local verification:
+
+- backend: `python apps/manage.py test --verbosity=1 --noinput`
+- frontend: `npm run test`, `npm run type-check`, `npm run lint`
+- E2E: `npx playwright test`
+
+Use `MAXKB_*` environment variables in CI so the workflow matches the repo's real Django configuration path.
+
 ## Services
 
 | Service | Port | Credentials |

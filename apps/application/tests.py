@@ -1,5 +1,7 @@
 import uuid_utils.compat as uuid
 from django.test import TestCase
+import importlib.util
+from pathlib import Path
 
 from application.models import Application, ApplicationFolder, ApplicationTypeChoices
 from application.serializers.system_resource_application import (
@@ -25,7 +27,11 @@ class SystemResourceApplicationQueryTests(TestCase):
         )
 
     def create_workspace(self, workspace_id: str, name: str):
-        return Workspace.objects.create(id=workspace_id, name=name)
+        workspace, _ = Workspace.objects.get_or_create(
+            id=workspace_id,
+            defaults={"name": name},
+        )
+        return workspace
 
     def create_folder(self, folder_id: str, workspace_id: str, user):
         return ApplicationFolder.objects.create(
@@ -181,3 +187,14 @@ class ApplicationFolderModelTests(TestCase):
         )
 
         self.assertEqual(folder.application_set.count(), 2)
+
+
+_platform_test_path = Path(__file__).with_name('tests').joinpath('test_platform_integration.py')
+if _platform_test_path.exists():
+    _platform_spec = importlib.util.spec_from_file_location(
+        'application.tests.test_platform_integration',
+        _platform_test_path,
+    )
+    if _platform_spec and _platform_spec.loader:
+        test_platform_integration = importlib.util.module_from_spec(_platform_spec)
+        _platform_spec.loader.exec_module(test_platform_integration)

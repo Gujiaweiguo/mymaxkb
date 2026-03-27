@@ -85,6 +85,60 @@ Default local development convention:
 
 See `DEVELOPMENT.md` for the full workflow.
 
+## Testing
+
+### Local test workflow
+
+Start PostgreSQL and Redis first:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
+Load the local backend environment before Django commands:
+
+```bash
+set -a
+source .env.local-dev
+set +a
+```
+
+Backend tests:
+
+```bash
+.venv/bin/python apps/manage.py test --verbosity=1 --noinput
+```
+
+Frontend unit and component tests:
+
+```bash
+cd ui
+npm run test
+npm run type-check
+npm run lint
+```
+
+E2E tests:
+
+```bash
+cd ui
+npx playwright test
+```
+
+Note: the remote-backed chat Playwright scenario depends on SiliconCloud credentials in `.env.local-dev` via `SILICONCLOUD_API_KEY`. Without that credential, the chat-specific spec is skipped.
+
+### CI test workflow
+
+The repository CI is expected to run these layers:
+
+- backend Django test suite via `python apps/manage.py test --verbosity=1 --noinput`
+- frontend type-check via `npm run type-check`
+- frontend lint via `npm run lint`
+- frontend unit/component tests via `npm run test`
+- Playwright E2E via `npx playwright test`
+
+CI uses `MAXKB_*` environment variables, PostgreSQL, and Redis, matching the local-first workflow instead of a separate `DATABASE_URL`-style configuration.
+
 ## Screenshots
 
 <table style="border-collapse: collapse; border: 1px solid black;">

@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 
-from maxkb.const import CONFIG, PROJECT_DIR, LOG_DIR
+from apps.maxkb.const import CONFIG, PROJECT_DIR, LOG_DIR
 
 try:
     from apps.maxkb import const

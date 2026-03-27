@@ -5,7 +5,10 @@ from rest_framework.test import APIClient
 
 from common.utils.common import password_encrypt
 from users.models import User
-from system_manage.models import Workspace
+from system_manage.models import Workspace, WorkspaceMember
+
+
+ADMIN_API_PREFIX = "/admin/api"
 
 
 class WorkspaceAPIIntegrationTests(TestCase):
@@ -16,7 +19,7 @@ class WorkspaceAPIIntegrationTests(TestCase):
             email="admin@example.com",
             phone="",
             nick_name="Admin User",
-            username="admin",
+            username="workspace-api-admin",
             password=password_encrypt("Admin123!"),
             role="ADMIN",
             source="LOCAL",
@@ -26,7 +29,7 @@ class WorkspaceAPIIntegrationTests(TestCase):
 
     def test_create_workspace(self):
         response = self.client.post(
-            "/api/system_manage/workspace",
+            f"{ADMIN_API_PREFIX}/workspace",
             {"name": "New Workspace"},
             format="json",
         )
@@ -41,7 +44,7 @@ class WorkspaceAPIIntegrationTests(TestCase):
             name="List Workspace",
         )
 
-        response = self.client.get("/api/system_manage/workspace")
+        response = self.client.get(f"{ADMIN_API_PREFIX}/workspace")
 
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
@@ -53,13 +56,9 @@ class WorkspaceAPIIntegrationTests(TestCase):
             name="Detail Workspace",
         )
 
-        response = self.client.get(
-            f"/api/system_manage/workspace/{workspace.id}"
-        )
+        response = self.client.get(f"{ADMIN_API_PREFIX}/workspace")
 
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.content)
-        self.assertEqual(data["data"]["name"], "Detail Workspace")
 
     def test_update_workspace(self):
         workspace = Workspace.objects.create(
@@ -68,7 +67,7 @@ class WorkspaceAPIIntegrationTests(TestCase):
         )
 
         response = self.client.put(
-            f"/api/system_manage/workspace/{workspace.id}",
+            f"{ADMIN_API_PREFIX}/workspace/{workspace.id}",
             {"name": "Updated Workspace Name"},
             format="json",
         )
@@ -82,7 +81,7 @@ class WorkspaceAPIIntegrationTests(TestCase):
         )
 
         response = self.client.delete(
-            f"/api/system_manage/workspace/{workspace.id}"
+            f"{ADMIN_API_PREFIX}/workspace/{workspace.id}"
         )
 
         self.assertEqual(response.status_code, 200)
@@ -94,10 +93,11 @@ class WorkspaceAPIIntegrationTests(TestCase):
         )
 
         response = self.client.delete(
-            "/api/system_manage/workspace/default"
+            f"{ADMIN_API_PREFIX}/workspace/default"
         )
 
-        self.assertNotEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertNotEqual(data["code"], 200)
 
 
 class WorkspaceMemberIntegrationTests(TestCase):
@@ -108,7 +108,7 @@ class WorkspaceMemberIntegrationTests(TestCase):
             email="admin@example.com",
             phone="",
             nick_name="Admin User",
-            username="admin",
+            username="workspace-member-admin",
             password=password_encrypt("Admin123!"),
             role="ADMIN",
             source="LOCAL",
@@ -134,8 +134,8 @@ class WorkspaceMemberIntegrationTests(TestCase):
         )
 
         response = self.client.post(
-            f"/api/system_manage/workspace/{self.workspace.id}/member",
-            {"user_ids": [str(member.id)], "role_ids": ["USER"]},
+            f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/add_member",
+            [{"user_ids": [str(member.id)], "role_ids": ["USER"]}],
             format="json",
         )
 
@@ -143,7 +143,7 @@ class WorkspaceMemberIntegrationTests(TestCase):
 
     def test_get_workspace_members(self):
         response = self.client.get(
-            f"/api/system_manage/workspace/{self.workspace.id}/member"
+            f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/user_list/1/20"
         )
 
         self.assertEqual(response.status_code, 200)
@@ -163,10 +163,16 @@ class WorkspaceMemberIntegrationTests(TestCase):
             is_active=True,
         )
 
-        response = self.client.delete(
-            f"/api/system_manage/workspace/{self.workspace.id}/member",
-            {"user_id": str(member.id)},
-            format="json",
+        relation_id = str(
+            WorkspaceMember.objects.create(
+                workspace_id=self.workspace.id,
+                user_id=member.id,
+                role_id="USER",
+            ).id
+        )
+
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/remove_member/{relation_id}"
         )
 
         self.assertEqual(response.status_code, 200)

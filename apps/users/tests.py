@@ -192,9 +192,9 @@ class UserSerializerTests(TestCase):
             is_active=True,
         )
 
-        from users.serializers.user import UserSerializer
+        from users.serializers.user import UserInstanceSerializer
 
-        serializer = UserSerializer(user)
+        serializer = UserInstanceSerializer(user)
         data = serializer.data
 
         self.assertIn("id", data)
@@ -207,10 +207,10 @@ class UserSerializerTests(TestCase):
 
 class LoginSerializerTests(TestCase):
     def test_login_serializer_validates_required_fields(self):
-        from users.serializers.login import LoginSerializer
+        from users.serializers.login import LoginRequest
 
         invalid_data = {"username": "test"}
-        serializer = LoginSerializer(data=invalid_data)
+        serializer = LoginRequest(data=invalid_data)
         self.assertFalse(serializer.is_valid())
 
     def test_login_serializer_validates_correct_data(self):
@@ -226,12 +226,12 @@ class LoginSerializerTests(TestCase):
             is_active=True,
         )
 
-        from users.serializers.login import LoginSerializer
+        from users.serializers.login import LoginRequest
 
         valid_data = {
             "username": "logintest",
             "password": "Password1!",
             "login_type": "LOCAL",
         }
-        serializer = LoginSerializer(data=valid_data)
+        serializer = LoginRequest(data=valid_data)
         self.assertTrue(serializer.is_valid())

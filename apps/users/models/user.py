@@ -57,6 +57,9 @@ class User(models.Model):
     class Meta:
         db_table = "user"
 
+    def __str__(self) -> str:
+        return str(self.username)
+
     def set_password(self, row_password):
         self.password = password_encrypt(row_password)
         self._password = row_password

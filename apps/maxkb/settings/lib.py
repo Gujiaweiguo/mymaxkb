@@ -11,7 +11,7 @@ import os
 
 from redis.sentinel import Sentinel
 
-from maxkb.const import CONFIG, PROJECT_DIR, LOG_DIR
+from ..const import CONFIG, PROJECT_DIR, LOG_DIR
 
 # celery相关配置
 celery_data_dir = os.environ.get(
@@ -25,7 +25,14 @@ if not os.path.exists(celery_data_dir) or not os.path.isdir(celery_data_dir):
 # Celery using redis as broker
 redis_celery_once_db = CONFIG.get("REDIS_DB")
 redis_celery_db = CONFIG.get("REDIS_DB")
-CELERY_BROKER_URL_FORMAT = "%(protocol)s://:%(password)s@%(host)s:%(port)s/%(db)s"
+celery_broker_url = ""
+
+
+def build_redis_url(protocol, host, port, db, password):
+    auth = f":{password}@" if password else ""
+    return f"{protocol}://{auth}{host}:{port}/{db}"
+
+
 if CONFIG.get("REDIS_SENTINEL_MASTER") and CONFIG.get("REDIS_SENTINEL_SENTINELS"):
     sentinels_str = str(CONFIG.get("REDIS_SENTINEL_SENTINELS"))
     sentinels = [
@@ -33,16 +40,15 @@ if CONFIG.get("REDIS_SENTINEL_MASTER") and CONFIG.get("REDIS_SENTINEL_SENTINELS"
         for hostport in sentinels_str.split(",")
         for host, port in [hostport.strip().split(":")]
     ]
-    CELERY_BROKER_URL = ";".join(
+    celery_broker_url = ";".join(
         [
-            CELERY_BROKER_URL_FORMAT
-            % {
-                "protocol": "sentinel",
-                "password": CONFIG.get("REDIS_PASSWORD"),
-                "host": item[0],
-                "port": item[1],
-                "db": redis_celery_db,
-            }
+            build_redis_url(
+                "sentinel",
+                item[0],
+                item[1],
+                redis_celery_db,
+                CONFIG.get("REDIS_PASSWORD"),
+            )
             for item in sentinels
         ]
     )
@@ -63,30 +69,36 @@ if CONFIG.get("REDIS_SENTINEL_MASTER") and CONFIG.get("REDIS_SENTINEL_SENTINELS"
         CONFIG.get("REDIS_SENTINEL_MASTER")
     )
     celery_once_settings = {
-        "url": f"redis://:{CONFIG.get('REDIS_PASSWORD')}@{master_host}:{master_port}/{redis_celery_once_db}",
+        "url": build_redis_url(
+            "redis",
+            master_host,
+            master_port,
+            redis_celery_once_db,
+            CONFIG.get("REDIS_PASSWORD"),
+        ),
         "master_name": CONFIG.get("REDIS_SENTINEL_MASTER"),
         "password": CONFIG.get("REDIS_PASSWORD"),
         "db": redis_celery_once_db,
     }
 else:
-    CELERY_BROKER_URL = CELERY_BROKER_URL_FORMAT % {
-        "protocol": "redis",
-        "password": CONFIG.get("REDIS_PASSWORD"),
-        "host": CONFIG.get("REDIS_HOST"),
-        "port": CONFIG.get("REDIS_PORT"),
-        "db": redis_celery_db,
-    }
+    celery_broker_url = build_redis_url(
+        "redis",
+        CONFIG.get("REDIS_HOST"),
+        CONFIG.get("REDIS_PORT"),
+        redis_celery_db,
+        CONFIG.get("REDIS_PASSWORD"),
+    )
     # celery-once 常规模式配置
     celery_once_settings = {
-        "url": CELERY_BROKER_URL_FORMAT
-        % {
-            "protocol": "redis",
-            "password": CONFIG.get("REDIS_PASSWORD"),
-            "host": CONFIG.get("REDIS_HOST"),
-            "port": CONFIG.get("REDIS_PORT"),
-            "db": redis_celery_once_db,
-        }
+        "url": build_redis_url(
+            "redis",
+            CONFIG.get("REDIS_HOST"),
+            CONFIG.get("REDIS_PORT"),
+            redis_celery_once_db,
+            CONFIG.get("REDIS_PASSWORD"),
+        )
     }
+CELERY_BROKER_URL = celery_broker_url
 CELERY_result_backend = CELERY_BROKER_URL
 CELERY_timezone = CONFIG.get_time_zone()
 CELERY_ENABLE_UTC = False
