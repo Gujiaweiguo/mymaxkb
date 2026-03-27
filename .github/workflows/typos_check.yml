@@ -12,8 +12,6 @@ jobs:
     steps:
     - name: Checkout Actions Repository
       uses: actions/checkout@v4
-      with:
-        ref: ${{ github.ref_name }}
     - name: Create config file
       run: |
         cat <<EOF > typo-check-config.toml
@@ -23,7 +21,11 @@ jobs:
           "**/migrations/**",
           "**/loopEdge.ts",
           "**/edge.ts",
+          "**/provider-data.ts",
         ]
+
+        [default.extend-words]
+        Nd = "Nd"
         EOF
     - name: Check spelling
       uses: crate-ci/typos@master

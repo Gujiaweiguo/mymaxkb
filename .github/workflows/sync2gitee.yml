@@ -1,8 +1,10 @@
 name: sync2gitee
-on: [push]
+on:
+  workflow_dispatch:
 
 jobs:
   repo-sync:
+    if: ${{ secrets.GITEE_PRIVATE_KEY != '' && secrets.GITEE_TOKEN != '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Mirror the Github organization repos to Gitee.
