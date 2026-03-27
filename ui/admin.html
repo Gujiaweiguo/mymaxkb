@@ -18,9 +18,19 @@
         }
       })()
     </script>
+    <script type="module">
+      const normalizedPrefix = window.MaxKB.prefix.endsWith('/')
+        ? window.MaxKB.prefix.slice(0, -1)
+        : window.MaxKB.prefix
+      const pathname = window.location.pathname
+      if (pathname === `${normalizedPrefix}/` || pathname === `${normalizedPrefix}/.html`) {
+        window.location.replace(`${normalizedPrefix}.html`)
+      } else {
+        import('/src/main.ts')
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
