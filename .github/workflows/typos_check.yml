@@ -23,6 +23,9 @@ jobs:
           "**/edge.ts",
           "**/provider-data.ts",
         ]
+
+        [default.extend-words]
+        Nd = "Nd"
         EOF
     - name: Check spelling
       uses: crate-ci/typos@master
