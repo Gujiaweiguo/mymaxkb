@@ -8,7 +8,7 @@
   >
     <Parameters
       v-if="active == 'parameters'"
-      ref="paramtersRef"
+      ref="parametersRef"
       :workflow="toolDetail?.work_flow"
     ></Parameters>
     <Result v-else ref="resultRef" :isShared="isShared" :apiType="apiType" :toolDetails="toolDetail"></Result>
@@ -64,11 +64,11 @@ const close = () => {
   drawer.value = false
   active.value = 'parameters'
 }
-const paramtersRef = ref<InstanceType<typeof Parameters>>()
+const parametersRef = ref<InstanceType<typeof Parameters>>()
 const resultRef = ref<InstanceType<typeof Result>>()
 const run = () => {
-  paramtersRef.value?.validate()?.then(() => {
-    const parameters = paramtersRef.value?.getData()
+  parametersRef.value?.validate()?.then(() => {
+    const parameters = parametersRef.value?.getData()
     active.value = 'result'
     nextTick(() => {
       resultRef.value?.execute(toolDetail.value.id, parameters)
