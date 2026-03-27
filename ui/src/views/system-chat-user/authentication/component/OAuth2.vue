@@ -110,6 +110,7 @@ import authApi from '@/api/chat-user/auth-setting'
 import type { FormInstance, FormRules } from 'element-plus'
 import { t } from '@/locales'
 import { MsgSuccess } from '@/utils/message'
+import { getChatApiBaseUrl } from '@/utils/common'
 import { PermissionConst, RoleConst } from '@/utils/permission/data'
 import { ComplexPermission } from '@/utils/permission/type'
 
@@ -219,4 +220,3 @@ onMounted(() => {
 })
 </script>
 <style lang="scss" scoped></style>
-import { getChatApiBaseUrl } from '@/utils/common'

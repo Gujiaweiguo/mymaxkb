@@ -75,6 +75,7 @@ import platformApi from '@/api/chat-user/auth-setting.ts'
 import type { ExternalIntegrationPlatformInfo } from '@/api/type/external-integration'
 import { MsgError, MsgSuccess } from '@/utils/message'
 import { t } from '@/locales'
+import { getChatApiBaseUrl } from '@/utils/common'
 
 const visible = ref(false)
 const loading = ref(false)
