@@ -8,6 +8,9 @@ from users.models import User
 from system_manage.models import SystemSetting, SettingType, Workspace
 
 
+ADMIN_API_PREFIX = "/admin/api"
+
+
 class SystemSettingsAPIIntegrationTests(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -16,7 +19,7 @@ class SystemSettingsAPIIntegrationTests(TestCase):
             email="admin@example.com",
             phone="",
             nick_name="Admin User",
-            username="admin",
+            username="system-settings-admin",
             password=password_encrypt("Admin123!"),
             role="ADMIN",
             source="LOCAL",
@@ -25,7 +28,7 @@ class SystemSettingsAPIIntegrationTests(TestCase):
         self.client.force_authenticate(user=self.admin_user, token="test-token")
 
     def test_get_email_setting(self):
-        response = self.client.get("/api/system_manage/email_setting")
+        response = self.client.get(f"{ADMIN_API_PREFIX}/email_setting")
 
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
@@ -33,7 +36,7 @@ class SystemSettingsAPIIntegrationTests(TestCase):
 
     def test_update_email_setting(self):
         response = self.client.put(
-            "/api/system_manage/email_setting",
+            f"{ADMIN_API_PREFIX}/email_setting",
             {
                 "host": "smtp.example.com",
                 "port": 587,
@@ -47,7 +50,7 @@ class SystemSettingsAPIIntegrationTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_get_auth_setting(self):
-        response = self.client.get("/api/system_manage/auth/setting")
+        response = self.client.get(f"{ADMIN_API_PREFIX}/auth/setting")
 
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
@@ -55,7 +58,7 @@ class SystemSettingsAPIIntegrationTests(TestCase):
 
     def test_update_auth_setting(self):
         response = self.client.put(
-            "/api/system_manage/auth/setting",
+            f"{ADMIN_API_PREFIX}/auth/setting",
             {
                 "default_value": "LOCAL",
                 "login_methods": ["LOCAL"],
@@ -76,7 +79,7 @@ class ChatUserAPIIntegrationTests(TestCase):
             email="admin@example.com",
             phone="",
             nick_name="Admin User",
-            username="admin",
+            username="chat-user-admin",
             password=password_encrypt("Admin123!"),
             role="ADMIN",
             source="LOCAL",
@@ -85,7 +88,7 @@ class ChatUserAPIIntegrationTests(TestCase):
         self.client.force_authenticate(user=self.admin_user, token="test-token")
 
     def test_get_chat_user_list(self):
-        response = self.client.get("/api/system_manage/system/chat_user/list")
+        response = self.client.get(f"{ADMIN_API_PREFIX}/system/chat_user/list")
 
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
@@ -93,13 +96,13 @@ class ChatUserAPIIntegrationTests(TestCase):
 
     def test_get_chat_user_page(self):
         response = self.client.get(
-            "/api/system_manage/system/chat_user/user_manage/1/20"
+            f"{ADMIN_API_PREFIX}/system/chat_user/user_manage/1/20"
         )
 
         self.assertEqual(response.status_code, 200)
 
     def test_get_chat_user_sync_types(self):
-        response = self.client.get("/api/system_manage/system/chat_user/sync_types")
+        response = self.client.get(f"{ADMIN_API_PREFIX}/system/chat_user/sync_types")
 
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
@@ -114,7 +117,7 @@ class SystemAPIIntegrationTests(TestCase):
             email="admin@example.com",
             phone="",
             nick_name="Admin User",
-            username="admin",
+            username="system-api-admin",
             password=password_encrypt("Admin123!"),
             role="ADMIN",
             source="LOCAL",
@@ -123,17 +126,17 @@ class SystemAPIIntegrationTests(TestCase):
         self.client.force_authenticate(user=self.admin_user, token="test-token")
 
     def test_get_system_info(self):
-        response = self.client.get("/api/system_manage/system/info")
+        response = self.client.get(f"{ADMIN_API_PREFIX}/profile")
 
         self.assertEqual(response.status_code, 200)
 
     def test_get_system_logo(self):
-        response = self.client.get("/api/system_manage/system/logo")
+        response = self.client.get(f"{ADMIN_API_PREFIX}/display/info")
 
         self.assertEqual(response.status_code, 200)
 
     def test_get_theme_setting(self):
-        response = self.client.get("/api/system_manage/theme_setting")
+        response = self.client.get(f"{ADMIN_API_PREFIX}/display/info")
 
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
@@ -141,7 +144,7 @@ class SystemAPIIntegrationTests(TestCase):
 
     def test_update_theme_setting(self):
         response = self.client.put(
-            "/api/system_manage/theme_setting",
+            f"{ADMIN_API_PREFIX}/display/update",
             {"theme_color": "#1890FF", "logo": "/logo.png"},
             format="json",
         )

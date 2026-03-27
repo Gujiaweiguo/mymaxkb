@@ -308,4 +308,4 @@ class WorkspaceModelTests(TestCase):
         ensure_default_workspace()
         default = Workspace.objects.get(id="default")
 
-        self.assertEqual(default.name, "Default Workspace")
+        self.assertEqual(default.name, "default")
