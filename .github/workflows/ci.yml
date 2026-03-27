@@ -26,14 +26,11 @@ jobs:
           --health-retries 5
 
       redis:
-        image: bitnami/redis:7.2
-        env:
-          REDIS_PASSWORD: maxkb123
-          ALLOW_EMPTY_PASSWORD: no
+        image: redis:7-alpine
         ports:
           - 6379:6379
         options: >-
-          --health-cmd "redis-cli -a maxkb123 ping"
+          --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -48,7 +45,7 @@ jobs:
       MAXKB_DB_MAX_OVERFLOW: 80
       MAXKB_REDIS_HOST: 127.0.0.1
       MAXKB_REDIS_PORT: 6379
-      MAXKB_REDIS_PASSWORD: maxkb123
+      MAXKB_REDIS_PASSWORD: ''
       MAXKB_REDIS_DB: 0
       MAXKB_REDIS_MAX_CONNECTIONS: 100
       MAXKB_SECRET_KEY: ci-django-secret-key
@@ -158,14 +155,11 @@ jobs:
           --health-retries 5
 
       redis:
-        image: bitnami/redis:7.2
-        env:
-          REDIS_PASSWORD: maxkb123
-          ALLOW_EMPTY_PASSWORD: no
+        image: redis:7-alpine
         ports:
           - 6379:6379
         options: >-
-          --health-cmd "redis-cli -a maxkb123 ping"
+          --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -180,7 +174,7 @@ jobs:
       MAXKB_DB_MAX_OVERFLOW: 80
       MAXKB_REDIS_HOST: 127.0.0.1
       MAXKB_REDIS_PORT: 6379
-      MAXKB_REDIS_PASSWORD: maxkb123
+      MAXKB_REDIS_PASSWORD: ''
       MAXKB_REDIS_DB: 0
       MAXKB_REDIS_MAX_CONNECTIONS: 100
       MAXKB_SECRET_KEY: ci-django-secret-key

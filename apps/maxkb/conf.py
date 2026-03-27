@@ -19,7 +19,7 @@ PROJECT_DIR = os.path.dirname(BASE_DIR)
 logger = logging.getLogger("maxkb.conf")
 
 
-class Config(dict):
+class Config(dict[str, Any]):
     defaults = {
         # 数据库相关配置
         "DB_HOST": "127.0.0.1",
@@ -103,7 +103,7 @@ class Config(dict):
     def get_time_zone(self) -> str:
         return self.get_str("TIME_ZONE", "Asia/Shanghai")
 
-    def get_db_setting(self) -> dict:
+    def get_db_setting(self) -> dict[str, Any]:
         return {
             "NAME": self.get("DB_NAME"),
             "HOST": self.get("DB_HOST"),
@@ -122,19 +122,20 @@ class Config(dict):
         }
 
     def get_cache_setting(self):
-        redis_config = {
-            "default": {
-                "BACKEND": "django_redis.cache.RedisCache",
-                "LOCATION": f"redis://{self.get('REDIS_HOST')}:{self.get('REDIS_PORT')}/{self.get('REDIS_DB')}",
-                "OPTIONS": {
-                    "CLIENT_CLASS": "django_redis.client.DefaultClient",
-                    "PASSWORD": self.get_required_secret("REDIS_PASSWORD"),
-                    "CONNECTION_POOL_KWARGS": {
-                        "max_connections": self.get_int("REDIS_MAX_CONNECTIONS", 100)
-                    },
-                },
+        redis_password = self.get("REDIS_PASSWORD")
+        redis_options: dict[str, object] = {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "CONNECTION_POOL_KWARGS": {
+                "max_connections": self.get_int("REDIS_MAX_CONNECTIONS", 100)
             },
         }
+        if redis_password:
+            redis_options["PASSWORD"] = redis_password
+
+        redis_location = (
+            f"redis://{self.get('REDIS_HOST')}:{self.get('REDIS_PORT')}/{self.get('REDIS_DB')}"
+        )
+
         if self.get("REDIS_SENTINEL_SENTINELS") is not None:
             sentinels_str = self.get_required_str("REDIS_SENTINEL_SENTINELS")
             sentinels = [
@@ -143,19 +144,26 @@ class Config(dict):
                 for host, port in [hostport.strip().split(":")]
             ]
 
-            redis_config["default"]["LOCATION"] = (
+            redis_location = (
                 f"redis://{self.get('REDIS_SENTINEL_MASTER')}/{self.get('REDIS_DB')}"
             )
-            redis_config["default"]["OPTIONS"].update(
+            redis_options.update(
                 {
                     "CLIENT_CLASS": "django_redis.client.SentinelClient",
                     "SENTINELS": sentinels,
                     "SENTINEL_MASTER": self.get("REDIS_SENTINEL_MASTER"),
-                    "PASSWORD": self.get_required_secret("REDIS_PASSWORD"),
                 }
             )
+            if redis_password:
+                redis_options["PASSWORD"] = redis_password
 
-        return redis_config
+        return {
+            "default": {
+                "BACKEND": "django_redis.cache.RedisCache",
+                "LOCATION": redis_location,
+                "OPTIONS": redis_options,
+            },
+        }
 
     def get_language_code(self):
         return self.get_str("LANGUAGE_CODE", "zh-CN")
