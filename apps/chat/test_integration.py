@@ -1,12 +1,29 @@
 import json
 import uuid_utils.compat as uuid
+from django.core import signing
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from application.models import Application, ApplicationFolder, ApplicationTypeChoices
+from application.models import Application, ApplicationAccessToken, ApplicationFolder, ApplicationTypeChoices
 from application.models.application_chat import Chat, ChatRecord, ChatUserType
 from common.utils.common import password_encrypt
 from users.models import User
+
+
+CHAT_API_PREFIX = '/chat/api'
+
+
+def authenticate_chat_client(client: APIClient, access_token: str) -> str:
+    response = client.post(
+        f'{CHAT_API_PREFIX}/auth/anonymous',
+        {'access_token': access_token},
+        format='json',
+    )
+    payload = json.loads(response.content)
+    token = payload['data']
+    client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+    details = signing.loads(token)
+    return details['chat_user_id']
 
 
 class ChatAPIIntegrationTests(TestCase):
@@ -17,7 +34,7 @@ class ChatAPIIntegrationTests(TestCase):
             email="admin@example.com",
             phone="",
             nick_name="Admin User",
-            username="admin",
+            username="chat-int-admin",
             password=password_encrypt("Admin123!"),
             role="ADMIN",
             source="LOCAL",
@@ -39,13 +56,16 @@ class ChatAPIIntegrationTests(TestCase):
             type=ApplicationTypeChoices.SIMPLE,
             icon="./favicon.ico",
         )
-        self.client.force_authenticate(user=self.admin_user, token="test-token")
+        self.access = ApplicationAccessToken.objects.create(
+            application=self.application,
+            access_token='chat-api-token',
+            is_active=True,
+        )
+        self.chat_user_id = authenticate_chat_client(self.client, self.access.access_token)
 
     def test_open_chat(self):
-        response = self.client.post(
-            "/api/chat/open",
-            {"application_id": str(self.application.id)},
-            format="json",
+        response = self.client.get(
+            f'{CHAT_API_PREFIX}/open',
         )
 
         self.assertEqual(response.status_code, 200)
@@ -57,12 +77,12 @@ class ChatAPIIntegrationTests(TestCase):
             id=uuid.uuid7(),
             application=self.application,
             abstract="Test Chat",
+            chat_user_id=self.chat_user_id,
             chat_user_type=ChatUserType.ANONYMOUS_USER,
         )
 
         response = self.client.get(
-            "/api/chat/historical_conversation",
-            {"application_id": str(self.application.id)},
+            f'{CHAT_API_PREFIX}/historical_conversation',
         )
 
         self.assertEqual(response.status_code, 200)
@@ -71,8 +91,7 @@ class ChatAPIIntegrationTests(TestCase):
 
     def test_get_historical_conversation_page(self):
         response = self.client.get(
-            f"/api/chat/historical_conversation/1/20",
-            {"application_id": str(self.application.id)},
+            f'{CHAT_API_PREFIX}/historical_conversation/1/20',
         )
 
         self.assertEqual(response.status_code, 200)
@@ -82,11 +101,12 @@ class ChatAPIIntegrationTests(TestCase):
             id=uuid.uuid7(),
             application=self.application,
             abstract="Delete Chat",
+            chat_user_id=self.chat_user_id,
             chat_user_type=ChatUserType.ANONYMOUS_USER,
         )
 
         response = self.client.delete(
-            f"/api/chat/historical_conversation/{chat.id}"
+            f'{CHAT_API_PREFIX}/historical_conversation/{chat.id}'
         )
 
         self.assertEqual(response.status_code, 200)
@@ -100,7 +120,7 @@ class ChatRecordIntegrationTests(TestCase):
             email="admin@example.com",
             phone="",
             nick_name="Admin User",
-            username="admin",
+            username="chat-record-admin",
             password=password_encrypt("Admin123!"),
             role="ADMIN",
             source="LOCAL",
@@ -122,13 +142,19 @@ class ChatRecordIntegrationTests(TestCase):
             type=ApplicationTypeChoices.SIMPLE,
             icon="./favicon.ico",
         )
+        self.access = ApplicationAccessToken.objects.create(
+            application=self.application,
+            access_token='chat-record-token',
+            is_active=True,
+        )
+        self.chat_user_id = authenticate_chat_client(self.client, self.access.access_token)
         self.chat = Chat.objects.create(
             id=uuid.uuid7(),
             application=self.application,
             abstract="Test Chat",
+            chat_user_id=self.chat_user_id,
             chat_user_type=ChatUserType.ANONYMOUS_USER,
         )
-        self.client.force_authenticate(user=self.admin_user, token="test-token")
 
     def test_get_chat_records(self):
         ChatRecord.objects.create(
@@ -136,10 +162,11 @@ class ChatRecordIntegrationTests(TestCase):
             chat=self.chat,
             problem_text="Hello",
             answer_text="Hi there!",
+            index=0,
         )
 
         response = self.client.get(
-            f"/api/chat/historical_conversation_record/{self.chat.id}"
+            f'{CHAT_API_PREFIX}/historical_conversation_record/{self.chat.id}'
         )
 
         self.assertEqual(response.status_code, 200)
@@ -148,7 +175,7 @@ class ChatRecordIntegrationTests(TestCase):
 
     def test_get_chat_record_page(self):
         response = self.client.get(
-            f"/api/chat/historical_conversation_record/{self.chat.id}/1/20"
+            f'{CHAT_API_PREFIX}/historical_conversation_record/{self.chat.id}/1/20'
         )
 
         self.assertEqual(response.status_code, 200)
@@ -159,10 +186,11 @@ class ChatRecordIntegrationTests(TestCase):
             chat=self.chat,
             problem_text="Question",
             answer_text="Answer",
+            index=0,
         )
 
         response = self.client.post(
-            f"/api/chat/vote/chat/{self.chat.id}/chat_record/{record.id}",
+            f'{CHAT_API_PREFIX}/vote/chat/{self.chat.id}/chat_record/{record.id}',
             {"vote_status": "0", "vote_reason": "accurate"},
             format="json",
         )
@@ -171,8 +199,7 @@ class ChatRecordIntegrationTests(TestCase):
 
     def test_clear_historical_conversations(self):
         response = self.client.delete(
-            "/api/chat/historical_conversation/clear",
-            {"application_id": str(self.application.id)},
+            f'{CHAT_API_PREFIX}/historical_conversation/clear',
             format="json",
         )
 

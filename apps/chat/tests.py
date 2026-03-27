@@ -119,6 +119,7 @@ class ChatRecordModelTests(TestCase):
             chat=chat,
             problem_text="Hello, how are you?",
             answer_text="I'm doing well, thank you!",
+            index=0,
         )
 
         self.assertEqual(record.problem_text, "Hello, how are you?")
@@ -138,6 +139,7 @@ class ChatRecordModelTests(TestCase):
             chat=chat,
             problem_text="Question",
             answer_text="Answer",
+            index=0,
         )
 
         record.vote_status = VoteChoices.STAR
@@ -161,9 +163,10 @@ class ChatRecordModelTests(TestCase):
             chat=chat,
             problem_text="Question",
             answer_text="Answer",
+            index=0,
         )
 
         self.assertEqual(record.message_tokens, 0)
         self.assertEqual(record.answer_tokens, 0)
-        self.assertEqual(record.star_num, 0)
-        self.assertEqual(record.trample_num, 0)
+        self.assertEqual(record.const, 0)
+        self.assertEqual(record.vote_status, VoteChoices.UN_VOTE)
