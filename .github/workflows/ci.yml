@@ -30,11 +30,10 @@ jobs:
         ports:
           - 6379:6379
         options: >-
-          --health-cmd "redis-cli -a maxkb123 ping"
+          --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-          --requirepass maxkb123
     env:
       MAXKB_CONFIG_TYPE: ENV
       MAXKB_DB_NAME: maxkb
@@ -46,7 +45,7 @@ jobs:
       MAXKB_DB_MAX_OVERFLOW: 80
       MAXKB_REDIS_HOST: 127.0.0.1
       MAXKB_REDIS_PORT: 6379
-      MAXKB_REDIS_PASSWORD: maxkb123
+      MAXKB_REDIS_PASSWORD: ''
       MAXKB_REDIS_DB: 0
       MAXKB_REDIS_MAX_CONNECTIONS: 100
       MAXKB_SECRET_KEY: ci-django-secret-key
@@ -109,12 +108,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: ui/package-lock.json
 
       - name: Install dependencies
         working-directory: ui
-        run: npm ci
+        run: npm install
 
       - name: Type check
         working-directory: ui
@@ -152,11 +149,10 @@ jobs:
         ports:
           - 6379:6379
         options: >-
-          --health-cmd "redis-cli -a maxkb123 ping"
+          --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-          --requirepass maxkb123
     env:
       MAXKB_CONFIG_TYPE: ENV
       MAXKB_DB_NAME: maxkb
@@ -168,7 +164,7 @@ jobs:
       MAXKB_DB_MAX_OVERFLOW: 80
       MAXKB_REDIS_HOST: 127.0.0.1
       MAXKB_REDIS_PORT: 6379
-      MAXKB_REDIS_PASSWORD: maxkb123
+      MAXKB_REDIS_PASSWORD: ''
       MAXKB_REDIS_DB: 0
       MAXKB_REDIS_MAX_CONNECTIONS: 100
       MAXKB_SECRET_KEY: ci-django-secret-key
@@ -194,8 +190,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: ui/package-lock.json
 
       - name: Install backend dependencies
         run: |
@@ -226,7 +220,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: ui
-        run: npm ci
+        run: npm install
 
       - name: Install Playwright browsers
         working-directory: ui
