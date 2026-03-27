@@ -34,11 +34,11 @@
 ## 5. E2E Tests
 
 - [x] 5.1 Write E2E test for login and authentication flow
-- [ ] 5.2 Write E2E test for user creation and management [current suite only verifies navigation, table visibility, and create control presence]
-- [ ] 5.3 Write E2E test for workspace creation and switching [current suite only verifies navigation and workspace page layout]
-- [ ] 5.4 Write E2E test for application creation and configuration [current suite only verifies landing page, search/create controls, and create-menu visibility]
-- [ ] 5.5 Write E2E test for knowledge base document upload [current suite only verifies navigation, heading, and create control presence]
-- [ ] 5.6 Write E2E test for chat interaction [current suite verifies chat-shell availability for a published remote-backed app, not full message interaction/error paths]
+- [x] 5.2 Write E2E test for user creation and management
+- [x] 5.3 Write E2E test for workspace creation and switching
+- [x] 5.4 Write E2E test for application creation and configuration
+- [x] 5.5 Write E2E test for knowledge base document upload
+- [x] 5.6 Write E2E test for chat interaction
 
 ## 6. Testing Infrastructure
 

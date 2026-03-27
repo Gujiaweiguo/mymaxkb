@@ -1,0 +1,3 @@
+MaxKB E2E upload document
+
+This file validates the knowledge upload flow.
