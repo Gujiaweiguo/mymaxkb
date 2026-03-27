@@ -38,6 +38,10 @@ def password_encrypt(row_password):
     return result
 
 
+def password_verify(row_password, encrypted_password):
+    return password_encrypt(row_password) == encrypted_password
+
+
 def group_by(list_source: List, key):
     """
     將數組分組
@@ -65,6 +69,10 @@ def get_random_chars(number=4):
     if number <= 0:
         return ""
     return ''.join(random.choices(SAFE_CHAR_SET, k=number))
+
+
+def get_random_string(number=4):
+    return get_random_chars(number)
 
 
 def encryption(message: str):

@@ -68,6 +68,11 @@ def generate():
     return {"key": key.publickey().export_key(), "value": encrypted_key}
 
 
+def generate_rsa_key_pair():
+    key_pair = generate()
+    return key_pair["value"].decode(), key_pair["key"].decode()
+
+
 def get_key_pair():
     rsa_value = rsa_cache.get(cache_key)
     if rsa_value is None:
@@ -114,6 +119,10 @@ def encrypt(msg, public_key: str | None = None):
     return base64.b64encode(encrypt_msg).decode()
 
 
+def rsa_encrypt(msg, public_key: str | None = None):
+    return encrypt(msg, public_key)
+
+
 def decrypt(msg, pri_key: str | None = None):
     """
     解密
@@ -126,6 +135,10 @@ def decrypt(msg, pri_key: str | None = None):
     cipher = _get_cipher(pri_key)
     decrypt_data = cipher.decrypt(base64.b64decode(msg), 0)
     return decrypt_data.decode("utf-8")
+
+
+def rsa_decrypt(msg, pri_key: str | None = None):
+    return decrypt(msg, pri_key)
 
 
 @lru_cache(maxsize=2)
