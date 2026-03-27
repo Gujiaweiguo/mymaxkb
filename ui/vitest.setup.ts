@@ -1,7 +1,16 @@
-import { beforeAll, afterAll, afterEach, vi, expect } from 'vitest'
 import { config } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
 import { vi as vitestVi } from 'vitest'
+
+config.global.renderStubDefaultSlot = true
+
+Object.defineProperty(window, 'MaxKB', {
+  writable: true,
+  configurable: true,
+  value: {
+    chatPrefix: '/chat',
+    prefix: '/admin',
+  },
+})
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
@@ -16,15 +25,42 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 })
 
-// Global test utilities
-export const createWrapper = (component: any, options: any = {}) => {
-  const pinia = createPinia()
-  setActivePinia(pinia)
+class ResizeObserver {
+  observe() {}
 
-  return config(component, {
-    global: {
-      plugins: [pinia],
-    },
-    ...options,
-  })
+  unobserve() {}
+
+  disconnect() {}
 }
+
+class IntersectionObserver {
+  root = null
+
+  rootMargin = ''
+
+  thresholds = []
+
+  observe() {}
+
+  unobserve() {}
+
+  disconnect() {}
+
+  takeRecords() {
+    return []
+  }
+}
+
+Object.defineProperty(window, 'ResizeObserver', {
+  writable: true,
+  configurable: true,
+  value: ResizeObserver,
+})
+
+Object.defineProperty(window, 'IntersectionObserver', {
+  writable: true,
+  configurable: true,
+  value: IntersectionObserver,
+})
+
+Element.prototype.scrollIntoView = vitestVi.fn()
