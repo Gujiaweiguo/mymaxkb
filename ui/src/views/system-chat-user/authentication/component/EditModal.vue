@@ -75,6 +75,7 @@ import platformApi from '@/api/chat-user/auth-setting.ts'
 import type { ExternalIntegrationPlatformInfo } from '@/api/type/external-integration'
 import { MsgError, MsgSuccess } from '@/utils/message'
 import { t } from '@/locales'
+import { getChatApiBaseUrl } from '@/utils/common'
 
 const visible = ref(false)
 const loading = ref(false)
@@ -190,7 +191,7 @@ const open = async (platform: Platform) => {
   })
 
   // 设置默认的 callback_url
-  const defaultCallbackUrl = window.location.origin + window.MaxKB.chatPrefix + '/api'
+  const defaultCallbackUrl = getChatApiBaseUrl()
   switch (platform.key) {
     case 'wecom':
       if (currentPlatform.config.app_key) {
@@ -342,3 +343,4 @@ function getReadinessTagType() {
 </script>
 
 <style lang="scss" scoped></style>
+import { getChatApiBaseUrl } from '@/utils/common'

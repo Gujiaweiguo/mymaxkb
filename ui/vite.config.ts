@@ -1,6 +1,6 @@
 import {fileURLToPath, URL} from 'node:url'
 import type {ProxyOptions} from 'vite'
-import {defineConfig, loadEnv} from 'vite'
+import {defineConfig, loadEnv, type Plugin} from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import DefineOptions from 'unplugin-vue-define-options/vite'
@@ -27,6 +27,30 @@ const renameHtmlPlugin = (outDir: string, entry: string) => {
         // 重命名文件
         fs.renameSync(oldFile, newFile)
       }
+    },
+  }
+}
+
+const normalizeEntryRedirectPlugin = (basePath: string, entry: string): Plugin => {
+  const normalizedBasePath = basePath.endsWith('/') ? basePath : `${basePath}/`
+  const malformedEntryPath = `${normalizedBasePath}.html`
+  const validPaths = new Set([normalizedBasePath, malformedEntryPath])
+  const targetLocation = `/${entry}`
+
+  return {
+    name: 'normalize-entry-redirect',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const requestUrl = req.url ? req.url.split('?')[0] : ''
+        if (!validPaths.has(requestUrl)) {
+          next()
+          return
+        }
+
+        res.statusCode = 302
+        res.setHeader('Location', targetLocation)
+        res.end()
+      })
     },
   }
 }
@@ -90,6 +114,7 @@ export default defineConfig((conf: any) => {
       vueJsx(),
       DefineOptions(),
       createHtmlPlugin({template: ENV.VITE_ENTRY}),
+      normalizeEntryRedirectPlugin(ENV.VITE_BASE_PATH, ENV.VITE_ENTRY),
       renameHtmlPlugin(`dist${ENV.VITE_BASE_PATH}`, ENV.VITE_ENTRY),
     ],
     server: {

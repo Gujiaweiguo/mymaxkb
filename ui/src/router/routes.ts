@@ -89,6 +89,10 @@ export const routes: Array<RouteRecordRaw> = [
     component: () => import('@/views/Permission.vue'),
   },
   {
+    path: '/.html',
+    redirect: '/',
+  },
+  {
     path: '/no-service',
     name: 'NoService',
     component: () => import('@/views/error/NoService.vue'),

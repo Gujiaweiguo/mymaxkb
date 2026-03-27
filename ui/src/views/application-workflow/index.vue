@@ -160,7 +160,7 @@ import type { Action } from 'element-plus'
 import Workflow from '@/workflow/index.vue'
 import DropdownMenu from '@/components/workflow-dropdown-menu/index.vue'
 import PublishHistory from '@/views/application-workflow/component/PublishHistory.vue'
-import { isAppIcon, resetUrl } from '@/utils/common'
+import { getChatBaseUrl, isAppIcon, resetUrl } from '@/utils/common'
 import { MsgSuccess, MsgError, MsgConfirm } from '@/utils/message'
 import { datetimeFormat } from '@/utils/time'
 import { mapToUrlParams } from '@/utils/application'
@@ -221,10 +221,7 @@ const urlParams = computed(() =>
   mapToUrlParams(apiInputParams.value) ? '?' + mapToUrlParams(apiInputParams.value) : '',
 )
 const shareUrl = computed(
-  () =>
-    `${window.location.origin}${window.MaxKB.chatPrefix}/` +
-    detail.value?.access_token +
-    urlParams.value,
+  () => `${getChatBaseUrl()}/` + detail.value?.access_token + urlParams.value,
 )
 
 function back() {

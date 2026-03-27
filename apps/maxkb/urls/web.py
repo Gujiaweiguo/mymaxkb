@@ -102,6 +102,17 @@ static_dict = {
 }
 
 
+def normalize_entry_request(request_path: str, ui_prefix: str):
+    normalized_prefix = ui_prefix.rstrip('/')
+    malformed_paths = {
+        f'{normalized_prefix}.html',
+        f'{normalized_prefix}/.html',
+    }
+    if request_path in malformed_paths:
+        return HttpResponseRedirect(f'{normalized_prefix}/')
+    return None
+
+
 def page_not_found(request, exception):
     """
     页面不存在处理
@@ -110,6 +121,12 @@ def page_not_found(request, exception):
         return Result(response_status=status.HTTP_404_NOT_FOUND, code=404, message="HTTP_404_NOT_FOUND")
     if request.path.startswith(chat_ui_prefix + '/api/'):
         return Result(response_status=status.HTTP_404_NOT_FOUND, code=404, message="HTTP_404_NOT_FOUND")
+    normalized_chat_entry = normalize_entry_request(request.path, chat_ui_prefix)
+    if normalized_chat_entry is not None:
+        return normalized_chat_entry
+    normalized_admin_entry = normalize_entry_request(request.path, admin_ui_prefix)
+    if normalized_admin_entry is not None:
+        return normalized_admin_entry
     if request.path.startswith(chat_ui_prefix):
         in_ = [url for url in static_dict.get(chat_ui_prefix) if request.path.endswith(url)]
         if len(in_) > 0:

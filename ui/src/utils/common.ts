@@ -175,6 +175,25 @@ export function getNormalizedUrl(url: string) {
   return url
 }
 
+export function getChatOrigin() {
+  const currentOrigin = new URL(window.location.origin)
+  const hasDedicatedChatPrefix = Boolean(window.MaxKB.chatPrefix && window.MaxKB.chatPrefix !== window.MaxKB.prefix)
+
+  if (import.meta.env.DEV && hasDedicatedChatPrefix && currentOrigin.port === '3000') {
+    currentOrigin.port = '3001'
+  }
+
+  return currentOrigin.origin
+}
+
+export function getChatBaseUrl() {
+  return `${getChatOrigin()}${window.MaxKB.chatPrefix ? window.MaxKB.chatPrefix : window.MaxKB.prefix}`
+}
+
+export function getChatApiBaseUrl() {
+  return `${getChatBaseUrl()}/api`
+}
+
 export function getFileUrl(fileId?: string) {
   if (fileId) {
     return `${window.MaxKB.prefix}/oss/file/${fileId}`
