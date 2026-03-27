@@ -220,8 +220,8 @@ function getDetail() {
       }
     }
     if (!form.value.config.redirectUrl) {
-        form.value.config.redirectUrl = window.location.origin + window.MaxKB.chatPrefix + '/api/auth/oidc'
-      }
+      form.value.config.redirectUrl = `${getChatApiBaseUrl()}/auth/oidc`
+    }
   })
 }
 
@@ -230,3 +230,4 @@ onMounted(() => {
 })
 </script>
 <style lang="scss" scoped></style>
+import { getChatApiBaseUrl } from '@/utils/common'

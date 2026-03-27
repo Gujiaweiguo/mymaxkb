@@ -129,8 +129,7 @@ function getDetail() {
       form.value = res.data
     }
     if (!form.value.config.redirectUrl) {
-      form.value.config.redirectUrl =
-        window.location.origin + window.MaxKB.chatPrefix + '/api/auth/cas'
+      form.value.config.redirectUrl = `${getChatApiBaseUrl()}/auth/cas`
     }
   })
 }
@@ -140,3 +139,4 @@ onMounted(() => {
 })
 </script>
 <style lang="scss" scoped></style>
+import { getChatApiBaseUrl } from '@/utils/common'
