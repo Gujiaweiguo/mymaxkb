@@ -98,7 +98,7 @@ jobs:
               'password': os.environ['MAXKB_DB_PASSWORD'],
           }
 
-          for dbname in ('postgres', 'template1'):
+          for dbname in ('postgres', 'template1', 'maxkb'):
               with psycopg.connect(dbname=dbname, autocommit=True, **common) as conn:
                   conn.execute('CREATE EXTENSION IF NOT EXISTS vector')
           PY
@@ -233,7 +233,7 @@ jobs:
               'password': os.environ['MAXKB_DB_PASSWORD'],
           }
 
-          for dbname in ('postgres', 'template1'):
+          for dbname in ('postgres', 'template1', 'maxkb'):
               with psycopg.connect(dbname=dbname, autocommit=True, **common) as conn:
                   conn.execute('CREATE EXTENSION IF NOT EXISTS vector')
           PY
