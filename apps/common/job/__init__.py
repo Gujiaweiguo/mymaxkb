@@ -8,6 +8,7 @@
 """
 from .clean_chat_job import *
 from .clean_debug_file_job import *
+from .clean_operation_log_job import *
 from .client_access_num_job import *
 
 
@@ -15,4 +16,5 @@ def run():
     # client_access_num_job.run()
     clean_chat_job.run()
     clean_debug_file_job.run()
+    clean_operation_log_job.run()
     client_access_num_job.run()
