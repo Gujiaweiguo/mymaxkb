@@ -1,20 +1,23 @@
+from importlib import import_module
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import uuid_utils.compat as uuid
 from django.core import signing
 from django.core.cache import cache
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 
+from common.auth import authenticate as authenticate_module
 from common.constants.authentication_type import AuthenticationType
 from common.constants.cache_version import Cache_Version
 from common.auth.handle.impl.user_token import get_auth
-from common.exception.app_exception import AppApiException
+from common.exception.app_exception import AppApiException, AppAuthenticationFailed
 from common.constants.permission_constants import PermissionConstants, RoleConstants
 from common.utils.common import password_encrypt
 from system_manage.models import SystemSetting, SettingType
 from users.models import User
 from users.serializers.login import LoginSerializer, system_get_key, system_version
-from users.serializers.user import get_community_user_manage_response
+from users.serializers.user import UserProfileSerializer, get_community_user_manage_response
 
 
 class CommunityEditionAuthFallbackTests(TestCase):
@@ -435,3 +438,196 @@ class LoginSerializerContractTests(TestCase):
         )
 
         self.assertIn("token", result)
+
+
+class RequirePasswordChangeAuthContractTests(TestCase):
+    class StubHandle:
+        def __init__(self, auth_result):
+            self.auth_result = auth_result
+
+        def support(self, request, token, get_token_details):
+            return True
+
+        def handle(self, request, token, get_token_details):
+            return self.auth_result
+
+    def setUp(self):
+        self.request_factory = RequestFactory()
+        self.user = User.objects.create(
+            id=uuid.uuid7(),
+            email="password-change-user@example.com",
+            phone="",
+            nick_name="Password Change User",
+            username="password-change-user",
+            password=password_encrypt("Password1!"),
+            role="ADMIN",
+            source="LOCAL",
+            is_active=True,
+            require_password_change=True,
+        )
+        self.auth = SimpleNamespace(role_list=["ADMIN"], permission_list=[])
+
+    def _authenticate(self, auth_class, path: str):
+        handle = self.StubHandle((self.user, self.auth))
+        request = self.request_factory.get(path, HTTP_AUTHORIZATION="Bearer test-token")
+        if auth_class is authenticate_module.TokenAuth:
+            patch_target = "handles"
+        elif auth_class is authenticate_module.ChatTokenAuth:
+            patch_target = "chat_handles"
+        else:
+            patch_target = "all_handles"
+
+        with patch.object(authenticate_module, patch_target, [handle]):
+            return auth_class().authenticate(request)
+
+    def test_token_auth_blocks_flagged_user_on_non_whitelisted_path(self):
+        with self.assertRaises(AppAuthenticationFailed) as context:
+            self._authenticate(authenticate_module.TokenAuth, "/admin/api/application/list")
+
+        self.assertEqual(context.exception.code, 1002)
+        self.assertEqual(
+            str(context.exception.message), "Password change required before continuing"
+        )
+
+    def test_all_token_auth_blocks_flagged_user_on_non_whitelisted_path(self):
+        with self.assertRaises(AppAuthenticationFailed) as context:
+            self._authenticate(
+                authenticate_module.AllTokenAuth,
+                "/admin/api/workspace/default/application/list",
+            )
+
+        self.assertEqual(context.exception.code, 1002)
+        self.assertEqual(
+            str(context.exception.message), "Password change required before continuing"
+        )
+
+    def test_chat_token_auth_blocks_flagged_user_on_non_whitelisted_path(self):
+        with self.assertRaises(AppAuthenticationFailed) as context:
+            self._authenticate(authenticate_module.ChatTokenAuth, "/api/chat/open")
+
+        self.assertEqual(context.exception.code, 1002)
+        self.assertEqual(
+            str(context.exception.message), "Password change required before continuing"
+        )
+
+    def test_password_change_gate_allows_whitelisted_paths(self):
+        for auth_class in (
+            authenticate_module.TokenAuth,
+            authenticate_module.ChatTokenAuth,
+            authenticate_module.AllTokenAuth,
+        ):
+            for allowed_path in authenticate_module.PASSWORD_CHANGE_ALLOWED_PATHS:
+                with self.subTest(auth_class=auth_class.__name__, allowed_path=allowed_path):
+                    auth_result = self._authenticate(auth_class, f"/admin/api{allowed_path}")
+
+                    self.assertEqual(auth_result, (self.user, self.auth))
+
+
+class UserProfilePasswordChangeSignalTests(TestCase):
+    @patch("users.serializers.user.get_workspace_list_by_user", return_value=["default"])
+    @patch("users.serializers.user.DatabaseModelManage.get_model", return_value=None)
+    def test_profile_sets_is_edit_password_true_for_local_flagged_user(
+        self, _get_model, _get_workspace_list
+    ):
+        user = User.objects.create(
+            id=uuid.uuid7(),
+            email="local-flagged@example.com",
+            phone="",
+            nick_name="Local Flagged",
+            username="local-flagged",
+            password=password_encrypt("Password1!"),
+            role="ADMIN",
+            source="LOCAL",
+            is_active=True,
+            require_password_change=True,
+        )
+
+        profile = UserProfileSerializer.profile(
+            user, SimpleNamespace(role_list=["ADMIN"], permission_list=[])
+        )
+
+        self.assertTrue(profile["is_edit_password"])
+
+    @patch("users.serializers.user.get_workspace_list_by_user", return_value=["default"])
+    @patch("users.serializers.user.DatabaseModelManage.get_model", return_value=None)
+    def test_profile_sets_is_edit_password_false_for_non_local_flagged_user(
+        self, _get_model, _get_workspace_list
+    ):
+        user = User.objects.create(
+            id=uuid.uuid7(),
+            email="ldap-flagged@example.com",
+            phone="",
+            nick_name="LDAP Flagged",
+            username="ldap-flagged",
+            password=password_encrypt("Password1!"),
+            role="ADMIN",
+            source="LDAP",
+            is_active=True,
+            require_password_change=True,
+        )
+
+        profile = UserProfileSerializer.profile(
+            user, SimpleNamespace(role_list=["ADMIN"], permission_list=[])
+        )
+
+        self.assertFalse(profile["is_edit_password"])
+
+
+class BootstrapPasswordFlagMigrationContractTests(TestCase):
+    def setUp(self):
+        self.migration_module = import_module(
+            "users.migrations.0002_user_require_password_change"
+        )
+        self.apps_stub = SimpleNamespace(get_model=lambda app_label, model_name: User)
+
+    def _create_user(self, username: str, password: str) -> User:
+        return User.objects.create(
+            id=uuid.uuid7(),
+            email=f"{username}@example.com",
+            phone="",
+            nick_name=username,
+            username=username,
+            password=password,
+            role="ADMIN",
+            source="LOCAL",
+            is_active=True,
+            require_password_change=False,
+        )
+
+    def test_mark_bootstrap_password_change_flags_legacy_default_hash(self):
+        user = self._create_user(
+            "legacy-bootstrap-user",
+            self.migration_module.LEGACY_DEFAULT_PASSWORD_HASH,
+        )
+
+        with patch("maxkb.const.CONFIG", {"DEFAULT_PASSWORD": "AnotherPassword123!"}):
+            self.migration_module.mark_bootstrap_password_change(self.apps_stub, None)
+
+        user.refresh_from_db()
+        self.assertTrue(user.require_password_change)
+
+    def test_mark_bootstrap_password_change_flags_configured_bootstrap_hash(self):
+        user = self._create_user(
+            "configured-bootstrap-user",
+            self.migration_module._password_hash("BootstrapPassword123!"),
+        )
+
+        with patch("maxkb.const.CONFIG", {"DEFAULT_PASSWORD": "BootstrapPassword123!"}):
+            self.migration_module.mark_bootstrap_password_change(self.apps_stub, None)
+
+        user.refresh_from_db()
+        self.assertTrue(user.require_password_change)
+
+    def test_mark_bootstrap_password_change_ignores_placeholder_bootstrap_password(self):
+        user = self._create_user(
+            "placeholder-bootstrap-user",
+            self.migration_module._password_hash("change_me_bootstrap_admin_password"),
+        )
+
+        with patch(
+            "maxkb.const.CONFIG", {"DEFAULT_PASSWORD": "change_me_bootstrap_admin_password"}
+        ):
+            self.migration_module.mark_bootstrap_password_change(self.apps_stub, None)
+
+        user.refresh_from_db()
+        self.assertFalse(user.require_password_change)

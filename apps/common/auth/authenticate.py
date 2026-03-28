@@ -155,8 +155,11 @@ class ChatTokenAuth(TokenAuthentication):
             token_details = TokenDetails(token)
             for handle in chat_handles:
                 if handle.support(request, token, token_details.get_token_details):
-                    return handle.handle(
-                        request, token, token_details.get_token_details
+                    return _require_password_change(
+                        request,
+                        handle.handle(
+                            request, token, token_details.get_token_details
+                        ),
                     )
             raise AppAuthenticationFailed(
                 1002, _("Authentication information is incorrect! illegal user")
