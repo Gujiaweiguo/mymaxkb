@@ -958,7 +958,7 @@ class PermissionConstants(Enum):
     )
 
     WORKSPACE_READ = Permission(
-        group=Group.WORKSPACE, operate=Operate.READ, role_list=[RoleConstants.ADMIN, RoleConstants.USER],
+        group=Group.WORKSPACE, operate=Operate.READ, role_list=[RoleConstants.ADMIN],
         parent_group=[SystemGroup.WORKSPACE], is_ee=settings.edition == "EE"
     )
     WORKSPACE_CREATE = Permission(
