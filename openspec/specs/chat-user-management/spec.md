@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define community-edition management for chat users and chat user groups, including lifecycle, source tracking, and group assignment behavior.
+
+## Requirements
 
 ### Requirement: Chat users and chat user groups are managed explicitly
 The system SHALL provide community-edition management for chat users and chat user groups, including lifecycle, source tracking, and group assignment behavior.

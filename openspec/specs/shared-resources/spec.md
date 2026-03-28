@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define how supported resources are shared across workspaces in community edition and how authorized workspaces consume those shared resources.
+
+## Requirements
 
 ### Requirement: Shared resources can be exposed across authorized workspaces
 The system SHALL define how supported resources are shared across workspaces in community edition and how authorized workspaces consume those shared resources.
