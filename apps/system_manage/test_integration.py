@@ -375,3 +375,135 @@ class ResourceAuthorizationDeniedTests(TestCase):
             with self.subTest(method=method, url=url):
                 response = getattr(self.client, method)(url, payload, format="json")
                 self.assertEqual(response.status_code, 403)
+
+
+class ChatUserAuthorizationDeniedTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.regular_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="regular@example.com",
+            phone="",
+            nick_name="Regular User",
+            username="chat-user-regular",
+            password=password_encrypt("User123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+        self.client.force_authenticate(
+            user=self.regular_user, token=get_auth(self.regular_user)
+        )
+
+    def test_non_admin_cannot_list_chat_users(self):
+        response = self.client.get(f"{ADMIN_API_PREFIX}/system/chat_user/list")
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_admin_cannot_page_chat_users(self):
+        response = self.client.get(
+            f"{ADMIN_API_PREFIX}/system/chat_user/user_manage/1/20"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_admin_cannot_create_chat_user(self):
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/system/chat_user",
+            {
+                "username": "test-chat-user",
+                "password": "Test123!",
+                "nick_name": "Test Chat User",
+                "email": "test@example.com",
+                "user_group_ids": [],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_admin_cannot_update_chat_user(self):
+        from system_manage.models import ChatUser
+        import uuid_utils.compat as uuid
+
+        chat_user = ChatUser.objects.create(
+            id=uuid.uuid7(),
+            username="update-test-user",
+            password=password_encrypt("Test123!"),
+            nick_name="Update Test User",
+            source="LOCAL",
+        )
+        response = self.client.put(
+            f"{ADMIN_API_PREFIX}/system/chat_user/{chat_user.id}",
+            {"nick_name": "Updated Name"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_admin_cannot_delete_chat_user(self):
+        from system_manage.models import ChatUser
+        import uuid_utils.compat as uuid
+
+        chat_user = ChatUser.objects.create(
+            id=uuid.uuid7(),
+            username="delete-test-user",
+            password=password_encrypt("Test123!"),
+            nick_name="Delete Test User",
+            source="LOCAL",
+        )
+        response = self.client.delete(
+            f"{ADMIN_API_PREFIX}/system/chat_user/{chat_user.id}"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_admin_cannot_batch_delete_chat_users(self):
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/system/chat_user/batch_delete",
+            ["fake-id-1", "fake-id-2"],
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_admin_cannot_reset_chat_user_password(self):
+        response = self.client.put(
+            f"{ADMIN_API_PREFIX}/system/chat_user/fake-id/re_password",
+            {"password": "NewPass123!", "re_password": "NewPass123!"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_admin_cannot_get_sync_types(self):
+        response = self.client.get(
+            f"{ADMIN_API_PREFIX}/system/chat_user/sync_types"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_admin_cannot_sync_chat_users(self):
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/system/chat_user/sync/LOCAL"
+        )
+        self.assertEqual(response.status_code, 403)
+
+
+class ChatUserGroupAssignmentDeniedTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.regular_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="group-regular@example.com",
+            phone="",
+            nick_name="Group Regular User",
+            username="group-regular",
+            password=password_encrypt("User123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+        self.client.force_authenticate(
+            user=self.regular_user, token=get_auth(self.regular_user)
+        )
+
+    def test_non_admin_cannot_batch_add_chat_users_to_groups(self):
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/system/chat_user/batch_add_group",
+            {"ids": ["fake-id"], "user_group_ids": ["fake-group"], "is_append": True},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)
