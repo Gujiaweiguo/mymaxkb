@@ -3,9 +3,16 @@ import uuid_utils.compat as uuid
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from application.models import Application, ApplicationFolder, ApplicationTypeChoices
 from common.auth.handle.impl.user_token import get_auth
 from common.utils.common import password_encrypt
-from system_manage.models import Workspace, WorkspaceMember, WorkspaceUserResourcePermission
+from knowledge.models import Knowledge, KnowledgeFolder, KnowledgeType
+from system_manage.models import (
+    SharedResourceAuthorization,
+    Workspace,
+    WorkspaceMember,
+    WorkspaceUserResourcePermission,
+)
 from tools.models import Tool, ToolFolder, ToolScope, ToolType
 from users.models import User
 
@@ -507,3 +514,225 @@ class ChatUserGroupAssignmentDeniedTests(TestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 403)
+
+
+class ApplicationChatUserAuthorizationDeniedTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create(
+            id=uuid.uuid7(),
+            email="application-auth-user@example.com",
+            phone="",
+            nick_name="Application Auth User",
+            username="application-auth-user",
+            password=password_encrypt("User123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+        self.workspace = Workspace.objects.create(
+            id="application-auth-workspace",
+            name="Application Auth Workspace",
+        )
+        self.folder = ApplicationFolder.objects.create(
+            id="application-auth-folder",
+            name="Application Auth Folder",
+            workspace_id=self.workspace.id,
+            user=self.user,
+        )
+        self.application = Application.objects.create(
+            id=uuid.uuid7(),
+            name="application-auth-app",
+            desc="Application auth app",
+            user=self.user,
+            folder=self.folder,
+            workspace_id=self.workspace.id,
+            type=ApplicationTypeChoices.SIMPLE,
+            icon="./favicon.ico",
+        )
+        self.client.force_authenticate(user=self.user, token=get_auth(self.user))
+
+    def test_non_privileged_user_cannot_access_workspace_application_chat_user_endpoints(self):
+        denied_requests = [
+            (
+                "get",
+                f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/APPLICATION/{self.application.id}/user_group",
+                None,
+            ),
+            (
+                "put",
+                f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/APPLICATION/{self.application.id}/user_group",
+                [{"user_group_id": "fake-group", "is_auth": True}],
+            ),
+            (
+                "get",
+                f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/APPLICATION/{self.application.id}/user_group_id/fake-group/1/20",
+                None,
+            ),
+            (
+                "put",
+                f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/APPLICATION/{self.application.id}/user_group_id/fake-group",
+                [{"chat_user_id": "fake-chat-user", "is_auth": True}],
+            ),
+        ]
+
+        for method, url, payload in denied_requests:
+            with self.subTest(method=method, url=url):
+                response = getattr(self.client, method)(url, payload, format="json")
+                self.assertEqual(response.status_code, 403)
+
+
+class KnowledgeChatUserAuthorizationDeniedTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create(
+            id=uuid.uuid7(),
+            email="knowledge-auth-user@example.com",
+            phone="",
+            nick_name="Knowledge Auth User",
+            username="knowledge-auth-user",
+            password=password_encrypt("User123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+        self.workspace = Workspace.objects.create(
+            id="knowledge-auth-workspace",
+            name="Knowledge Auth Workspace",
+        )
+        self.folder = KnowledgeFolder.objects.create(
+            id="knowledge-auth-folder",
+            name="Knowledge Auth Folder",
+            workspace_id=self.workspace.id,
+            user=self.user,
+        )
+        self.knowledge = Knowledge.objects.create(
+            id=uuid.uuid7(),
+            name="knowledge-auth-resource",
+            desc="Knowledge auth resource",
+            user=self.user,
+            folder=self.folder,
+            workspace_id=self.workspace.id,
+            type=KnowledgeType.BASE,
+            meta={},
+        )
+        self.client.force_authenticate(user=self.user, token=get_auth(self.user))
+
+    def test_non_privileged_user_cannot_access_workspace_knowledge_chat_user_endpoints(self):
+        denied_requests = [
+            (
+                "get",
+                f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/KNOWLEDGE/{self.knowledge.id}/user_group",
+                None,
+            ),
+            (
+                "put",
+                f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/KNOWLEDGE/{self.knowledge.id}/user_group",
+                [{"user_group_id": "fake-group", "is_auth": True}],
+            ),
+            (
+                "get",
+                f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/KNOWLEDGE/{self.knowledge.id}/user_group_id/fake-group/1/20",
+                None,
+            ),
+            (
+                "put",
+                f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/KNOWLEDGE/{self.knowledge.id}/user_group_id/fake-group",
+                [{"chat_user_id": "fake-chat-user", "is_auth": True}],
+            ),
+        ]
+
+        for method, url, payload in denied_requests:
+            with self.subTest(method=method, url=url):
+                response = getattr(self.client, method)(url, payload, format="json")
+                self.assertEqual(response.status_code, 403)
+
+    def test_non_privileged_user_cannot_access_system_knowledge_chat_user_endpoints(self):
+        denied_requests = [
+            (
+                "get",
+                f"{ADMIN_API_PREFIX}/system/resource/KNOWLEDGE/{self.knowledge.id}/user_group",
+                None,
+            ),
+            (
+                "put",
+                f"{ADMIN_API_PREFIX}/system/resource/KNOWLEDGE/{self.knowledge.id}/user_group",
+                [{"user_group_id": "fake-group", "is_auth": True}],
+            ),
+            (
+                "get",
+                f"{ADMIN_API_PREFIX}/system/resource/KNOWLEDGE/{self.knowledge.id}/user_group_id/fake-group/1/20",
+                None,
+            ),
+            (
+                "put",
+                f"{ADMIN_API_PREFIX}/system/resource/KNOWLEDGE/{self.knowledge.id}/user_group_id/fake-group",
+                [{"chat_user_id": "fake-chat-user", "is_auth": True}],
+            ),
+        ]
+
+        for method, url, payload in denied_requests:
+            with self.subTest(method=method, url=url):
+                response = getattr(self.client, method)(url, payload, format="json")
+                self.assertEqual(response.status_code, 403)
+
+
+class SharedResourceAuthorizationDeniedTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create(
+            id=uuid.uuid7(),
+            email="shared-resource-user@example.com",
+            phone="",
+            nick_name="Shared Resource User",
+            username="shared-resource-user",
+            password=password_encrypt("User123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+        self.workspace = Workspace.objects.create(
+            id="shared-resource-workspace",
+            name="Shared Resource Workspace",
+        )
+        self.folder = ToolFolder.objects.create(
+            id="shared-resource-tool-folder",
+            name="Shared Resource Tool Folder",
+            workspace_id=self.workspace.id,
+        )
+        self.tool = Tool.objects.create(
+            name="Shared Resource Tool",
+            workspace_id=self.workspace.id,
+            desc="shared resource tool",
+            code="print(1)",
+            scope=ToolScope.WORKSPACE,
+            tool_type=ToolType.CUSTOM,
+            folder=self.folder,
+        )
+        self.client.force_authenticate(user=self.user, token=get_auth(self.user))
+
+    def test_non_admin_cannot_manage_shared_resource_authorization_endpoints(self):
+        denied_requests = [
+            (
+                "get",
+                f"{ADMIN_API_PREFIX}/system/shared/TOOL/{self.tool.id}/authorization",
+                None,
+            ),
+            (
+                "post",
+                f"{ADMIN_API_PREFIX}/system/shared/TOOL/{self.tool.id}/authorization",
+                {"authentication_type": "WHITE_LIST", "workspace_id_list": [self.workspace.id]},
+            ),
+        ]
+
+        for method, url, payload in denied_requests:
+            with self.subTest(method=method, url=url):
+                response = getattr(self.client, method)(url, payload, format="json")
+                self.assertEqual(response.status_code, 403)
+
+        self.assertFalse(
+            SharedResourceAuthorization.objects.filter(
+                resource_type="TOOL",
+                resource_id=str(self.tool.id),
+            ).exists()
+        )
