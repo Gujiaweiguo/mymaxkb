@@ -5,6 +5,7 @@
     destroy-on-close
     append-to-body
     align-center
+    :show-close="!props.forced"
     :close-on-click-modal="false"
     :close-on-press-escape="false"
   >
@@ -38,7 +39,7 @@
     </el-form>
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="resetPasswordDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button v-if="!props.forced" @click="close()">{{ $t('common.cancel') }}</el-button>
         <el-button type="primary" @click="resetPassword">
           {{ $t('common.save') }}
         </el-button>
@@ -57,6 +58,7 @@ import { t } from '@/locales'
 
 const props = defineProps<{
   emitConfirm?: boolean // 在父级调接口
+  forced?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -148,13 +150,17 @@ const resetPassword = () => {
       emit('confirm', resetPasswordForm.value)
     } else {
       return UserApi.resetCurrentPassword(resetPasswordForm.value).then(() => {
+        close(true)
         login.logout()
         router.push({ name: 'login' })
       })
     }
   })
 }
-const close = () => {
+const close = (force = false) => {
+  if (props.forced && !force) {
+    return
+  }
   resetPasswordDialog.value = false
 }
 

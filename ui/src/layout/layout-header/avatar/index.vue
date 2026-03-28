@@ -158,7 +158,10 @@
     </template>
   </el-dropdown>
   <APIKeyDialog :user-id="user.userInfo?.id" ref="APIKeyDialogRef" />
-  <ResetPassword ref="resetPasswordRef"></ResetPassword>
+  <ResetPassword
+    ref="resetPasswordRef"
+    :forced="!!user.userInfo?.is_edit_password"
+  ></ResetPassword>
   <AboutDialog ref="AboutDialogRef"></AboutDialog>
 
   <!-- <UserPwdDialog ref="UserPwdDialogRef" /> -->
