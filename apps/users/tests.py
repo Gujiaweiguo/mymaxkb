@@ -1,15 +1,19 @@
 from unittest.mock import patch
 
 import uuid_utils.compat as uuid
+from django.core import signing
 from django.core.cache import cache
 from django.test import TestCase
 
+from common.constants.authentication_type import AuthenticationType
+from common.constants.cache_version import Cache_Version
 from common.auth.handle.impl.user_token import get_auth
+from common.exception.app_exception import AppApiException
 from common.constants.permission_constants import PermissionConstants, RoleConstants
 from common.utils.common import password_encrypt
 from system_manage.models import SystemSetting, SettingType
 from users.models import User
-from users.serializers.login import LoginSerializer
+from users.serializers.login import LoginSerializer, system_get_key, system_version
 from users.serializers.user import get_community_user_manage_response
 
 
@@ -235,3 +239,199 @@ class LoginSerializerTests(TestCase):
         }
         serializer = LoginRequest(data=valid_data)
         self.assertTrue(serializer.is_valid())
+
+
+class LoginSerializerContractTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.admin_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="login-contract-admin@example.com",
+            phone="",
+            nick_name="Login Contract Admin",
+            username="login-contract-admin",
+            password=password_encrypt("Admin123!"),
+            role="ADMIN",
+            source="LOCAL",
+            is_active=True,
+        )
+
+    @staticmethod
+    def _get_model_side_effect(model_name):
+        if model_name == "license_is_valid":
+            return lambda: True
+        return None
+
+    def _create_login_auth_setting(
+        self,
+        *,
+        max_attempts=1,
+        failed_attempts=5,
+        lock_time=10,
+    ):
+        SystemSetting.objects.create(
+            type=SettingType.LOGIN_AUTH,
+            meta={
+                "default_value": "LOCAL",
+                "login_methods": ["LOCAL"],
+                "max_attempts": max_attempts,
+                "failed_attempts": failed_attempts,
+                "lock_time": lock_time,
+            },
+        )
+
+    @patch("users.serializers.login.DatabaseModelManage.get_model", return_value=None)
+    def test_login_returns_token_for_active_local_admin(self, _get_model):
+        result = LoginSerializer.login(
+            {
+                "username": self.admin_user.username,
+                "password": "Admin123!",
+            }
+        )
+
+        self.assertIn("token", result)
+        token_payload = signing.loads(result["token"])
+        self.assertEqual(token_payload["username"], self.admin_user.username)
+        self.assertEqual(token_payload["id"], str(self.admin_user.id))
+        self.assertEqual(
+            token_payload["type"], AuthenticationType.SYSTEM_USER.value
+        )
+
+    @patch("users.serializers.login.DatabaseModelManage.get_model", return_value=None)
+    def test_login_rejects_wrong_password(self, _get_model):
+        with self.assertRaises(AppApiException) as context:
+            LoginSerializer.login(
+                {
+                    "username": self.admin_user.username,
+                    "password": "WrongPassword",
+                }
+            )
+
+        self.assertEqual(context.exception.code, 500)
+        self.assertEqual(
+            str(context.exception.message), "The username or password is incorrect"
+        )
+
+    @patch("users.serializers.login.DatabaseModelManage.get_model", return_value=None)
+    def test_login_rejects_disabled_user_with_correct_password(self, _get_model):
+        self.admin_user.is_active = False
+        self.admin_user.save(update_fields=["is_active"])
+
+        with self.assertRaises(AppApiException) as context:
+            LoginSerializer.login(
+                {
+                    "username": self.admin_user.username,
+                    "password": "Admin123!",
+                }
+            )
+
+        self.assertEqual(context.exception.code, 1005)
+        self.assertEqual(
+            str(context.exception.message),
+            "The user has been disabled, please contact the administrator!",
+        )
+
+    @patch("users.serializers.login.DatabaseModelManage.get_model")
+    def test_login_rejects_locked_account_when_lock_cache_is_set(self, get_model):
+        get_model.side_effect = self._get_model_side_effect
+        self._create_login_auth_setting(lock_time=7)
+        cache.set(
+            system_get_key(f"system_{self.admin_user.username}_lock"),
+            1,
+            timeout=420,
+            version=system_version,
+        )
+
+        with self.assertRaises(AppApiException) as context:
+            LoginSerializer.login(
+                {
+                    "username": self.admin_user.username,
+                    "password": "Admin123!",
+                }
+            )
+
+        self.assertEqual(context.exception.code, 1005)
+        self.assertEqual(
+            str(context.exception.message),
+            "This account has been locked for 7 minutes, please try again later",
+        )
+
+    @patch("users.serializers.login.DatabaseModelManage.get_model")
+    def test_login_requires_captcha_after_max_attempts_threshold(self, get_model):
+        get_model.side_effect = self._get_model_side_effect
+        self._create_login_auth_setting(max_attempts=2)
+        cache.set(
+            system_get_key(f"system_{self.admin_user.username}"),
+            2,
+            timeout=600,
+            version=system_version,
+        )
+
+        with self.assertRaises(AppApiException) as context:
+            LoginSerializer.login(
+                {
+                    "username": self.admin_user.username,
+                    "password": "Admin123!",
+                }
+            )
+
+        self.assertEqual(context.exception.code, 1005)
+        self.assertEqual(str(context.exception.message), "Captcha is required")
+
+    @patch("users.serializers.login.DatabaseModelManage.get_model")
+    def test_login_rejects_invalid_captcha_when_required(self, get_model):
+        get_model.side_effect = self._get_model_side_effect
+        self._create_login_auth_setting(max_attempts=1)
+        cache.set(
+            system_get_key(f"system_{self.admin_user.username}"),
+            1,
+            timeout=600,
+            version=system_version,
+        )
+        cache.set(
+            Cache_Version.CAPTCHA.get_key(captcha=f"system_{self.admin_user.username}"),
+            "right",
+            timeout=300,
+            version=Cache_Version.CAPTCHA.get_version(),
+        )
+
+        with self.assertRaises(AppApiException) as context:
+            LoginSerializer.login(
+                {
+                    "username": self.admin_user.username,
+                    "password": "Admin123!",
+                    "captcha": "wrong",
+                }
+            )
+
+        self.assertEqual(context.exception.code, 1005)
+        self.assertEqual(
+            str(context.exception.message), "Captcha code error or expiration"
+        )
+
+    @patch("users.serializers.login.DatabaseModelManage.get_model")
+    def test_login_allows_correct_captcha_after_threshold(self, get_model):
+        get_model.side_effect = self._get_model_side_effect
+        self._create_login_auth_setting(max_attempts=1)
+        cache.set(
+            system_get_key(f"system_{self.admin_user.username}"),
+            1,
+            timeout=600,
+            version=system_version,
+        )
+        cache.set(
+            Cache_Version.CAPTCHA.get_key(captcha=f"system_{self.admin_user.username}"),
+            "right",
+            timeout=300,
+            version=Cache_Version.CAPTCHA.get_version(),
+        )
+
+        result = LoginSerializer.login(
+            {
+                "username": self.admin_user.username,
+                "password": "Admin123!",
+                "captcha": "RIGHT",
+            }
+        )
+
+        self.assertIn("token", result)

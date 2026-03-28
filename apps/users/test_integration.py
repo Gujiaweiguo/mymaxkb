@@ -96,6 +96,69 @@ class UserAPIIntegrationTests(TestCase):
         self.assertIn("data", data)
 
 
+class LoginContractIntegrationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.admin_username = "login-contract-admin"
+        self.admin_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="login-contract-admin@example.com",
+            phone="",
+            nick_name="Login Contract Admin",
+            username=self.admin_username,
+            password=password_encrypt("Admin123!"),
+            role="ADMIN",
+            source="LOCAL",
+            is_active=True,
+        )
+
+    def test_login_returns_token_for_active_local_admin(self):
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/user/login",
+            {"username": self.admin_username, "password": "Admin123!"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(data.get("code"), 200)
+        self.assertIn("token", data.get("data", {}))
+
+    def test_login_rejects_wrong_password(self):
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/user/login",
+            {"username": self.admin_username, "password": "WrongPassword"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(data.get("code"), 500)
+        self.assertEqual(
+            data.get("message"), "The username or password is incorrect"
+        )
+        self.assertNotIn("token", data.get("data") or {})
+
+    def test_login_rejects_disabled_user(self):
+        self.admin_user.is_active = False
+        self.admin_user.save(update_fields=["is_active"])
+
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/user/login",
+            {"username": self.admin_username, "password": "Admin123!"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(data.get("code"), 1005)
+        self.assertEqual(
+            data.get("message"),
+            "The user has been disabled, please contact the administrator!",
+        )
+        self.assertNotIn("token", data.get("data") or {})
+
+
 class UserManageCRUDIntegrationTests(TestCase):
     def setUp(self):
         self.client = APIClient()
