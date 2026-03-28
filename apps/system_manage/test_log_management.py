@@ -1,3 +1,4 @@
+from datetime import timedelta
 import json
 from types import SimpleNamespace
 from typing import Any, cast
@@ -5,8 +6,12 @@ from typing import Any, cast
 import uuid_utils.compat as uuid
 from django.db.models import QuerySet
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.test import APIRequestFactory, force_authenticate
 
+from common.exception.app_exception import AppApiException
+from common.log.log import log
+from common.job.clean_operation_log_job import clean_operation_log_job_lock
 from common.constants.permission_constants import RoleConstants
 from common.utils.common import password_encrypt
 from system_manage.models import Log, SettingType, SystemSetting, Workspace
@@ -26,6 +31,7 @@ class OperateLogTests(TestCase):
     workspace: Workspace
 
     def setUp(self):
+        Log.objects.all().delete()
         self.factory = APIRequestFactory()
         self.admin = QuerySet(User).create(
             id=uuid.uuid7(),
@@ -153,3 +159,141 @@ class OperateLogTests(TestCase):
 
         setting = SystemSetting.objects.get(type=SettingType.LOG)
         self.assertEqual(setting.meta["clean_time"], 365)
+
+    def test_operation_log_cleanup_removes_only_expired_logs_for_configured_retention(self):
+        SystemSetting.objects.update_or_create(
+            type=SettingType.LOG,
+            defaults={"meta": {"clean_time": 30}},
+        )
+        expired_log = Log.objects.create(
+            menu="Operate Log Settings",
+            operate="Cleanup expired logs",
+            operation_object={"name": "expired"},
+            user={"username": "admin-operate-log"},
+            status=200,
+            ip_address="10.0.0.3",
+            details={"path": "/operate_log/save", "body": {}, "query": {}},
+            workspace_id=self.workspace.id,
+        )
+        retained_log = Log.objects.create(
+            menu="Operate Log Settings",
+            operate="Retain fresh logs",
+            operation_object={"name": "retained"},
+            user={"username": "admin-operate-log"},
+            status=200,
+            ip_address="10.0.0.4",
+            details={"path": "/operate_log/get_clean_time", "body": {}, "query": {}},
+            workspace_id=self.workspace.id,
+        )
+        Log.objects.filter(id=expired_log.id).update(
+            create_time=timezone.now() - timedelta(days=31)
+        )
+        Log.objects.filter(id=retained_log.id).update(
+            create_time=timezone.now() - timedelta(days=29)
+        )
+
+        clean_operation_log_job_lock.__wrapped__()
+
+        self.assertFalse(Log.objects.filter(id=expired_log.id).exists())
+        self.assertTrue(Log.objects.filter(id=retained_log.id).exists())
+        self.assertEqual(Log.objects.count(), 3)
+
+    def test_operation_log_cleanup_uses_default_retention_when_setting_missing(self):
+        expired_log = Log.objects.create(
+            menu="Operate Log Settings",
+            operate="Cleanup with default retention",
+            operation_object={"name": "expired-default"},
+            user={"username": "admin-operate-log"},
+            status=200,
+            ip_address="10.0.0.5",
+            details={"path": "/operate_log/export", "body": {}, "query": {}},
+            workspace_id=self.workspace.id,
+        )
+        retained_log = Log.objects.create(
+            menu="Operate Log Settings",
+            operate="Keep within default retention",
+            operation_object={"name": "retained-default"},
+            user={"username": "admin-operate-log"},
+            status=200,
+            ip_address="10.0.0.6",
+            details={"path": "/operate_log/1/20", "body": {}, "query": {}},
+            workspace_id=self.workspace.id,
+        )
+        Log.objects.filter(id=expired_log.id).update(
+            create_time=timezone.now() - timedelta(days=181)
+        )
+        Log.objects.filter(id=retained_log.id).update(
+            create_time=timezone.now() - timedelta(days=179)
+        )
+
+        clean_operation_log_job_lock.__wrapped__()
+
+        self.assertFalse(Log.objects.filter(id=expired_log.id).exists())
+        self.assertTrue(Log.objects.filter(id=retained_log.id).exists())
+        self.assertEqual(Log.objects.count(), 3)
+
+
+class OperateLogDecoratorTests(TestCase):
+    class DecoratedView:
+        @log(menu="Decorator Menu", operate="Successful operation")
+        def success(self, request, **kwargs):
+            return {"ok": True}
+
+        @log(menu="Decorator Menu", operate="Failing operation")
+        def failure(self, request, **kwargs):
+            raise AppApiException(500, "boom")
+
+    def setUp(self):
+        Log.objects.all().delete()
+        self.user = QuerySet(User).create(
+            id=uuid.uuid7(),
+            email="decorator-user@example.com",
+            phone="",
+            nick_name="decorator-user",
+            username="decorator-user",
+            password=password_encrypt("Secret1!"),
+            role=RoleConstants.ADMIN.name,
+            source="LOCAL",
+            is_active=True,
+        )
+
+    def _build_request(self, path: str):
+        return SimpleNamespace(
+            user=self.user,
+            path=path,
+            data={"field": "value"},
+            query_params={"page": "1"},
+            META={"REMOTE_ADDR": "127.0.0.1"},
+        )
+
+    def test_log_decorator_writes_log_on_successful_request(self):
+        request = self._build_request("/admin/api/test/success")
+
+        result = self.DecoratedView().success(request, workspace_id="workspace-success")
+
+        self.assertEqual(result, {"ok": True})
+        self.assertEqual(Log.objects.count(), 1)
+        record = Log.objects.get()
+        self.assertEqual(record.menu, "Decorator Menu")
+        self.assertEqual(record.operate, "Successful operation")
+        self.assertEqual(record.status, 200)
+        self.assertEqual(record.user["username"], self.user.username)
+        self.assertEqual(record.ip_address, "127.0.0.1")
+        self.assertEqual(record.details["path"], "/admin/api/test/success")
+        self.assertEqual(record.workspace_id, "workspace-success")
+
+    def test_log_decorator_writes_log_when_wrapped_view_raises(self):
+        request = self._build_request("/admin/api/test/failure")
+
+        with self.assertRaises(AppApiException):
+            self.DecoratedView().failure(request, workspace_id="workspace-failure")
+
+        self.assertEqual(Log.objects.count(), 1)
+        record = Log.objects.get()
+        self.assertEqual(record.menu, "Decorator Menu")
+        self.assertEqual(record.operate, "Failing operation")
+        self.assertEqual(record.status, 500)
+        self.assertEqual(record.user["username"], self.user.username)
+        self.assertEqual(record.ip_address, "127.0.0.1")
+        self.assertEqual(record.details["path"], "/admin/api/test/failure")
+        self.assertEqual(record.workspace_id, "workspace-failure")
