@@ -20,6 +20,6 @@
 
 ## 5. Packaging and verification
 
-- [ ] 5.1 Run full Django login-related tests
-- [ ] 5.2 Run frontend type-check and lint
-- [ ] 5.3 Package the change into atomic commits and create a PR
+- [x] 5.1 Run full Django login-related tests
+- [x] 5.2 Run frontend type-check and lint
+- [x] 5.3 Package the change into atomic commits and create a PR
