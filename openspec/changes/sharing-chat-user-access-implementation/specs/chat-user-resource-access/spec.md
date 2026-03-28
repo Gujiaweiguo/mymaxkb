@@ -1,8 +1,4 @@
-## Purpose
-
-Define chat-user and chat-user-group access control for applications and datasets, including password-based and authenticated access restriction behavior.
-
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Chat-user access to applications and datasets is policy controlled
 The system SHALL define chat-user and chat-user-group access control for supported applications and datasets, including application access restriction behavior.
