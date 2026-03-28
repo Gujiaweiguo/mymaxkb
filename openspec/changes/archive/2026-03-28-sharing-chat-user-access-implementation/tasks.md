@@ -39,7 +39,7 @@
 
 - [x] 7.1 Run full Django test suite
 - [x] 7.2 Run frontend type-check and lint
-- [ ] 7.3 Split changes into atomic commits
-- [ ] 7.4 Create feature branch and PR
-- [ ] 7.5 Monitor CI and address failures
-- [ ] 7.6 Merge and clean up branch
+- [x] 7.3 Split changes into atomic commits
+- [x] 7.4 Create feature branch and PR
+- [x] 7.5 Monitor CI and address failures
+- [x] 7.6 Merge and clean up branch
