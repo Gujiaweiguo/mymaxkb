@@ -24,9 +24,12 @@ Recommended local checks:
 
 ```bash
 gitleaks git --config .gitleaks.toml
-gitleaks dir --config .gitleaks.toml .
 pre-commit run gitleaks --all-files
 ```
+
+`gitleaks git --config .gitleaks.toml` is the default repository verification command because it matches the tracked-history scope enforced in CI.
+
+Use `gitleaks dir --config .gitleaks.toml .` only for an explicit working-tree audit. It scans gitignored local files too, so local `.env` and `.env.local-dev` secrets may appear even when the tracked repository history is clean.
 
 Repository-specific exclusions and reviewed placeholders are maintained in `.gitleaks.toml`.
 

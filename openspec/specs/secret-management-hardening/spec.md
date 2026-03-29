@@ -21,3 +21,10 @@ The system SHALL apply the same secret-sourcing rules across web, worker, and re
 #### Scenario: Secret-handling helper is invoked without configured secret material
 - **WHEN** a helper responsible for encryption or signing is called without configured secret material
 - **THEN** the helper returns an explicit configuration failure instead of inventing or deriving a substitute secret
+
+### Requirement: Persisted secrets are redacted in read paths
+The system SHALL avoid echoing stored secret values back to administrators in normal read/list responses when the full secret is not required for immediate one-time use.
+
+#### Scenario: persisted application API key is listed after creation
+- **WHEN** an administrator lists existing application API keys after initial creation
+- **THEN** the system returns a masked representation instead of the full stored secret while preserving key-management metadata
