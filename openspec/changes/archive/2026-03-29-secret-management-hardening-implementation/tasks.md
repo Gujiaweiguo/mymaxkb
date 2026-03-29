@@ -18,4 +18,4 @@
 ## 4. Packaging and verification
 
 - [x] 4.1 Run the full secret-hardening-related verification for the implemented slice
-- [ ] 4.2 Package the change into atomic commits and create a PR
+- [x] 4.2 Package the change into atomic commits and create a PR
