@@ -10,6 +10,7 @@ from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.test import APIRequestFactory, force_authenticate
 
+from common.middleware.cross_domain_middleware import CrossDomainMiddleware
 from common.constants.permission_constants import RoleConstants
 from common.utils.common import password_encrypt
 from system_manage.models import SystemApiKey
@@ -30,6 +31,7 @@ class SystemApiKeyTests(TestCase):
 
     def setUp(self):
         self.factory = APIRequestFactory()
+        self.middleware = CrossDomainMiddleware(lambda request: None)
         self.admin = QuerySet(User).create(
             id=uuid.uuid7(),
             email="admin@example.com",
@@ -168,3 +170,43 @@ class SystemApiKeyTests(TestCase):
 
         self.assertEqual(response.status_code, 401)
         self.assertEqual(payload["code"], 500)
+
+    def test_system_api_key_cross_domain_allows_listed_origin(self):
+        system_api_key = QuerySet(SystemApiKey).create(
+            allow_cross_domain=True,
+            cross_domain_list=["https://allowed.example.com"],
+        )
+        request = self.factory.get(
+            "/system/profile",
+            HTTP_AUTHORIZATION=f"Bearer {system_api_key.secret_key}",
+            HTTP_ORIGIN="https://allowed.example.com",
+        )
+
+        response = self.call_view(SystemProfileApiKey, request)
+        response = self.middleware.process_response(request, response)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Access-Control-Allow-Origin"], "https://allowed.example.com"
+        )
+        self.assertEqual(response["Access-Control-Allow-Methods"], "GET,POST,DELETE,PUT")
+        self.assertIn("Authorization", response["Access-Control-Allow-Headers"])
+
+    def test_system_api_key_cross_domain_denies_unlisted_origin(self):
+        system_api_key = QuerySet(SystemApiKey).create(
+            allow_cross_domain=True,
+            cross_domain_list=["https://allowed.example.com"],
+        )
+        request = self.factory.get(
+            "/system/profile",
+            HTTP_AUTHORIZATION=f"Bearer {system_api_key.secret_key}",
+            HTTP_ORIGIN="https://denied.example.com",
+        )
+
+        response = self.call_view(SystemProfileApiKey, request)
+        response = self.middleware.process_response(request, response)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.has_header("Access-Control-Allow-Origin"))
+        self.assertFalse(response.has_header("Access-Control-Allow-Methods"))
+        self.assertFalse(response.has_header("Access-Control-Allow-Headers"))
