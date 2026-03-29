@@ -4,6 +4,8 @@ import importlib.util
 from pathlib import Path
 
 from application.models import Application, ApplicationFolder, ApplicationTypeChoices
+from application.models.application_api_key import ApplicationApiKey
+from application.serializers.application_api_key import ApplicationKeySerializer
 from application.serializers.system_resource_application import (
     SystemResourceApplicationQuerySerializer,
 )
@@ -187,6 +189,65 @@ class ApplicationFolderModelTests(TestCase):
         )
 
         self.assertEqual(folder.application_set.count(), 2)
+
+
+class ApplicationApiKeyMaskingTests(TestCase):
+    def create_user(self, username: str):
+        return User.objects.create(
+            id=uuid.uuid7(),
+            email=f"{username}@example.com",
+            phone="",
+            nick_name=f"{username}-nick",
+            username=username,
+            password=password_encrypt("Secret1!"),
+            role="ADMIN",
+            source="LOCAL",
+            is_active=True,
+        )
+
+    def create_application(self):
+        user = self.create_user("app-key-user")
+        folder = ApplicationFolder.objects.create(
+            id="app-key-folder",
+            name="App Key Folder",
+            user=user,
+            workspace_id="default",
+        )
+        return Application.objects.create(
+            id=uuid.uuid7(),
+            name="App Key App",
+            desc="App key description",
+            user=user,
+            folder=folder,
+            workspace_id="default",
+            type=ApplicationTypeChoices.SIMPLE,
+            icon="./favicon.ico",
+        )
+
+    def test_generate_returns_full_secret_key_once(self):
+        application = self.create_application()
+
+        result = ApplicationKeySerializer(data={"application_id": application.id}).generate()
+
+        self.assertTrue(result["secret_key"].startswith("agent-"))
+        self.assertNotIn("******", result["secret_key"])
+        self.assertEqual(len(result["secret_key"]), len("agent-") + 32)
+
+    def test_page_masks_application_secret_key_after_creation(self):
+        application = self.create_application()
+        created = ApplicationKeySerializer(data={"application_id": application.id}).generate()
+
+        page = ApplicationKeySerializer(data={"application_id": application.id}).page(1, 20)
+
+        self.assertEqual(page["total"], 1)
+        record = page["records"][0]
+        self.assertEqual(record["id"], created["id"])
+        self.assertNotEqual(record["secret_key"], created["secret_key"])
+        self.assertIn("******", record["secret_key"])
+        self.assertEqual(record["secret_key"], f"{created['secret_key'][:8]}******{created['secret_key'][-4:]}")
+
+        stored = ApplicationApiKey.objects.get(id=created["id"])
+        self.assertEqual(stored.secret_key, created["secret_key"])
 
 
 _platform_test_path = Path(__file__).with_name('tests').joinpath('test_platform_integration.py')

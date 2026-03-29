@@ -19,6 +19,21 @@ class ApplicationKeySerializerModel(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class ApplicationKeyListSerializerModel(serializers.ModelSerializer):
+    secret_key = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ApplicationApiKey
+        fields = "__all__"
+
+    @staticmethod
+    def get_secret_key(obj: ApplicationApiKey):
+        secret_key = obj.secret_key or ""
+        if len(secret_key) <= 12:
+            return secret_key
+        return f"{secret_key[:8]}******{secret_key[-4:]}"
+
+
 class EditApplicationKeySerializer(serializers.Serializer):
     is_active = serializers.BooleanField(required=False, label=_("Availability"))
 
@@ -68,7 +83,7 @@ class ApplicationKeySerializer(serializers.Serializer):
         query_set = query_set.order_by(order_by)
         return page_search(current_page, page_size,
                            query_set,
-                           post_records_handler=lambda u: ApplicationKeySerializerModel(u).data)
+                           post_records_handler=lambda u: ApplicationKeyListSerializerModel(u).data)
 
     class Operate(serializers.Serializer):
         workspace_id = serializers.CharField(required=False, allow_null=True, allow_blank=True, label=_("Workspace ID"))
