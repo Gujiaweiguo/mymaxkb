@@ -29,7 +29,13 @@
                 {{ row.secret_key }}
               </span>
             </el-tooltip>
-            <el-button type="primary" text @click="copyClick(row.secret_key)" class="copy-btn">
+            <el-button
+              v-if="!isMaskedSecretKey(row.secret_key)"
+              type="primary"
+              text
+              @click="copyClick(row.secret_key)"
+              class="copy-btn"
+            >
               <AppIcon iconName="app-copy"></AppIcon>
             </el-button>
           </div>
@@ -249,6 +255,10 @@ function getExpiryClass(expireTime: any) {
 
 function refresh() {
   getApiKeyList()
+}
+
+function isMaskedSecretKey(secretKey: string) {
+  return secretKey?.includes('*')
 }
 
 defineExpose({open})

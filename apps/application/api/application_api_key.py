@@ -1,14 +1,18 @@
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter
 
-from application.serializers.application_api_key import EditApplicationKeySerializer, ApplicationKeySerializerModel
+from application.serializers.application_api_key import (
+    ApplicationKeyListSerializerModel,
+    ApplicationKeySerializerModel,
+    EditApplicationKeySerializer,
+)
 from common.mixins.api_mixin import APIMixin
 from common.result import ResultSerializer
 
 
 class ApplicationKeyListResult(ResultSerializer):
     def get_data(self):
-        return ApplicationKeySerializerModel(many=True)
+        return ApplicationKeyListSerializerModel(many=True)
 
 
 class ApplicationKeyResult(ResultSerializer):

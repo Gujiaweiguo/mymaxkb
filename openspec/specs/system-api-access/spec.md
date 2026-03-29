@@ -5,7 +5,7 @@ TBD
 ## Requirements
 
 ### Requirement: System API access is governed through managed privileged credentials
-The system SHALL define system API access behavior for community edition, including privileged credential lifecycle and access-control expectations.
+The system SHALL define system API access behavior for community edition, including privileged credential lifecycle, access-control expectations, and configured cross-domain enforcement for supported system API keys.
 
 #### Scenario: authorized administrator creates or rotates a system API credential
 - **WHEN** an authorized administrator creates, updates, or disables a managed system API credential
@@ -18,3 +18,7 @@ The system SHALL define system API access behavior for community edition, includ
 #### Scenario: invalid or disabled credential is denied
 - **WHEN** a request presents an invalid, expired, or disabled system API credential
 - **THEN** the system denies system API access
+
+#### Scenario: cross-domain access is restricted by system API key policy
+- **WHEN** a request uses a valid system API credential with configured cross-domain restrictions
+- **THEN** the system applies the key's cross-domain policy to the response behavior for that request
