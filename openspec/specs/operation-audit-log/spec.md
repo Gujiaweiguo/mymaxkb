@@ -5,7 +5,7 @@ TBD
 ## Requirements
 
 ### Requirement: Administrative operations are logged and reviewable
-The system SHALL record and expose administrative operation logs for community edition.
+The system SHALL record and expose administrative operation logs for community edition, including retention-lifecycle enforcement for stored log records.
 
 #### Scenario: administrative operation produces a log record
 - **WHEN** a tracked administrative operation occurs
@@ -17,4 +17,4 @@ The system SHALL record and expose administrative operation logs for community e
 
 #### Scenario: log-retention settings control cleanup behavior
 - **WHEN** an authorized administrator configures supported operation-log retention settings
-- **THEN** the system applies those retention settings to operation-log lifecycle management
+- **THEN** the system applies those retention settings to operation-log lifecycle management by removing expired records while preserving records newer than the configured retention window
