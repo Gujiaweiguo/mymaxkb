@@ -20,3 +20,7 @@ The system SHALL provide explicit administrative user lifecycle management for c
 #### Scenario: authenticated actor checks CE validation allowance
 - **WHEN** an authenticated actor requests the supported validation endpoint with a count that remains within the CE allowance
 - **THEN** the system reports that the requested action is valid
+
+#### Scenario: non-admin actor cannot manage system API keys
+- **WHEN** a non-admin actor requests create, page, edit, or delete operations for system API keys
+- **THEN** the system rejects the request with forbidden access
