@@ -34,3 +34,7 @@ The system SHALL provide configurable administrative login authentication for co
 #### Scenario: administrator updates login auth settings
 - **WHEN** an authorized administrator submits login auth settings through the admin endpoint
 - **THEN** the system persists the normalized configuration and returns the normalized response payload
+
+#### Scenario: non-admin actor cannot manage admin login auth settings
+- **WHEN** a non-admin actor requests admin login-auth read or update operations
+- **THEN** the system rejects the request with forbidden access
