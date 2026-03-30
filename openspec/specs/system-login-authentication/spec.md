@@ -22,3 +22,15 @@ The system SHALL provide configurable administrative login authentication for co
 #### Scenario: non-admin actor cannot manage platform login sources
 - **WHEN** a non-admin actor requests platform source list, save, or validate operations for administrative login integrations
 - **THEN** the system rejects the request with forbidden access
+
+#### Scenario: administrator reads default login auth settings
+- **WHEN** an authorized administrator requests login auth settings before any configuration has been saved
+- **THEN** the system returns the normalized default login auth configuration
+
+#### Scenario: administrator reads persisted login auth settings
+- **WHEN** an authorized administrator requests login auth settings after configuration has been saved
+- **THEN** the system returns the persisted login auth configuration with normalized response fields
+
+#### Scenario: administrator updates login auth settings
+- **WHEN** an authorized administrator submits login auth settings through the admin endpoint
+- **THEN** the system persists the normalized configuration and returns the normalized response payload
