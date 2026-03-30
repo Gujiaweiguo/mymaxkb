@@ -8,7 +8,10 @@ from common.auth.handle.impl.user_token import get_auth
 from common.utils.common import password_encrypt
 from knowledge.models import Knowledge, KnowledgeFolder, KnowledgeType
 from system_manage.models import (
+    ChatUser,
     SharedResourceAuthorization,
+    UserGroup,
+    UserGroupRelation,
     Workspace,
     WorkspaceMember,
     WorkspaceUserResourcePermission,
@@ -514,6 +517,68 @@ class ChatUserGroupAssignmentDeniedTests(TestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 403)
+
+
+class UserGroupAuthorizationDeniedTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.regular_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="user-group-regular@example.com",
+            phone="",
+            nick_name="User Group Regular User",
+            username="user-group-regular",
+            password=password_encrypt("User123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+        self.chat_user = ChatUser.objects.create(
+            id=uuid.uuid7(),
+            username="denied-chat-user",
+            password=password_encrypt("Test123!"),
+            nick_name="Denied Chat User",
+            source="LOCAL",
+        )
+        self.user_group = UserGroup.objects.create(
+            id="denied-group",
+            name="Denied Group",
+        )
+        self.group_relation = UserGroupRelation.objects.create(
+            group_id=self.user_group.id,
+            user_id=self.chat_user.id,
+        )
+        self.client.force_authenticate(
+            user=self.regular_user,
+            token=get_auth(self.regular_user),
+        )
+
+    def test_non_admin_cannot_manage_user_group_endpoints(self):
+        denied_requests = [
+            ("get", f"{ADMIN_API_PREFIX}/system/group", None),
+            ("post", f"{ADMIN_API_PREFIX}/system/group", {"name": "Blocked Group"}),
+            ("delete", f"{ADMIN_API_PREFIX}/system/group/{self.user_group.id}", None),
+            (
+                "post",
+                f"{ADMIN_API_PREFIX}/system/group/{self.user_group.id}/add_member",
+                {"user_ids": [str(self.chat_user.id)]},
+            ),
+            (
+                "post",
+                f"{ADMIN_API_PREFIX}/system/group/{self.user_group.id}/remove_member",
+                {"group_relation_ids": [str(self.group_relation.id)]},
+            ),
+            (
+                "get",
+                f"{ADMIN_API_PREFIX}/system/group/{self.user_group.id}/user_list/1/20",
+                None,
+            ),
+        ]
+
+        for method, url, payload in denied_requests:
+            with self.subTest(method=method, url=url):
+                response = getattr(self.client, method)(url, payload, format="json")
+                self.assertEqual(response.status_code, 403)
 
 
 class ApplicationChatUserAuthorizationDeniedTests(TestCase):
