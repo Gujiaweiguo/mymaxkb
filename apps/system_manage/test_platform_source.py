@@ -34,6 +34,23 @@ class PlatformSourceTests(TestCase):
             permission_list=[],
         )
 
+    def test_get_platform_source_returns_three_unconfigured_entries(self):
+        request = self.factory.get("/platform/source")
+        force_authenticate(request, user=self.admin, token=self.auth_token)
+
+        response = PlatformSourceView.as_view()(request)
+        payload = json.loads(response.content)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(payload["data"]), 3)
+        auth_types = {item["auth_type"] for item in payload["data"]}
+        self.assertEqual(auth_types, {"wecom", "dingtalk", "lark"})
+        for item in payload["data"]:
+            self.assertEqual(item["state"], "unconfigured")
+            self.assertFalse(item["is_configured"])
+            self.assertFalse(item["is_active"])
+            self.assertFalse(item["is_valid"])
+
     def test_system_platform_source_round_trip(self):
         request = self.factory.post(
             "/platform/source",
@@ -109,4 +126,47 @@ class PlatformSourceTests(TestCase):
             SystemSetting.objects.filter(
                 type=SettingType.CHAT_USER_PLATFORM_SOURCE
             ).exists()
+        )
+
+    def test_get_chat_user_platform_source_returns_three_unconfigured_entries(self):
+        request = self.factory.get("/chat_user/auth/platform/source")
+        force_authenticate(request, user=self.admin, token=self.auth_token)
+
+        response = ChatUserPlatformSourceView.as_view()(request)
+        payload = json.loads(response.content)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(payload["data"]), 3)
+        auth_types = {item["auth_type"] for item in payload["data"]}
+        self.assertEqual(auth_types, {"wecom", "dingtalk", "lark"})
+        for item in payload["data"]:
+            self.assertEqual(item["state"], "unconfigured")
+            self.assertFalse(item["is_configured"])
+            self.assertFalse(item["is_active"])
+            self.assertFalse(item["is_valid"])
+
+    def test_chat_user_platform_source_post_persists_configuration(self):
+        request = self.factory.post(
+            "/chat_user/auth/platform/source",
+            data={
+                "key": "lark",
+                "config": {"app_key": "app-key", "app_secret": "app-secret"},
+            },
+            format="json",
+        )
+        force_authenticate(request, user=self.admin, token=self.auth_token)
+
+        response = ChatUserPlatformSourceView.as_view()(request)
+        payload = json.loads(response.content)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["data"]["auth_type"], "lark")
+        self.assertEqual(payload["data"]["state"], "configured")
+        self.assertFalse(payload["data"]["is_active"])
+        self.assertFalse(payload["data"]["is_valid"])
+        setting = SystemSetting.objects.get(type=SettingType.CHAT_USER_PLATFORM_SOURCE)
+        self.assertIn("lark", setting.meta)
+        self.assertEqual(
+            setting.meta["lark"]["config"],
+            {"app_key": "app-key", "app_secret": "app-secret"},
         )
