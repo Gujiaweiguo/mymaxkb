@@ -18,3 +18,7 @@ The system SHALL provide configurable administrative login authentication for co
 #### Scenario: administrator lists configured platform login sources
 - **WHEN** an authorized administrator requests the platform source configuration list for administrative login integrations
 - **THEN** the system returns the supported platform source entries and their current configuration state
+
+#### Scenario: non-admin actor cannot manage platform login sources
+- **WHEN** a non-admin actor requests platform source list, save, or validate operations for administrative login integrations
+- **THEN** the system rejects the request with forbidden access

@@ -26,3 +26,7 @@ The system SHALL provide community-edition management for chat users and chat us
 #### Scenario: administrator saves chat-user platform source configuration
 - **WHEN** an authorized administrator saves a chat-user platform source configuration for a supported external platform
 - **THEN** the system persists that chat-user platform source configuration for later synchronization and administration
+
+#### Scenario: non-admin actor cannot manage chat-user platform sources
+- **WHEN** a non-admin actor requests chat-user platform source list, save, or validate operations
+- **THEN** the system rejects the request with forbidden access
