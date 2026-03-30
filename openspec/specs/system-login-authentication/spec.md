@@ -14,3 +14,7 @@ The system SHALL provide configurable administrative login authentication for co
 #### Scenario: unsupported actor fails authentication
 - **WHEN** a login attempt does not satisfy the configured authentication requirements
 - **THEN** the system denies administrative access
+
+#### Scenario: administrator lists configured platform login sources
+- **WHEN** an authorized administrator requests the platform source configuration list for administrative login integrations
+- **THEN** the system returns the supported platform source entries and their current configuration state
