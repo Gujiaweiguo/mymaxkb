@@ -7,8 +7,9 @@ import uuid_utils.compat as uuid
 from django.db.models import QuerySet
 from django.test import TestCase
 from django.utils import timezone
-from rest_framework.test import APIRequestFactory, force_authenticate
+from rest_framework.test import APIClient, APIRequestFactory, force_authenticate
 
+from common.auth.handle.impl.user_token import get_auth
 from common.exception.app_exception import AppApiException
 from common.log.log import log
 from common.job.clean_operation_log_job import clean_operation_log_job_lock
@@ -22,6 +23,9 @@ from system_manage.views.log_management import (
     OperateLogPageView,
 )
 from users.models import User
+
+
+ADMIN_API_PREFIX = '/admin/api'
 
 
 class OperateLogTests(TestCase):
@@ -297,3 +301,33 @@ class OperateLogDecoratorTests(TestCase):
         self.assertEqual(record.ip_address, "127.0.0.1")
         self.assertEqual(record.details["path"], "/admin/api/test/failure")
         self.assertEqual(record.workspace_id, "workspace-failure")
+
+
+class OperateLogAuthorizationDeniedTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create(
+            id=uuid.uuid7(),
+            email='log-user@example.com',
+            phone='',
+            nick_name='log-user',
+            username='log-user',
+            password=password_encrypt('User123!'),
+            role=RoleConstants.USER.name,
+            source='LOCAL',
+            is_active=True,
+        )
+
+    def test_non_admin_cannot_manage_operate_log_endpoints(self):
+        self.client.force_authenticate(user=self.user, token=get_auth(self.user))
+
+        responses = [
+            self.client.get(f'{ADMIN_API_PREFIX}/operate_log/1/10'),
+            self.client.get(f'{ADMIN_API_PREFIX}/operate_log/menu_operation_option/'),
+            self.client.post(f'{ADMIN_API_PREFIX}/operate_log/export/', {}, format='json'),
+            self.client.get(f'{ADMIN_API_PREFIX}/operate_log/get_clean_time'),
+            self.client.post(f'{ADMIN_API_PREFIX}/operate_log/save', {}, format='json'),
+        ]
+
+        for response in responses:
+            self.assertEqual(response.status_code, 403)
