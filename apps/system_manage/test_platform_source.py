@@ -33,6 +33,21 @@ class PlatformSourceTests(TestCase):
             role_list=[RoleConstants.ADMIN.value.__str__()],
             permission_list=[],
         )
+        self.user = User.objects.create(
+            id=uuid.uuid7(),
+            email="user@example.com",
+            phone="",
+            nick_name="user-platform",
+            username="user-platform",
+            password=password_encrypt("Secret1!"),
+            role=RoleConstants.USER.name,
+            source="LOCAL",
+            is_active=True,
+        )
+        self.user_token = SimpleNamespace(
+            role_list=[RoleConstants.USER.value.__str__()],
+            permission_list=[],
+        )
 
     def test_get_platform_source_returns_three_unconfigured_entries(self):
         request = self.factory.get("/platform/source")
@@ -170,3 +185,63 @@ class PlatformSourceTests(TestCase):
             setting.meta["lark"]["config"],
             {"app_key": "app-key", "app_secret": "app-secret"},
         )
+
+    def test_non_admin_cannot_access_system_platform_source_endpoints(self):
+        requests = [
+            self.factory.get("/platform/source"),
+            self.factory.post(
+                "/platform/source",
+                data={
+                    "key": "wecom",
+                    "config": {
+                        "corp_id": "corp",
+                        "agent_id": "agent",
+                        "app_secret": "secret",
+                    },
+                },
+                format="json",
+            ),
+            self.factory.put(
+                "/platform/source",
+                data={
+                    "key": "wecom",
+                    "config": {
+                        "corp_id": "corp",
+                        "agent_id": "agent",
+                        "app_secret": "secret",
+                    },
+                },
+                format="json",
+            ),
+        ]
+
+        for request in requests:
+            force_authenticate(request, user=self.user, token=self.user_token)
+            response = PlatformSourceView.as_view()(request)
+            self.assertEqual(response.status_code, 403)
+
+    def test_non_admin_cannot_access_chat_user_platform_source_endpoints(self):
+        requests = [
+            self.factory.get("/chat_user/auth/platform/source"),
+            self.factory.post(
+                "/chat_user/auth/platform/source",
+                data={
+                    "key": "lark",
+                    "config": {"app_key": "app-key", "app_secret": "app-secret"},
+                },
+                format="json",
+            ),
+            self.factory.put(
+                "/chat_user/auth/platform/source",
+                data={
+                    "key": "lark",
+                    "config": {"app_key": "app-key", "app_secret": "app-secret"},
+                },
+                format="json",
+            ),
+        ]
+
+        for request in requests:
+            force_authenticate(request, user=self.user, token=self.user_token)
+            response = ChatUserPlatformSourceView.as_view()(request)
+            self.assertEqual(response.status_code, 403)
