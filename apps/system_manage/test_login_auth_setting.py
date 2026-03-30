@@ -99,6 +99,17 @@ class LoginAuthSettingAdminAPITests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.admin = _make_admin()
+        self.user = User.objects.create(
+            id=uuid.uuid7(),
+            email='login-auth-user@example.com',
+            phone='',
+            nick_name='Login Auth User',
+            username='login-auth-user',
+            password=password_encrypt('User123!'),
+            role='USER',
+            source='LOCAL',
+            is_active=True,
+        )
         self.client.force_authenticate(user=self.admin, token=get_auth(self.admin))
 
     def test_admin_get_returns_default_shape_when_no_setting(self):
@@ -205,3 +216,22 @@ class LoginAuthSettingAdminAPITests(TestCase):
         self.assertEqual(setting.meta['max_attempts'], 1)
         self.assertEqual(setting.meta['failed_attempts'], -1)
         self.assertEqual(setting.meta['lock_time'], 10)
+
+    def test_non_admin_cannot_manage_login_auth_settings(self):
+        self.client.force_authenticate(user=self.user, token=get_auth(self.user))
+
+        get_response = self.client.get(AUTH_SETTING_URL)
+        put_response = self.client.put(
+            AUTH_SETTING_URL,
+            {
+                'default_value': 'LOCAL',
+                'login_methods': ['LOCAL'],
+                'max_attempts': 3,
+                'failed_attempts': 8,
+                'lock_time': 15,
+            },
+            format='json',
+        )
+
+        self.assertEqual(get_response.status_code, 403)
+        self.assertEqual(put_response.status_code, 403)
