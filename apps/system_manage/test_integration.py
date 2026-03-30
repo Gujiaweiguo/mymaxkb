@@ -16,6 +16,7 @@ from system_manage.models import (
     WorkspaceMember,
     WorkspaceUserResourcePermission,
 )
+from system_manage.models.resource_mapping import ResourceMapping
 from tools.models import Tool, ToolFolder, ToolScope, ToolType
 from users.models import User
 
@@ -942,3 +943,109 @@ class SharedResourceAuthorizationHappyPathTests(TestCase):
         )
         self.assertEqual(instance.authentication_type, "WHITE_LIST")
         self.assertEqual(instance.workspace_id_list, [self.consumer_workspace.id])
+
+
+class ResourceMappingIntegrationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.workspace, _ = Workspace.objects.get_or_create(
+            id="default",
+            defaults={"name": "default"},
+        )
+        self.manager = User.objects.create(
+            id=uuid.uuid7(),
+            email="resource-mapping-manager@example.com",
+            phone="",
+            nick_name="Resource Mapping Manager",
+            username="resource-mapping-manager",
+            password=password_encrypt("Manage123!"),
+            role="ADMIN",
+            source="LOCAL",
+            is_active=True,
+        )
+        self.regular_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="resource-mapping-user@example.com",
+            phone="",
+            nick_name="Resource Mapping User",
+            username="resource-mapping-user",
+            password=password_encrypt("User123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+        self.application_folder = ApplicationFolder.objects.create(
+            id="resource-mapping-app-folder",
+            name="Resource Mapping App Folder",
+            workspace_id=self.workspace.id,
+            user=self.manager,
+        )
+        self.application = Application.objects.create(
+            id=uuid.uuid7(),
+            name="Resource Mapping Application",
+            user=self.manager,
+            folder=self.application_folder,
+            workspace_id=self.workspace.id,
+            type=ApplicationTypeChoices.SIMPLE,
+            desc="resource mapping application",
+            icon="./favicon.ico",
+        )
+        self.knowledge_folder = KnowledgeFolder.objects.create(
+            id="resource-mapping-knowledge-folder",
+            name="Resource Mapping Knowledge Folder",
+            workspace_id=self.workspace.id,
+            user=self.manager,
+        )
+        self.knowledge = Knowledge.objects.create(
+            id=uuid.uuid7(),
+            name="Resource Mapping Knowledge",
+            desc="resource mapping knowledge",
+            user=self.manager,
+            folder=self.knowledge_folder,
+            workspace_id=self.workspace.id,
+            type=KnowledgeType.BASE,
+            meta={},
+        )
+        self.client.force_authenticate(user=self.manager, token=get_auth(self.manager))
+
+    def test_workspace_manage_actor_can_page_resource_mappings(self):
+        ResourceMapping.objects.create(
+            source_type="APPLICATION",
+            target_type="KNOWLEDGE",
+            source_id=str(self.application.id),
+            target_id=str(self.knowledge.id),
+        )
+
+        response = self.client.get(
+            f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/resource_mapping/KNOWLEDGE/{self.knowledge.id}/1/20"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+        self.assertEqual(payload["data"]["total"], 1)
+        self.assertEqual(len(payload["data"]["records"]), 1)
+        record = payload["data"]["records"][0]
+        self.assertEqual(record["source_type"], "APPLICATION")
+        self.assertEqual(record["target_type"], "KNOWLEDGE")
+        self.assertEqual(str(record["target_id"]), str(self.knowledge.id))
+
+    def test_unauthorized_actor_cannot_page_resource_mappings(self):
+        self.client.force_authenticate(user=self.regular_user, token=get_auth(self.regular_user))
+
+        response = self.client.get(
+            f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/resource_mapping/KNOWLEDGE/{self.knowledge.id}/1/20"
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_resource_mapping_page_returns_empty_result_when_unmapped(self):
+        response = self.client.get(
+            f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/resource_mapping/KNOWLEDGE/{self.knowledge.id}/1/20"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+        self.assertEqual(payload["data"]["total"], 0)
+        self.assertEqual(payload["data"]["records"], [])
