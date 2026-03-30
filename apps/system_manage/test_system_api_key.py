@@ -47,6 +47,21 @@ class SystemApiKeyTests(TestCase):
             role_list=[RoleConstants.ADMIN.value.__str__()],
             permission_list=[],
         )
+        self.user = QuerySet(User).create(
+            id=uuid.uuid7(),
+            email="user@example.com",
+            phone="",
+            nick_name="user-system-api-key",
+            username="user-system-api-key",
+            password=password_encrypt("Secret1!"),
+            role=RoleConstants.USER.name,
+            source="LOCAL",
+            is_active=True,
+        )
+        self.user_token = SimpleNamespace(
+            role_list=[RoleConstants.USER.value.__str__()],
+            permission_list=[],
+        )
 
     def test_create_and_page_system_api_keys(self):
         create_request = self.factory.post("/system/api_key")
@@ -210,3 +225,35 @@ class SystemApiKeyTests(TestCase):
         self.assertFalse(response.has_header("Access-Control-Allow-Origin"))
         self.assertFalse(response.has_header("Access-Control-Allow-Methods"))
         self.assertFalse(response.has_header("Access-Control-Allow-Headers"))
+
+    def test_non_admin_cannot_manage_system_api_key_endpoints(self):
+        system_api_key = QuerySet(SystemApiKey).create()
+
+        requests = [
+            (SystemApiKeyView, self.factory.post("/system/api_key"), {}),
+            (
+                SystemApiKeyView.Page,
+                self.factory.get("/system/api_key/1/20"),
+                {"current_page": 1, "page_size": 20},
+            ),
+            (
+                SystemApiKeyView.Operate,
+                self.factory.put(
+                    f"/system/api_key/{system_api_key.id}",
+                    data={"is_active": False},
+                    format="json",
+                ),
+                {"api_key_id": str(system_api_key.id)},
+            ),
+            (
+                SystemApiKeyView.Operate,
+                self.factory.delete(f"/system/api_key/{system_api_key.id}"),
+                {"api_key_id": str(system_api_key.id)},
+            ),
+        ]
+
+        for view_cls, request, kwargs in requests:
+            with self.subTest(view=view_cls.__name__, kwargs=kwargs):
+                force_authenticate(request, user=self.user, token=self.user_token)
+                response = self.call_view(view_cls, request, **kwargs)
+                self.assertEqual(response.status_code, 403)
