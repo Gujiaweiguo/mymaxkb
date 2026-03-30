@@ -172,6 +172,118 @@ class UserAxisPermissionHappyPathTests(TestCase):
         ])
 
 
+class ResourceAxisPermissionHappyPathTests(TestCase):
+    def setUp(self):
+        self.admin = PermissionHappyPathMixin.create_admin_user('resource-axis-admin')
+        self.target_user = PermissionHappyPathMixin.create_ce_user('resource-axis-target')
+        self.workspace, _ = Workspace.objects.get_or_create(
+            id='default',
+            defaults={'name': 'default'},
+        )
+        self.client = PermissionHappyPathMixin.setup_authenticated_client(self.admin)
+        self.folder = ToolFolder.objects.create(
+            id=str(uuid.uuid7()),
+            name='Resource Axis Folder',
+            user=self.admin,
+            workspace_id=self.workspace.id,
+        )
+        self.tool = Tool.objects.create(
+            id=uuid.uuid7(),
+            name='resource-axis-tool',
+            workspace_id=self.workspace.id,
+            desc='resource axis tool',
+            code='print(1)',
+            scope=ToolScope.WORKSPACE,
+            tool_type=ToolType.CUSTOM,
+            folder=self.folder,
+        )
+
+    def _endpoint(self):
+        return (
+            f'{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/resource_user_permission/'
+            f'resource/{self.tool.id}/resource/TOOL'
+        )
+
+    def _seed_permission(self, permission_list=None, auth_type=ResourceAuthType.RESOURCE_PERMISSION_GROUP.value):
+        return WorkspaceUserResourcePermission.objects.create(
+            workspace_id=self.workspace.id,
+            user=self.target_user,
+            auth_target_type='TOOL',
+            target=str(self.tool.id),
+            auth_type=auth_type,
+            permission_list=permission_list or [ResourcePermission.VIEW.value],
+        )
+
+    def test_admin_can_list_resource_user_permissions(self):
+        self._seed_permission()
+
+        response = self.client.get(self._endpoint(), {'username': self.target_user.username})
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+        self.assertEqual(len(payload['data']), 1)
+        self.assertEqual(payload['data'][0]['id'], str(self.target_user.id))
+        self.assertEqual(payload['data'][0]['permission'], 'VIEW')
+
+    def test_admin_can_page_resource_user_permissions(self):
+        self._seed_permission()
+
+        response = self.client.get(
+            f'{self._endpoint()}/1/20',
+            {'username': self.target_user.username},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+        self.assertEqual(payload['data']['total'], 1)
+        self.assertEqual(len(payload['data']['records']), 1)
+        self.assertEqual(payload['data']['records'][0]['permission'], 'VIEW')
+
+    def test_admin_can_grant_view_permission_from_resource_axis(self):
+        response = self.client.put(
+            self._endpoint(),
+            [{'user_id': str(self.target_user.id), 'permission': 'VIEW'}],
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+
+        permission = WorkspaceUserResourcePermission.objects.get(
+            workspace_id=self.workspace.id,
+            user=self.target_user,
+            auth_target_type='TOOL',
+            target=str(self.tool.id),
+        )
+        self.assertEqual(permission.auth_type, ResourceAuthType.RESOURCE_PERMISSION_GROUP.value)
+        self.assertEqual(permission.permission_list, [ResourcePermission.VIEW.value])
+
+    def test_admin_can_clear_permission_with_not_auth_from_resource_axis(self):
+        self._seed_permission()
+
+        response = self.client.put(
+            self._endpoint(),
+            [{'user_id': str(self.target_user.id), 'permission': 'NOT_AUTH'}],
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+
+        permission = WorkspaceUserResourcePermission.objects.get(
+            workspace_id=self.workspace.id,
+            user=self.target_user,
+            auth_target_type='TOOL',
+            target=str(self.tool.id),
+        )
+        self.assertEqual(permission.auth_type, ResourceAuthType.RESOURCE_PERMISSION_GROUP.value)
+        self.assertEqual(permission.permission_list, [])
+
+
 class WorkspaceRoleListHappyPathTests(TestCase):
     def setUp(self):
         self.admin = PermissionHappyPathMixin.create_admin_user('role-list-admin')
