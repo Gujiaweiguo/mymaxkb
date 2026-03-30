@@ -302,3 +302,14 @@ class WorkspaceRoleListHappyPathTests(TestCase):
                 'type': 'USER',
             }
         ])
+
+
+class WorkspaceRoleListDeniedTests(TestCase):
+    def setUp(self):
+        self.user = PermissionHappyPathMixin.create_ce_user('role-list-denied-user')
+        self.client = PermissionHappyPathMixin.setup_authenticated_client(self.user)
+
+    def test_non_admin_cannot_access_role_list(self):
+        response = self.client.get(f'{ADMIN_API_PREFIX}/role_list/current_user')
+
+        self.assertEqual(response.status_code, 403)
