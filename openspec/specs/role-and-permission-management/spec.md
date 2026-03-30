@@ -32,3 +32,11 @@ The system SHALL define and manage administrative roles and permissions for comm
 #### Scenario: non-admin actor cannot manage user group members
 - **WHEN** a non-admin actor requests user group member add, remove, or paged member listing operations
 - **THEN** the system rejects each request with forbidden access
+
+#### Scenario: public actor reads login auth settings
+- **WHEN** an unauthenticated actor requests the public login-auth settings endpoint
+- **THEN** the system returns the current public login-auth configuration
+
+#### Scenario: public login auth settings have deterministic defaults
+- **WHEN** no login-auth setting has been persisted
+- **THEN** the public login-auth settings endpoint returns the built-in CE default configuration

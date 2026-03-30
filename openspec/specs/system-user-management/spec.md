@@ -16,3 +16,7 @@ The system SHALL provide explicit administrative user lifecycle management for c
 #### Scenario: administrator searches users by supported filters
 - **WHEN** an authorized administrator filters administrative users by supported attributes such as name, account, source, or status
 - **THEN** the system returns user-management results matching the provided filters
+
+#### Scenario: authenticated actor checks CE validation allowance
+- **WHEN** an authenticated actor requests the supported validation endpoint with a count that remains within the CE allowance
+- **THEN** the system reports that the requested action is valid
