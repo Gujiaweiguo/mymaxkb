@@ -801,3 +801,144 @@ class SharedResourceAuthorizationDeniedTests(TestCase):
                 resource_id=str(self.tool.id),
             ).exists()
         )
+
+
+class SharedResourceAuthorizationHappyPathTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.admin_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="shared-resource-admin@example.com",
+            phone="",
+            nick_name="Shared Resource Admin",
+            username="shared-resource-admin",
+            password=password_encrypt("Admin123!"),
+            role="ADMIN",
+            source="LOCAL",
+            is_active=True,
+        )
+        self.owner_workspace = Workspace.objects.create(
+            id="shared-owner-workspace",
+            name="Shared Owner Workspace",
+        )
+        self.consumer_workspace = Workspace.objects.create(
+            id="shared-consumer-workspace",
+            name="Shared Consumer Workspace",
+        )
+        self.tool_folder = ToolFolder.objects.create(
+            id="shared-happy-tool-folder",
+            name="Shared Happy Tool Folder",
+            workspace_id=self.owner_workspace.id,
+        )
+        self.tool = Tool.objects.create(
+            name="Shared Happy Tool",
+            workspace_id=self.owner_workspace.id,
+            desc="shared happy tool",
+            code="print(1)",
+            scope=ToolScope.SHARED,
+            tool_type=ToolType.CUSTOM,
+            folder=self.tool_folder,
+        )
+        self.knowledge_folder = KnowledgeFolder.objects.create(
+            id="shared-happy-knowledge-folder",
+            name="Shared Happy Knowledge Folder",
+            workspace_id=self.owner_workspace.id,
+        )
+        self.knowledge = Knowledge.objects.create(
+            id=uuid.uuid7(),
+            name="Shared Happy Knowledge",
+            desc="shared happy knowledge",
+            user=self.admin_user,
+            folder=self.knowledge_folder,
+            workspace_id=self.owner_workspace.id,
+            type=KnowledgeType.BASE,
+            meta={},
+        )
+        self.client.force_authenticate(
+            user=self.admin_user,
+            token=get_auth(self.admin_user),
+        )
+
+    def test_admin_get_shared_authorization_returns_default_when_missing(self):
+        response = self.client.get(
+            f"{ADMIN_API_PREFIX}/system/shared/TOOL/{self.tool.id}/authorization"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+        self.assertEqual(payload["data"]["authentication_type"], "WHITE_LIST")
+        self.assertEqual(payload["data"]["workspace_id_list"], [])
+
+    def test_admin_post_shared_authorization_creates_tool_configuration(self):
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/system/shared/TOOL/{self.tool.id}/authorization",
+            {
+                "authentication_type": "WHITE_LIST",
+                "workspace_id_list": [self.consumer_workspace.id],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+
+        instance = SharedResourceAuthorization.objects.get(
+            resource_type="TOOL",
+            resource_id=str(self.tool.id),
+        )
+        self.assertEqual(instance.authentication_type, "WHITE_LIST")
+        self.assertEqual(instance.workspace_id_list, [self.consumer_workspace.id])
+
+    def test_admin_post_shared_authorization_overwrites_existing_configuration(self):
+        SharedResourceAuthorization.objects.create(
+            resource_type="TOOL",
+            resource_id=str(self.tool.id),
+            authentication_type="WHITE_LIST",
+            workspace_id_list=[self.consumer_workspace.id],
+        )
+
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/system/shared/TOOL/{self.tool.id}/authorization",
+            {
+                "authentication_type": "BLACK_LIST",
+                "workspace_id_list": [self.owner_workspace.id, self.consumer_workspace.id],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+
+        instance = SharedResourceAuthorization.objects.get(
+            resource_type="TOOL",
+            resource_id=str(self.tool.id),
+        )
+        self.assertEqual(instance.authentication_type, "BLACK_LIST")
+        self.assertEqual(
+            instance.workspace_id_list,
+            [self.owner_workspace.id, self.consumer_workspace.id],
+        )
+
+    def test_admin_post_shared_authorization_creates_knowledge_configuration(self):
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/system/shared/KNOWLEDGE/{self.knowledge.id}/authorization",
+            {
+                "authentication_type": "WHITE_LIST",
+                "workspace_id_list": [self.consumer_workspace.id],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+
+        instance = SharedResourceAuthorization.objects.get(
+            resource_type="KNOWLEDGE",
+            resource_id=str(self.knowledge.id),
+        )
+        self.assertEqual(instance.authentication_type, "WHITE_LIST")
+        self.assertEqual(instance.workspace_id_list, [self.consumer_workspace.id])
