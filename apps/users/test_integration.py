@@ -102,6 +102,74 @@ class UserAPIIntegrationTests(TestCase):
         self.assertIn("data", data)
 
 
+class UserProfileContractIntegrationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create(
+            id=uuid.uuid7(),
+            email="profile-user@example.com",
+            phone="",
+            nick_name="Profile User",
+            username="profile-user",
+            password=password_encrypt("User123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+            language="zh-CN",
+            require_password_change=False,
+        )
+        self.admin = User.objects.create(
+            id=uuid.uuid7(),
+            email="profile-admin@example.com",
+            phone="",
+            nick_name="Profile Admin",
+            username="profile-admin",
+            password=password_encrypt("Admin123!"),
+            role="ADMIN",
+            source="LOCAL",
+            is_active=True,
+            language="en-US",
+            require_password_change=True,
+        )
+
+    def test_profile_returns_current_user_contract(self):
+        self.client.force_authenticate(user=self.user, token=get_auth(self.user))
+
+        response = self.client.get(f"{ADMIN_API_PREFIX}/user/profile")
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+        data = payload["data"]
+        self.assertEqual(str(data["id"]), str(self.user.id))
+        self.assertEqual(data["username"], self.user.username)
+        self.assertEqual(data["nick_name"], self.user.nick_name)
+        self.assertEqual(data["email"], self.user.email)
+        self.assertEqual(data["source"], self.user.source)
+        self.assertEqual(data["language"], self.user.language)
+        self.assertIn("USER", data["role"])
+        self.assertEqual(data["role_name"], ["USER"])
+        self.assertEqual(data["workspace_list"], [{"id": "default", "name": "default"}])
+        self.assertIsInstance(data["permissions"], list)
+        self.assertIn("APPLICATION:READ", data["permissions"])
+        self.assertFalse(data["is_edit_password"])
+
+    def test_profile_sets_password_change_flag_for_local_admin(self):
+        self.client.force_authenticate(user=self.admin, token=get_auth(self.admin))
+
+        response = self.client.get(f"{ADMIN_API_PREFIX}/user/profile")
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+        data = payload["data"]
+        self.assertEqual(str(data["id"]), str(self.admin.id))
+        self.assertIn("ADMIN", data["role"])
+        self.assertEqual(data["role_name"], ["ADMIN"])
+        self.assertEqual(data["workspace_list"], [{"id": "default", "name": "default"}])
+        self.assertTrue(data["is_edit_password"])
+
+
 class LoginContractIntegrationTests(TestCase):
     def setUp(self):
         self.client = APIClient()
