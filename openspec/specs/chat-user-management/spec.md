@@ -30,3 +30,7 @@ The system SHALL provide community-edition management for chat users and chat us
 #### Scenario: non-admin actor cannot manage chat-user platform sources
 - **WHEN** a non-admin actor requests chat-user platform source list, save, or validate operations
 - **THEN** the system rejects the request with forbidden access
+
+#### Scenario: community edition returns empty chat-user sync types
+- **WHEN** an authorized administrator requests the chat-user sync-types endpoint in community edition
+- **THEN** the system returns a successful response with an empty list of available sync types
