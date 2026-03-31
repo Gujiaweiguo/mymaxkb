@@ -64,3 +64,12 @@ The system SHALL provide configurable administrative login authentication for co
 #### Scenario: authenticated actor cannot switch language to an unsupported locale
 - **WHEN** an authenticated actor requests the language-switch endpoint with an unsupported locale
 - **THEN** the system rejects the request with an error listing the supported locales
+
+#### Scenario: authenticated actor resets the current password successfully
+- **WHEN** an authenticated actor submits a supported new password and matching confirmation to the current-password reset endpoint
+- **THEN** the system updates the stored password for that actor
+- **AND** the current authentication token is invalidated
+
+#### Scenario: authenticated actor cannot reset the current password with invalid input
+- **WHEN** an authenticated actor submits mismatched or unsupported new-password values to the current-password reset endpoint
+- **THEN** the system rejects the request with a password validation error
