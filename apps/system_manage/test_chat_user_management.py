@@ -326,3 +326,77 @@ class ChatUserManagementTests(TestCase):
         payload = json.loads(response.content)
         self.assertEqual(payload["code"], 200)
         self.assertEqual(payload["data"], [])
+
+    def test_create_rejects_duplicate_username(self):
+        self.create_chat_user("chat-user-dup")
+        group = self.create_group("group-dup")
+
+        request = self.factory.post(
+            "/system/chat_user",
+            data={
+                "username": "chat-user-dup",
+                "email": "chat-user-dup-2@example.com",
+                "password": "Secret1!",
+                "nick_name": "chat-user-dup-2-nick",
+                "phone": "13800138001",
+                "user_group_ids": [group.id],
+            },
+            format="json",
+        )
+        force_authenticate(request, user=self.admin, token=self.auth_token)
+        response = ChatUserManageView.as_view()(request)
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 500)
+        self.assertEqual(payload["message"], "Username already exists")
+
+    def test_create_rejects_duplicate_nick_name(self):
+        existing = self.create_chat_user("chat-user-orig")
+        group = self.create_group("group-nick-dup")
+
+        request = self.factory.post(
+            "/system/chat_user",
+            data={
+                "username": "chat-user-new",
+                "email": "chat-user-new@example.com",
+                "password": "Secret1!",
+                "nick_name": existing.nick_name,
+                "phone": "13800138002",
+                "user_group_ids": [group.id],
+            },
+            format="json",
+        )
+        force_authenticate(request, user=self.admin, token=self.auth_token)
+        response = ChatUserManageView.as_view()(request)
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 500)
+        self.assertEqual(payload["message"], "Nick name already exists")
+
+    def test_create_rejects_weak_password(self):
+        group = self.create_group("group-weak")
+
+        request = self.factory.post(
+            "/system/chat_user",
+            data={
+                "username": "chat-user-weak",
+                "email": "chat-user-weak@example.com",
+                "password": "abcdef",
+                "nick_name": "chat-user-weak-nick",
+                "phone": "13800138003",
+                "user_group_ids": [group.id],
+            },
+            format="json",
+        )
+        force_authenticate(request, user=self.admin, token=self.auth_token)
+        response = ChatUserManageView.as_view()(request)
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 500)
+        self.assertEqual(
+            payload["message"],
+            "The password must be 6-20 characters long and must be a combination of letters, numbers, and special characters.",
+        )
