@@ -28,3 +28,7 @@ The system SHALL avoid echoing stored secret values back to administrators in no
 #### Scenario: persisted application API key is listed after creation
 - **WHEN** an administrator lists existing application API keys after initial creation
 - **THEN** the system returns a masked representation instead of the full stored secret while preserving key-management metadata
+
+#### Scenario: persisted system API key is listed after creation
+- **WHEN** an administrator lists existing system API keys after initial creation
+- **THEN** the system returns a masked representation instead of the full stored secret while preserving key-management metadata
