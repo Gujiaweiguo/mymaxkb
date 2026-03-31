@@ -1,5 +1,7 @@
 import json
 import uuid_utils.compat as uuid
+from unittest.mock import patch
+
 from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
@@ -7,6 +9,7 @@ from rest_framework.test import APIClient
 from common.constants.cache_version import Cache_Version
 from common.auth.handle.impl.user_token import get_auth
 from common.utils.common import password_encrypt
+from system_manage.models import SettingType, SystemSetting
 from users.models import User
 
 
@@ -184,6 +187,179 @@ class LoginContractIntegrationTests(TestCase):
         response = self.client.post(f"{ADMIN_API_PREFIX}/user/logout")
 
         self.assertEqual(response.status_code, 401)
+
+
+class CaptchaAndCheckCodeContractIntegrationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.username = "captcha-contract-admin"
+        self.user = User.objects.create(
+            id=uuid.uuid7(),
+            email="captcha-contract-admin@example.com",
+            phone="",
+            nick_name="Captcha Contract Admin",
+            username=self.username,
+            password=password_encrypt("Admin123!"),
+            role="ADMIN",
+            source="LOCAL",
+            is_active=True,
+        )
+        version, fail_key = self._system_fail_key()
+        cache.delete(fail_key, version=version)
+        captcha_version, captcha_key = self._captcha_key()
+        cache.delete(captcha_key, version=captcha_version)
+        register_version, register_key = self._check_code_key("test@example.com", "register")
+        cache.delete(register_key, version=register_version)
+        reset_version, reset_key = self._check_code_key("test@example.com", "reset_password")
+        cache.delete(reset_key, version=reset_version)
+
+    def _create_login_auth_setting(self, *, max_attempts=1, failed_attempts=5, lock_time=10):
+        SystemSetting.objects.create(
+            type=SettingType.LOGIN_AUTH,
+            meta={
+                "default_value": "LOCAL",
+                "login_methods": ["LOCAL"],
+                "max_attempts": max_attempts,
+                "failed_attempts": failed_attempts,
+                "lock_time": lock_time,
+            },
+        )
+
+    def _system_fail_key(self):
+        version, get_key = Cache_Version.SYSTEM.value
+        return version, get_key(f"system_{self.username}")
+
+    def _captcha_key(self):
+        return (
+            Cache_Version.CAPTCHA.get_version(),
+            Cache_Version.CAPTCHA.get_key(captcha=f"system_{self.username}"),
+        )
+
+    def _check_code_key(self, email: str, code_type: str):
+        version, get_key = Cache_Version.SYSTEM.value
+        return version, get_key(f"{email}:{code_type}")
+
+    @staticmethod
+    def _get_model_side_effect(model_name):
+        if model_name == "license_is_valid":
+            return lambda: True
+        return None
+
+    @patch("users.serializers.login.DatabaseModelManage.get_model")
+    def test_captcha_endpoint_returns_base64_image_when_needed(self, _get_model):
+        _get_model.side_effect = self._get_model_side_effect
+        self._create_login_auth_setting(max_attempts=1)
+        version, fail_key = self._system_fail_key()
+        cache.set(fail_key, 1, timeout=600, version=version)
+
+        response = self.client.get(f"{ADMIN_API_PREFIX}/user/captcha?username={self.username}")
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+        self.assertTrue(payload["data"]["captcha"].startswith("data:image/png;base64,"))
+        captcha_version, captcha_key = self._captcha_key()
+        captcha_value = cache.get(captcha_key, version=captcha_version)
+        self.assertIsNotNone(captcha_value)
+        self.assertEqual(captcha_value, captcha_value.lower())
+
+    @patch("users.serializers.login.DatabaseModelManage.get_model")
+    def test_captcha_endpoint_returns_empty_when_not_needed(self, _get_model):
+        _get_model.side_effect = self._get_model_side_effect
+        self._create_login_auth_setting(max_attempts=1)
+
+        response = self.client.get(f"{ADMIN_API_PREFIX}/user/captcha?username={self.username}")
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+        self.assertEqual(payload["data"]["captcha"], "")
+
+    @patch("users.serializers.login.DatabaseModelManage.get_model")
+    def test_login_rejects_missing_captcha_when_required(self, _get_model):
+        _get_model.side_effect = self._get_model_side_effect
+        self._create_login_auth_setting(max_attempts=1)
+        version, fail_key = self._system_fail_key()
+        cache.set(fail_key, 1, timeout=600, version=version)
+
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/user/login",
+            {"username": self.username, "password": "Admin123!"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 1005)
+        self.assertEqual(payload["message"], "Captcha is required")
+
+    @patch("users.serializers.login.DatabaseModelManage.get_model")
+    def test_login_accepts_correct_captcha_case_insensitive(self, _get_model):
+        _get_model.side_effect = self._get_model_side_effect
+        self._create_login_auth_setting(max_attempts=1)
+        version, fail_key = self._system_fail_key()
+        cache.set(fail_key, 1, timeout=600, version=version)
+        captcha_version, captcha_key = self._captcha_key()
+        cache.set(captcha_key, "right", timeout=300, version=captcha_version)
+
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/user/login",
+            {"username": self.username, "password": "Admin123!", "captcha": "RIGHT"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+        self.assertIn("token", payload["data"])
+
+    def test_check_code_accepts_valid_code(self):
+        version, cache_key = self._check_code_key("test@example.com", "register")
+        cache.set(cache_key, "654321", timeout=1800, version=version)
+
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/user/check_code",
+            {"email": "test@example.com", "code": "654321", "type": "register"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+        self.assertTrue(payload["data"])
+
+    def test_check_code_rejects_wrong_code(self):
+        version, cache_key = self._check_code_key("test@example.com", "register")
+        cache.set(cache_key, "654321", timeout=1800, version=version)
+
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/user/check_code",
+            {"email": "test@example.com", "code": "000000", "type": "register"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 1005)
+        self.assertEqual(
+            payload["message"],
+            "The verification code is incorrect or the verification code has expired",
+        )
+
+    def test_check_code_rejects_missing_code(self):
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/user/check_code",
+            {"email": "test@example.com", "code": "123456", "type": "reset_password"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 1005)
+        self.assertEqual(
+            payload["message"],
+            "The verification code is incorrect or the verification code has expired",
+        )
 
 
 class UserManageCRUDIntegrationTests(TestCase):
