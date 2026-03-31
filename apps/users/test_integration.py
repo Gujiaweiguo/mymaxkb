@@ -1,8 +1,10 @@
 import json
 import uuid_utils.compat as uuid
+from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from common.constants.cache_version import Cache_Version
 from common.auth.handle.impl.user_token import get_auth
 from common.utils.common import password_encrypt
 from users.models import User
@@ -158,6 +160,30 @@ class LoginContractIntegrationTests(TestCase):
             "The user has been disabled, please contact the administrator!",
         )
         self.assertNotIn("token", data.get("data") or {})
+
+    def test_logout_clears_cached_token_and_returns_success(self):
+        login_response = self.client.post(
+            f"{ADMIN_API_PREFIX}/user/login",
+            {"username": self.admin_username, "password": "Admin123!"},
+            format="json",
+        )
+        token = json.loads(login_response.content)["data"]["token"]
+        version, get_key = Cache_Version.TOKEN.value
+        self.assertEqual(cache.get(get_key(token), version=version).id, self.admin_user.id)
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+        logout_response = self.client.post(f"{ADMIN_API_PREFIX}/user/logout")
+
+        self.assertEqual(logout_response.status_code, 200)
+        payload = json.loads(logout_response.content)
+        self.assertEqual(payload.get("code"), 200)
+        self.assertTrue(payload.get("data"))
+        self.assertIsNone(cache.get(get_key(token), version=version))
+
+    def test_logout_without_auth_returns_401(self):
+        response = self.client.post(f"{ADMIN_API_PREFIX}/user/logout")
+
+        self.assertEqual(response.status_code, 401)
 
 
 class UserManageCRUDIntegrationTests(TestCase):

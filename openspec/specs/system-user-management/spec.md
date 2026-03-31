@@ -40,3 +40,8 @@ The system SHALL provide explicit administrative user lifecycle management for c
 #### Scenario: non-admin actor cannot mutate user-management endpoints
 - **WHEN** a non-admin authenticated actor requests create, update, delete, batch-delete, or password-reset operations on the user-management surface
 - **THEN** the system rejects each request with forbidden access
+
+#### Scenario: authenticated actor logs out and invalidates the current token
+- **WHEN** an authenticated actor requests the logout endpoint with a valid bearer token
+- **THEN** the system returns success
+- **AND** the current token is invalidated for subsequent authenticated use
