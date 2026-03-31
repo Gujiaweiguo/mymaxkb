@@ -14,7 +14,10 @@ from common.middleware.cross_domain_middleware import CrossDomainMiddleware
 from common.constants.permission_constants import RoleConstants
 from common.utils.common import password_encrypt
 from system_manage.models import SystemApiKey
-from system_manage.serializers.system_api_key import EditSystemApiKeySerializer
+from system_manage.serializers.system_api_key import (
+    EditSystemApiKeySerializer,
+    SystemApiKeySerializer,
+)
 from system_manage.views.system_api_key import SystemApiKeyView
 from system_manage.views.system_profile import SystemProfileApiKey
 from users.models import User
@@ -257,3 +260,30 @@ class SystemApiKeyTests(TestCase):
                 force_authenticate(request, user=self.user, token=self.user_token)
                 response = self.call_view(view_cls, request, **kwargs)
                 self.assertEqual(response.status_code, 403)
+
+
+class SystemApiKeyMaskingTests(TestCase):
+    def test_generate_returns_full_secret_key_once(self):
+        result = SystemApiKeySerializer(data={}).generate()
+
+        self.assertTrue(result["secret_key"].startswith("system-"))
+        self.assertNotIn("******", result["secret_key"])
+        self.assertEqual(len(result["secret_key"]), len("system-") + 32)
+
+    def test_page_masks_system_secret_key_after_creation(self):
+        created = SystemApiKeySerializer(data={}).generate()
+
+        page = SystemApiKeySerializer(data={}).page(1, 20)
+
+        self.assertEqual(page["total"], 1)
+        record = page["records"][0]
+        self.assertEqual(record["id"], created["id"])
+        self.assertNotEqual(record["secret_key"], created["secret_key"])
+        self.assertIn("******", record["secret_key"])
+        self.assertEqual(
+            record["secret_key"],
+            f"{created['secret_key'][:8]}******{created['secret_key'][-4:]}",
+        )
+
+        stored = SystemApiKey.objects.get(id=created["id"])
+        self.assertEqual(stored.secret_key, created["secret_key"])
