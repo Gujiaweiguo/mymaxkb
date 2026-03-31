@@ -408,6 +408,73 @@ class SwitchLanguageContractIntegrationTests(TestCase):
         self.assertEqual(self.user.language, "zh-CN")
 
 
+class ResetCurrentPasswordContractIntegrationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create(
+            id=uuid.uuid7(),
+            email="current-reset@example.com",
+            phone="",
+            nick_name="Current Reset User",
+            username="current-reset-user",
+            password=password_encrypt("User123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+        self.token = get_auth(self.user)
+        self.client.force_authenticate(user=self.user, token=self.token)
+
+    def test_current_user_can_reset_password_and_clear_current_token(self):
+        version, get_key = Cache_Version.TOKEN.value
+        cache.set(get_key(self.token), self.user, timeout=300, version=version)
+
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/user/current/reset_password",
+            {"password": "Reset123!", "re_password": "Reset123!"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+        self.assertTrue(payload["data"])
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.password, password_encrypt("Reset123!"))
+        self.assertFalse(self.user.require_password_change)
+        self.assertIsNone(cache.get(get_key(self.token), version=version))
+
+    def test_current_user_reset_password_rejects_mismatched_confirmation(self):
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/user/current/reset_password",
+            {"password": "Reset123!", "re_password": "Reset456!"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 1007)
+        self.assertEqual(
+            payload["message"],
+            "Password and confirmation password are inconsistent",
+        )
+
+    def test_current_user_reset_password_rejects_weak_password(self):
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/user/current/reset_password",
+            {"password": "abcdef", "re_password": "abcdef"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 500)
+        self.assertEqual(
+            payload["message"],
+            "密码:The password must be 6-20 characters long and must be a combination of letters, numbers, and special characters.",
+        )
+
+
 class UserManageCRUDIntegrationTests(TestCase):
     def setUp(self):
         self.client = APIClient()
