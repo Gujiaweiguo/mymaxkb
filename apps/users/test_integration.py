@@ -362,6 +362,52 @@ class CaptchaAndCheckCodeContractIntegrationTests(TestCase):
         )
 
 
+class SwitchLanguageContractIntegrationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create(
+            id=uuid.uuid7(),
+            email="switch-language@example.com",
+            phone="",
+            nick_name="Switch Language User",
+            username="switch-language-user",
+            password=password_encrypt("User123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+            language="zh-CN",
+        )
+        self.client.force_authenticate(user=self.user, token=get_auth(self.user))
+
+    def test_switch_language_updates_user_language(self):
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/user/language",
+            {"language": "en-US"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+        self.assertIsNone(payload["data"])
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.language, "en-US")
+
+    def test_switch_language_rejects_unsupported_language(self):
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/user/language",
+            {"language": "fr-FR"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 500)
+        self.assertEqual(payload["message"], "language only support:zh-CN,zh-Hant,en-US")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.language, "zh-CN")
+
+
 class UserManageCRUDIntegrationTests(TestCase):
     def setUp(self):
         self.client = APIClient()

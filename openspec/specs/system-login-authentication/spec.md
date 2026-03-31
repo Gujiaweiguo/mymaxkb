@@ -56,3 +56,11 @@ The system SHALL provide configurable administrative login authentication for co
 - **WHEN** a caller submits an email verification code for a supported operation type
 - **THEN** the system accepts the matching cached code
 - **AND** the system rejects missing or incorrect codes
+
+#### Scenario: authenticated actor switches language to a supported locale
+- **WHEN** an authenticated actor requests the language-switch endpoint with a supported locale
+- **THEN** the system persists the new language for that actor
+
+#### Scenario: authenticated actor cannot switch language to an unsupported locale
+- **WHEN** an authenticated actor requests the language-switch endpoint with an unsupported locale
+- **THEN** the system rejects the request with an error listing the supported locales
