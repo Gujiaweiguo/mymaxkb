@@ -3,6 +3,7 @@ import uuid_utils.compat as uuid
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from common.auth.handle.impl.user_token import get_auth
 from common.utils.common import password_encrypt
 from users.models import User
 
@@ -226,3 +227,72 @@ class UserManageCRUDIntegrationTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+
+
+class UserManageDeniedTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.regular_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="user-manage-denied@example.com",
+            phone="",
+            nick_name="Denied User",
+            username="user-manage-denied",
+            password=password_encrypt("User123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+        self.target_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="user-manage-target@example.com",
+            phone="",
+            nick_name="Target User",
+            username="user-manage-target",
+            password=password_encrypt("User123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+        self.client.force_authenticate(
+            user=self.regular_user, token=get_auth(self.regular_user)
+        )
+
+    def test_non_admin_cannot_mutate_user_manage_endpoints(self):
+        denied_requests = [
+            (
+                "post",
+                f"{ADMIN_API_PREFIX}/user_manage",
+                {
+                    "username": "denied-user-create",
+                    "password": "Denied123!",
+                    "email": "denied-user-create@example.com",
+                    "role": "USER",
+                },
+            ),
+            (
+                "delete",
+                f"{ADMIN_API_PREFIX}/user_manage/{self.target_user.id}",
+                None,
+            ),
+            (
+                "put",
+                f"{ADMIN_API_PREFIX}/user_manage/{self.target_user.id}",
+                {"nick_name": "Denied Update"},
+            ),
+            (
+                "post",
+                f"{ADMIN_API_PREFIX}/user_manage/batch_delete",
+                [str(self.target_user.id)],
+            ),
+            (
+                "put",
+                f"{ADMIN_API_PREFIX}/user_manage/{self.target_user.id}/re_password",
+                {"password": "Denied123!", "re_password": "Denied123!"},
+            ),
+        ]
+
+        for method, url, payload in denied_requests:
+            with self.subTest(method=method, url=url):
+                response = getattr(self.client, method)(url, payload, format="json")
+                self.assertEqual(response.status_code, 403)

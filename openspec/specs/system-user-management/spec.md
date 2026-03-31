@@ -36,3 +36,7 @@ The system SHALL provide explicit administrative user lifecycle management for c
 #### Scenario: non-admin actor cannot manage system API keys
 - **WHEN** a non-admin actor requests create, page, edit, or delete operations for system API keys
 - **THEN** the system rejects the request with forbidden access
+
+#### Scenario: non-admin actor cannot mutate user-management endpoints
+- **WHEN** a non-admin authenticated actor requests create, update, delete, batch-delete, or password-reset operations on the user-management surface
+- **THEN** the system rejects each request with forbidden access
