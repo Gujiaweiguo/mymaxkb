@@ -19,6 +19,18 @@ The system SHALL provide community-edition management for chat users and chat us
 - **WHEN** a chat user enters the system through a supported external source or synchronization path
 - **THEN** the system records the source for later filtering and administration
 
+#### Scenario: create chat user rejects duplicate username
+- **WHEN** an authorized actor attempts to create a chat user with a username that already exists
+- **THEN** the system rejects the request with an error indicating the username is already taken
+
+#### Scenario: create chat user rejects duplicate nick name
+- **WHEN** an authorized actor attempts to create a chat user with a nick name that already exists
+- **THEN** the system rejects the request with an error indicating the nick name is already taken
+
+#### Scenario: create chat user rejects weak password
+- **WHEN** an authorized actor attempts to create a chat user with a password that does not meet the supported complexity requirements
+- **THEN** the system rejects the request with an error indicating the password policy
+
 #### Scenario: administrator lists configured chat-user platform sources
 - **WHEN** an authorized administrator requests the chat-user platform source configuration list
 - **THEN** the system returns the supported chat-user platform source entries and their current configuration state
