@@ -72,6 +72,53 @@ class ValidAndPublicAuthTests(TestCase):
         self.assertEqual(payload['code'], 200)
         self.assertTrue(payload['data'])
 
+    @patch('system_manage.serializers.valid_serializers.cache.get', return_value=False)
+    @patch('system_manage.serializers.valid_serializers.QuerySet.count', return_value=1)
+    def test_authenticated_actor_can_validate_user_count_allowance(
+        self, _count_mock, _cache_mock
+    ):
+        self.client.force_authenticate(user=self.admin_user, token=get_auth(self.admin_user))
+
+        response = self.client.get(f'{ADMIN_API_PREFIX}/valid/user/2')
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+        self.assertTrue(payload['data'])
+
+    def test_authenticated_actor_gets_business_error_for_non_matching_user_count(self):
+        self.client.force_authenticate(user=self.admin_user, token=get_auth(self.admin_user))
+
+        response = self.client.get(f'{ADMIN_API_PREFIX}/valid/user/3')
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 400)
+
+    @patch('system_manage.serializers.valid_serializers.cache.get', return_value=False)
+    @patch('system_manage.serializers.valid_serializers.QuerySet.count', return_value=2)
+    def test_authenticated_actor_gets_business_error_when_user_quota_is_exhausted(
+        self, _count_mock, _cache_mock
+    ):
+        self.client.force_authenticate(user=self.admin_user, token=get_auth(self.admin_user))
+
+        response = self.client.get(f'{ADMIN_API_PREFIX}/valid/user/2')
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 400)
+
+    @patch('system_manage.serializers.valid_serializers.cache.get', return_value=True)
+    def test_valid_license_bypasses_ce_user_limit_enforcement(self, _cache_mock):
+        self.client.force_authenticate(user=self.admin_user, token=get_auth(self.admin_user))
+
+        response = self.client.get(f'{ADMIN_API_PREFIX}/valid/user/999')
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+        self.assertTrue(payload['data'])
+
     def test_unauthenticated_actor_cannot_access_valid_endpoint(self):
         response = self.client.get(f'{ADMIN_API_PREFIX}/valid/application/5')
 
