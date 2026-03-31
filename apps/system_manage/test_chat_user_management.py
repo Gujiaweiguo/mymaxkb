@@ -18,6 +18,7 @@ from system_manage.views.chat_user import (
     ChatUserPageView,
     ChatUserPasswordView,
     ChatUserSyncView,
+    ChatUserSyncTypeView,
 )
 from system_manage.views.user_group import (
     UserGroupDeleteView,
@@ -315,3 +316,13 @@ class ChatUserManagementTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(json.loads(response.content)["code"], 500)
+
+    def test_sync_types_returns_empty_list_in_ce(self):
+        request = self.factory.get("/system/chat_user/sync_types")
+        force_authenticate(request, user=self.admin, token=self.auth_token)
+        response = ChatUserSyncTypeView.as_view()(request)
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+        self.assertEqual(payload["data"], [])
