@@ -7,7 +7,8 @@ from common.auth.handle.impl.user_token import get_auth
 from common.utils.common import password_encrypt
 from knowledge.models import Knowledge, KnowledgeFolder, KnowledgeType
 from models_provider.models import Model
-from system_manage.models import Workspace
+from common.constants.permission_constants import AuthTargetType, ResourceAuthType, ResourcePermission
+from system_manage.models import Workspace, WorkspaceUserResourcePermission
 from tools.models import Tool, ToolFolder, ToolScope, ToolType
 from trigger.models import Trigger, TriggerTypeChoices
 from users.models import User
@@ -338,6 +339,64 @@ class ToolDefaultWorkspaceUserSplitTests(TestCase):
         )
 
         self.assertEqual(resp.status_code, 403)
+
+
+class ToolDefaultWorkspaceManageGrantTests(TestCase):
+    def setUp(self):
+        self.user = ResourceAuthTestMixin.create_ce_user("tool-manage-user")
+        self.workspace, _ = Workspace.objects.get_or_create(
+            id="default", defaults={"name": "default"}
+        )
+        self.client = ResourceAuthTestMixin.setup_authenticated_client(self.user)
+        self.admin = ResourceAuthTestMixin.create_admin_user("tool-manage-admin")
+        self.folder = ToolFolder.objects.create(
+            id=str(uuid.uuid7()),
+            name="Tool Manage Grant Folder",
+            user=self.admin,
+            workspace_id=self.workspace.id,
+        )
+        self.tool = Tool.objects.create(
+            id=uuid.uuid7(),
+            name="manage-grant-tool",
+            workspace_id=self.workspace.id,
+            desc="tool for manage grant tests",
+            code="print(1)",
+            scope=ToolScope.WORKSPACE,
+            tool_type=ToolType.CUSTOM,
+            folder=self.folder,
+        )
+        self._grant_manage_permission()
+
+    def _grant_manage_permission(self):
+        WorkspaceUserResourcePermission.objects.create(
+            id=uuid.uuid7(),
+            workspace_id=self.workspace.id,
+            user=self.user,
+            auth_target_type='TOOL',
+            target=str(self.tool.id),
+            auth_type=ResourceAuthType.RESOURCE_PERMISSION_GROUP.value,
+            permission_list=[ResourcePermission.MANAGE.value, ResourcePermission.VIEW.value],
+        )
+
+    def test_ce_user_with_manage_grant_can_update_tool_on_default_workspace(self):
+        resp = self.client.put(
+            f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/tool/{self.tool.id}",
+            {"name": "Updated Manage Grant Tool"},
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        self.tool.refresh_from_db()
+        self.assertEqual(self.tool.name, "Updated Manage Grant Tool")
+
+    def test_ce_user_with_manage_grant_can_delete_tool_on_default_workspace(self):
+        tool_id = self.tool.id
+        resp = self.client.delete(
+            f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/tool/{self.tool.id}"
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Tool.objects.filter(id=tool_id).exists())
 
 
 class TriggerResourceDeniedTests(TestCase):
