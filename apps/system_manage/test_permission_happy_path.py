@@ -10,6 +10,7 @@ from common.utils.common import password_encrypt
 from system_manage.models import Workspace, WorkspaceUserResourcePermission
 from application.models import Application, ApplicationFolder, ApplicationTypeChoices
 from knowledge.models import Knowledge, KnowledgeFolder, KnowledgeType
+from models_provider.models import Model
 from tools.models import Tool, ToolFolder, ToolScope, ToolType
 from users.models import User
 
@@ -349,6 +350,81 @@ class KnowledgeUserAxisPermissionHappyPathTests(TestCase):
             user=self.target_user,
             auth_target_type='KNOWLEDGE',
             target=str(self.knowledge.id),
+        )
+        self.assertEqual(permission.auth_type, ResourceAuthType.RESOURCE_PERMISSION_GROUP.value)
+        self.assertEqual(permission.permission_list, [])
+
+
+class ModelUserAxisPermissionHappyPathTests(TestCase):
+    def setUp(self):
+        self.admin = PermissionHappyPathMixin.create_admin_user('model-user-axis-admin')
+        self.target_user = PermissionHappyPathMixin.create_ce_user('model-user-axis-target')
+        self.workspace = PermissionHappyPathMixin.create_workspace('model-user-axis-workspace')
+        self.client = PermissionHappyPathMixin.setup_authenticated_client(self.admin)
+        self.model = Model.objects.create(
+            id=uuid.uuid7(),
+            name='model-user-axis-model',
+            workspace_id=self.workspace.id,
+            model_type='LLM',
+            model_name='test-model',
+            provider='test-provider',
+            credential='{}',
+        )
+
+    def _endpoint(self):
+        return (
+            f'{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/user_resource_permission/'
+            f'user/{self.target_user.id}/resource/MODEL'
+        )
+
+    def _seed_permission(self, permission_list=None, auth_type=ResourceAuthType.RESOURCE_PERMISSION_GROUP.value):
+        return WorkspaceUserResourcePermission.objects.create(
+            workspace_id=self.workspace.id,
+            user=self.target_user,
+            auth_target_type='MODEL',
+            target=str(self.model.id),
+            auth_type=auth_type,
+            permission_list=permission_list or [ResourcePermission.VIEW.value],
+        )
+
+    def test_admin_can_grant_view_permission_for_model(self):
+        response = self.client.put(
+            self._endpoint(),
+            [{'target_id': str(self.model.id), 'permission': 'VIEW'}],
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+
+        permission = WorkspaceUserResourcePermission.objects.get(
+            workspace_id=self.workspace.id,
+            user=self.target_user,
+            auth_target_type='MODEL',
+            target=str(self.model.id),
+        )
+        self.assertEqual(permission.auth_type, ResourceAuthType.RESOURCE_PERMISSION_GROUP.value)
+        self.assertEqual(permission.permission_list, [ResourcePermission.VIEW.value])
+
+    def test_admin_can_clear_permission_with_not_auth_for_model(self):
+        self._seed_permission()
+
+        response = self.client.put(
+            self._endpoint(),
+            [{'target_id': str(self.model.id), 'permission': 'NOT_AUTH'}],
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+
+        permission = WorkspaceUserResourcePermission.objects.get(
+            workspace_id=self.workspace.id,
+            user=self.target_user,
+            auth_target_type='MODEL',
+            target=str(self.model.id),
         )
         self.assertEqual(permission.auth_type, ResourceAuthType.RESOURCE_PERMISSION_GROUP.value)
         self.assertEqual(permission.permission_list, [])
