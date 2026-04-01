@@ -171,6 +171,28 @@ class UserAxisPermissionHappyPathTests(TestCase):
             ResourcePermission.VIEW.value,
         ])
 
+    def test_admin_can_clear_permission_with_not_auth_from_user_axis(self):
+        self._seed_permission()
+
+        response = self.client.put(
+            self._endpoint(),
+            [{'target_id': str(self.tool.id), 'permission': 'NOT_AUTH'}],
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+
+        permission = WorkspaceUserResourcePermission.objects.get(
+            workspace_id=self.workspace.id,
+            user=self.target_user,
+            auth_target_type='TOOL',
+            target=str(self.tool.id),
+        )
+        self.assertEqual(permission.auth_type, ResourceAuthType.RESOURCE_PERMISSION_GROUP.value)
+        self.assertEqual(permission.permission_list, [])
+
 
 class ResourceAxisPermissionHappyPathTests(TestCase):
     def setUp(self):
