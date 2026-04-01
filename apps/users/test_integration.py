@@ -773,6 +773,64 @@ class UserManageCRUDIntegrationTests(TestCase):
         self.assertEqual(get_payload["code"], 200)
         self.assertFalse(get_payload["data"]["is_active"])
 
+    def test_filter_users_by_username_and_active_status(self):
+        active_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="filter-active@example.com",
+            phone="",
+            nick_name="Filter Active",
+            username="filter-active-user",
+            password=password_encrypt("User123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+        inactive_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="filter-inactive@example.com",
+            phone="",
+            nick_name="Filter Inactive",
+            username="filter-inactive-user",
+            password=password_encrypt("User123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=False,
+        )
+        other_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="other-user@example.com",
+            phone="",
+            nick_name="Other User",
+            username="other-user",
+            password=password_encrypt("User123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+
+        # Filter by username containing "filter-active"
+        response = self.client.get(
+            f"{ADMIN_API_PREFIX}/user_manage/1/20?username=filter-active"
+        )
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        returned_usernames = [u["username"] for u in data["data"]]
+        self.assertIn("filter-active-user", returned_usernames)
+        self.assertNotIn("other-user", returned_usernames)
+        self.assertNotIn("filter-inactive-user", returned_usernames)
+
+        # Filter by is_active=true
+        response = self.client.get(
+            f"{ADMIN_API_PREFIX}/user_manage/1/20?is_active=true"
+        )
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        returned_usernames = [u["username"] for u in data["data"]]
+        self.assertIn("filter-active-user", returned_usernames)
+        self.assertIn("other-user", returned_usernames)
+        self.assertIn(self.admin_username, returned_usernames)
+        self.assertNotIn("filter-inactive-user", returned_usernames)
+
 
 class UserManageDeniedTests(TestCase):
     def setUp(self):
