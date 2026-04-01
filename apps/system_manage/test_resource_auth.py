@@ -380,25 +380,25 @@ class ToolDefaultWorkspaceManageGrantTests(TestCase):
             permission_list=[ResourcePermission.MANAGE.value, ResourcePermission.VIEW.value],
         )
 
-    def test_ce_user_with_manage_grant_can_update_tool_on_default_workspace(self):
+    def test_ce_user_with_manage_grant_cannot_update_tool_on_default_workspace(self):
         resp = self.client.put(
             f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/tool/{self.tool.id}",
             {"name": "Updated Manage Grant Tool"},
             format="json",
         )
 
-        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.status_code, 403)
         self.tool.refresh_from_db()
-        self.assertEqual(self.tool.name, "Updated Manage Grant Tool")
+        self.assertEqual(self.tool.name, "manage-grant-tool")
 
-    def test_ce_user_with_manage_grant_can_delete_tool_on_default_workspace(self):
+    def test_ce_user_with_manage_grant_cannot_delete_tool_on_default_workspace(self):
         tool_id = self.tool.id
         resp = self.client.delete(
             f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/tool/{self.tool.id}"
         )
 
-        self.assertEqual(resp.status_code, 200)
-        self.assertFalse(Tool.objects.filter(id=tool_id).exists())
+        self.assertEqual(resp.status_code, 403)
+        self.assertTrue(Tool.objects.filter(id=tool_id).exists())
 
 
 class TriggerResourceDeniedTests(TestCase):
