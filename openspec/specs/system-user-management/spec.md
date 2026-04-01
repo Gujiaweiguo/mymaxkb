@@ -49,6 +49,15 @@ The system SHALL provide explicit administrative user lifecycle management for c
 - **WHEN** an authorized administrator submits an empty user-ID set to the batch-delete endpoint
 - **THEN** the system rejects the request with a user-ID validation error
 
+#### Scenario: administrator resets a managed user password successfully
+- **WHEN** an authorized administrator submits a supported password and matching confirmation for a managed user
+- **THEN** the system updates the target user's password
+- **AND** the target user is marked as requiring a password change
+
+#### Scenario: administrator cannot reset a managed user password with invalid input
+- **WHEN** an authorized administrator submits mismatched or unsupported password values for a managed user
+- **THEN** the system rejects the request with a password validation error
+
 #### Scenario: authenticated actor logs out and invalidates the current token
 - **WHEN** an authenticated actor requests the logout endpoint with a valid bearer token
 - **THEN** the system returns success
