@@ -660,6 +660,85 @@ class UserManageCRUDIntegrationTests(TestCase):
         self.assertEqual(payload["code"], 1004)
         self.assertEqual(payload["message"], "User IDs cannot be empty")
 
+    def test_admin_can_reset_user_password(self):
+        target_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="reset-target@example.com",
+            phone="",
+            nick_name="Reset Target",
+            username="reset-target",
+            password=password_encrypt("OldPass123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+            require_password_change=False,
+        )
+
+        response = self.client.put(
+            f"{ADMIN_API_PREFIX}/user_manage/{target_user.id}/re_password",
+            {"password": "NewPass123!", "re_password": "NewPass123!"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+        self.assertTrue(payload["data"])
+        target_user.refresh_from_db()
+        self.assertEqual(target_user.password, password_encrypt("NewPass123!"))
+        self.assertTrue(target_user.require_password_change)
+
+    def test_admin_reset_user_password_rejects_mismatched_confirmation(self):
+        target_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="reset-mismatch@example.com",
+            phone="",
+            nick_name="Reset Mismatch",
+            username="reset-mismatch",
+            password=password_encrypt("OldPass123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+
+        response = self.client.put(
+            f"{ADMIN_API_PREFIX}/user_manage/{target_user.id}/re_password",
+            {"password": "NewPass123!", "re_password": "OtherPass123!"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 1007)
+        self.assertEqual(payload["message"], "Password and confirmation password are inconsistent")
+
+    def test_admin_reset_user_password_rejects_weak_password(self):
+        target_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="reset-weak@example.com",
+            phone="",
+            nick_name="Reset Weak",
+            username="reset-weak",
+            password=password_encrypt("OldPass123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+
+        response = self.client.put(
+            f"{ADMIN_API_PREFIX}/user_manage/{target_user.id}/re_password",
+            {"password": "abcdef", "re_password": "abcdef"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 500)
+        self.assertEqual(
+            payload["message"],
+            "密码:The password must be 6-20 characters long and must be a combination of letters, numbers, and special characters.",
+        )
+
 
 class UserManageDeniedTests(TestCase):
     def setUp(self):
