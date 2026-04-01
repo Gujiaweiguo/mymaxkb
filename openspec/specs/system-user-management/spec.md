@@ -41,6 +41,14 @@ The system SHALL provide explicit administrative user lifecycle management for c
 - **WHEN** a non-admin authenticated actor requests create, update, delete, batch-delete, or password-reset operations on the user-management surface
 - **THEN** the system rejects each request with forbidden access
 
+#### Scenario: administrator batch deletes system users
+- **WHEN** an authorized administrator submits a non-empty set of system-user IDs to the batch-delete endpoint
+- **THEN** the system deletes the targeted users from the administrative user-management surface
+
+#### Scenario: administrator cannot batch delete with an empty user set
+- **WHEN** an authorized administrator submits an empty user-ID set to the batch-delete endpoint
+- **THEN** the system rejects the request with a user-ID validation error
+
 #### Scenario: authenticated actor logs out and invalidates the current token
 - **WHEN** an authenticated actor requests the logout endpoint with a valid bearer token
 - **THEN** the system returns success
