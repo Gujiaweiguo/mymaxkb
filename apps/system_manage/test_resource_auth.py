@@ -7,8 +7,9 @@ from common.auth.handle.impl.user_token import get_auth
 from common.utils.common import password_encrypt
 from knowledge.models import Knowledge, KnowledgeFolder, KnowledgeType
 from models_provider.models import Model
-from common.constants.permission_constants import AuthTargetType, ResourceAuthType, ResourcePermission
+from common.constants.permission_constants import ResourceAuthType, ResourcePermission
 from system_manage.models import Workspace, WorkspaceUserResourcePermission
+from system_manage.models.workspace_user_permission import AuthTargetType
 from tools.models import Tool, ToolFolder, ToolScope, ToolType
 from trigger.models import Trigger, TriggerTypeChoices
 from users.models import User

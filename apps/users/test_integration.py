@@ -814,7 +814,7 @@ class UserManageCRUDIntegrationTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
-        returned_usernames = [u["username"] for u in data["data"]]
+        returned_usernames = [u["username"] for u in data["data"]["records"]]
         self.assertIn("filter-active-user", returned_usernames)
         self.assertNotIn("other-user", returned_usernames)
         self.assertNotIn("filter-inactive-user", returned_usernames)
@@ -825,7 +825,7 @@ class UserManageCRUDIntegrationTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
-        returned_usernames = [u["username"] for u in data["data"]]
+        returned_usernames = [u["username"] for u in data["data"]["records"]]
         self.assertIn("filter-active-user", returned_usernames)
         self.assertIn("other-user", returned_usernames)
         self.assertIn(self.admin_username, returned_usernames)
