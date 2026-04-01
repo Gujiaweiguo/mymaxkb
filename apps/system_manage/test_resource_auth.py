@@ -284,6 +284,62 @@ class ToolResourceDeniedTests(TestCase):
         self.assertEqual(resp.status_code, 403)
 
 
+class ToolDefaultWorkspaceUserSplitTests(TestCase):
+    def setUp(self):
+        self.user = ResourceAuthTestMixin.create_ce_user("tool-default-user")
+        self.workspace, _ = Workspace.objects.get_or_create(
+            id="default", defaults={"name": "default"}
+        )
+        self.client = ResourceAuthTestMixin.setup_authenticated_client(self.user)
+        self.admin = ResourceAuthTestMixin.create_admin_user("tool-default-admin")
+        self.folder = ToolFolder.objects.create(
+            id=str(uuid.uuid7()),
+            name="Tool Default Folder",
+            user=self.admin,
+            workspace_id=self.workspace.id,
+        )
+        self.tool = Tool.objects.create(
+            id=uuid.uuid7(),
+            name="default-tool",
+            workspace_id=self.workspace.id,
+            desc="default workspace tool",
+            code="print(1)",
+            scope=ToolScope.WORKSPACE,
+            tool_type=ToolType.CUSTOM,
+            folder=self.folder,
+        )
+
+    def test_ce_user_can_list_tools_on_default_workspace(self):
+        resp = self.client.get(
+            f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/tool"
+        )
+
+        self.assertEqual(resp.status_code, 200)
+
+    def test_ce_user_can_read_tool_detail_on_default_workspace(self):
+        resp = self.client.get(
+            f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/tool/{self.tool.id}"
+        )
+
+        self.assertEqual(resp.status_code, 200)
+
+    def test_ce_user_cannot_update_tool_on_default_workspace(self):
+        resp = self.client.put(
+            f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/tool/{self.tool.id}",
+            {"name": "Blocked Default Update"},
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, 403)
+
+    def test_ce_user_cannot_delete_tool_on_default_workspace(self):
+        resp = self.client.delete(
+            f"{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/tool/{self.tool.id}"
+        )
+
+        self.assertEqual(resp.status_code, 403)
+
+
 class TriggerResourceDeniedTests(TestCase):
     def setUp(self):
         self.user = ResourceAuthTestMixin.create_ce_user("trigger-denied-user")
