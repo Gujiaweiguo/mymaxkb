@@ -558,7 +558,7 @@ class UserManageCRUDIntegrationTests(TestCase):
             source="LOCAL",
             is_active=True,
         )
-        self.client.force_authenticate(user=self.admin_user, token="test-token")
+        self.client.force_authenticate(user=self.admin_user, token=get_auth(self.admin_user))
 
     def test_create_user(self):
         response = self.client.post(
@@ -610,6 +610,55 @@ class UserManageCRUDIntegrationTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+
+    def test_batch_delete_users(self):
+        first_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="batch-delete-1@example.com",
+            phone="",
+            nick_name="Batch Delete One",
+            username="batch-delete-one",
+            password=password_encrypt("Delete123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+        second_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="batch-delete-2@example.com",
+            phone="",
+            nick_name="Batch Delete Two",
+            username="batch-delete-two",
+            password=password_encrypt("Delete123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/user_manage/batch_delete",
+            [str(first_user.id), str(second_user.id)],
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+        self.assertTrue(payload["data"])
+        self.assertFalse(User.objects.filter(id=first_user.id).exists())
+        self.assertFalse(User.objects.filter(id=second_user.id).exists())
+
+    def test_batch_delete_rejects_empty_ids(self):
+        response = self.client.post(
+            f"{ADMIN_API_PREFIX}/user_manage/batch_delete",
+            [],
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 1004)
+        self.assertEqual(payload["message"], "User IDs cannot be empty")
 
 
 class UserManageDeniedTests(TestCase):
