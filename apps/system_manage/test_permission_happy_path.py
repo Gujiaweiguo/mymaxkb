@@ -9,6 +9,7 @@ from common.constants.permission_constants import ResourceAuthType, ResourcePerm
 from common.utils.common import password_encrypt
 from system_manage.models import Workspace, WorkspaceUserResourcePermission
 from application.models import Application, ApplicationFolder, ApplicationTypeChoices
+from knowledge.models import Knowledge, KnowledgeFolder, KnowledgeType
 from tools.models import Tool, ToolFolder, ToolScope, ToolType
 from users.models import User
 
@@ -269,6 +270,85 @@ class ApplicationUserAxisPermissionHappyPathTests(TestCase):
             user=self.target_user,
             auth_target_type='APPLICATION',
             target=str(self.application.id),
+        )
+        self.assertEqual(permission.auth_type, ResourceAuthType.RESOURCE_PERMISSION_GROUP.value)
+        self.assertEqual(permission.permission_list, [])
+
+
+class KnowledgeUserAxisPermissionHappyPathTests(TestCase):
+    def setUp(self):
+        self.admin = PermissionHappyPathMixin.create_admin_user('kb-user-axis-admin')
+        self.target_user = PermissionHappyPathMixin.create_ce_user('kb-user-axis-target')
+        self.workspace = PermissionHappyPathMixin.create_workspace('kb-user-axis-workspace')
+        self.client = PermissionHappyPathMixin.setup_authenticated_client(self.admin)
+        self.folder = KnowledgeFolder.objects.create(
+            id=str(uuid.uuid7()),
+            name='KB User Axis Folder',
+            user=self.admin,
+            workspace_id=self.workspace.id,
+        )
+        self.knowledge = Knowledge.objects.create(
+            id=uuid.uuid7(),
+            name='kb-user-axis-knowledge',
+            workspace_id=self.workspace.id,
+            folder=self.folder,
+            type=KnowledgeType.BASE,
+        )
+
+    def _endpoint(self):
+        return (
+            f'{ADMIN_API_PREFIX}/workspace/{self.workspace.id}/user_resource_permission/'
+            f'user/{self.target_user.id}/resource/KNOWLEDGE'
+        )
+
+    def _seed_permission(self, permission_list=None, auth_type=ResourceAuthType.RESOURCE_PERMISSION_GROUP.value):
+        return WorkspaceUserResourcePermission.objects.create(
+            workspace_id=self.workspace.id,
+            user=self.target_user,
+            auth_target_type='KNOWLEDGE',
+            target=str(self.knowledge.id),
+            auth_type=auth_type,
+            permission_list=permission_list or [ResourcePermission.VIEW.value],
+        )
+
+    def test_admin_can_grant_view_permission_for_knowledge(self):
+        response = self.client.put(
+            self._endpoint(),
+            [{'target_id': str(self.knowledge.id), 'permission': 'VIEW'}],
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+
+        permission = WorkspaceUserResourcePermission.objects.get(
+            workspace_id=self.workspace.id,
+            user=self.target_user,
+            auth_target_type='KNOWLEDGE',
+            target=str(self.knowledge.id),
+        )
+        self.assertEqual(permission.auth_type, ResourceAuthType.RESOURCE_PERMISSION_GROUP.value)
+        self.assertEqual(permission.permission_list, [ResourcePermission.VIEW.value])
+
+    def test_admin_can_clear_permission_with_not_auth_for_knowledge(self):
+        self._seed_permission()
+
+        response = self.client.put(
+            self._endpoint(),
+            [{'target_id': str(self.knowledge.id), 'permission': 'NOT_AUTH'}],
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+
+        permission = WorkspaceUserResourcePermission.objects.get(
+            workspace_id=self.workspace.id,
+            user=self.target_user,
+            auth_target_type='KNOWLEDGE',
+            target=str(self.knowledge.id),
         )
         self.assertEqual(permission.auth_type, ResourceAuthType.RESOURCE_PERMISSION_GROUP.value)
         self.assertEqual(permission.permission_list, [])
