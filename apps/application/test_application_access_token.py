@@ -123,3 +123,94 @@ class ApplicationAccessTokenTests(TestCase):
         self.assertTrue(access_token.show_source)
         self.assertTrue(access_token.show_exec)
         self.assertEqual(access_token.language, "en-US")
+
+    def test_access_token_edit_disables_show_source_and_show_exec(self):
+        request = self.factory.put(
+            f"/workspace/{self.workspace.id}/application/{self.application.id}/access_token",
+            data={
+                "show_source": False,
+                "show_exec": False,
+                "language": "en-US",
+            },
+            format="multipart",
+        )
+        force_authenticate(request, user=self.admin, token=self.auth_token)
+
+        response = AccessToken.as_view()(
+            request,
+            workspace_id=self.workspace.id,
+            application_id=str(self.application.id),
+        )
+        payload = json.loads(response.content)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(payload["data"]["show_source"])
+        self.assertFalse(payload["data"]["show_exec"])
+
+        access_token = ApplicationAccessToken.objects.get(
+            application_id=self.application.id
+        )
+        self.assertFalse(access_token.show_source)
+        self.assertFalse(access_token.show_exec)
+
+    def test_access_token_edit_persists_chinese_language(self):
+        request = self.factory.put(
+            f"/workspace/{self.workspace.id}/application/{self.application.id}/access_token",
+            data={
+                "show_source": True,
+                "show_exec": True,
+                "language": "zh-CN",
+            },
+            format="multipart",
+        )
+        force_authenticate(request, user=self.admin, token=self.auth_token)
+
+        response = AccessToken.as_view()(
+            request,
+            workspace_id=self.workspace.id,
+            application_id=str(self.application.id),
+        )
+        payload = json.loads(response.content)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["data"]["language"], "zh-CN")
+
+        access_token = ApplicationAccessToken.objects.get(
+            application_id=self.application.id
+        )
+        self.assertEqual(access_token.language, "zh-CN")
+
+    def test_non_admin_denied_display_settings_update(self):
+        non_admin = User.objects.create(
+            id=uuid.uuid7(),
+            email="viewer@app-access-token.test",
+            phone="",
+            nick_name="viewer-app-access-token",
+            username="viewer-app-access-token",
+            password=password_encrypt("Secret1!"),
+            role=RoleConstants.USER.name,
+            source="LOCAL",
+            is_active=True,
+        )
+        viewer_token = SimpleNamespace(
+            role_list=[RoleConstants.USER.value.__str__()],
+            permission_list=[],
+        )
+        request = self.factory.put(
+            f"/workspace/{self.workspace.id}/application/{self.application.id}/access_token",
+            data={
+                "show_source": False,
+                "show_exec": False,
+                "language": "zh-CN",
+            },
+            format="multipart",
+        )
+        force_authenticate(request, user=non_admin, token=viewer_token)
+
+        response = AccessToken.as_view()(
+            request,
+            workspace_id=self.workspace.id,
+            application_id=str(self.application.id),
+        )
+
+        self.assertEqual(response.status_code, 403)
