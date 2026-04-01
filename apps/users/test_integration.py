@@ -739,6 +739,40 @@ class UserManageCRUDIntegrationTests(TestCase):
             "密码:The password must be 6-20 characters long and must be a combination of letters, numbers, and special characters.",
         )
 
+    def test_admin_can_disable_user(self):
+        target_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="disable-target@example.com",
+            phone="",
+            nick_name="Disable Target",
+            username="disable-target",
+            password=password_encrypt("User123!"),
+            role="USER",
+            source="LOCAL",
+            is_active=True,
+        )
+
+        response = self.client.put(
+            f"{ADMIN_API_PREFIX}/user_manage/{target_user.id}",
+            {"is_active": False},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+        target_user.refresh_from_db()
+        self.assertFalse(target_user.is_active)
+
+        get_response = self.client.get(
+            f"{ADMIN_API_PREFIX}/user_manage/{target_user.id}"
+        )
+
+        self.assertEqual(get_response.status_code, 200)
+        get_payload = json.loads(get_response.content)
+        self.assertEqual(get_payload["code"], 200)
+        self.assertFalse(get_payload["data"]["is_active"])
+
 
 class UserManageDeniedTests(TestCase):
     def setUp(self):
