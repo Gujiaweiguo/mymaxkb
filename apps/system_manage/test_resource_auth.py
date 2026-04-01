@@ -367,6 +367,7 @@ class ToolDefaultWorkspaceManageGrantTests(TestCase):
             folder=self.folder,
         )
         self._grant_manage_permission()
+        self.client.force_authenticate(user=self.user, token=get_auth(self.user))
 
     def _grant_manage_permission(self):
         WorkspaceUserResourcePermission.objects.create(
