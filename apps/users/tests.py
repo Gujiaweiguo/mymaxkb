@@ -17,7 +17,11 @@ from common.utils.common import password_encrypt
 from system_manage.models import SystemSetting, SettingType
 from users.models import User
 from users.serializers.login import LoginSerializer, system_get_key, system_version
-from users.serializers.user import UserProfileSerializer, get_community_user_manage_response
+from users.serializers.user import (
+    ResetCurrentUserPassword,
+    UserProfileSerializer,
+    get_community_user_manage_response,
+)
 
 
 class CommunityEditionAuthFallbackTests(TestCase):
@@ -628,6 +632,33 @@ class BootstrapPasswordFlagMigrationContractTests(TestCase):
             "maxkb.const.CONFIG", {"DEFAULT_PASSWORD": "change_me_bootstrap_admin_password"}
         ):
             self.migration_module.mark_bootstrap_password_change(self.apps_stub, None)
+
+        user.refresh_from_db()
+        self.assertFalse(user.require_password_change)
+
+
+class ResetCurrentUserPasswordContractTests(TestCase):
+    def test_reset_current_user_password_clears_require_password_change_flag(self):
+        user = User.objects.create(
+            id=uuid.uuid7(),
+            email="reset-flagged@example.com",
+            phone="",
+            nick_name="Reset Flagged",
+            username="reset-flagged",
+            password=password_encrypt("Password1!"),
+            role="ADMIN",
+            source="LOCAL",
+            is_active=True,
+            require_password_change=True,
+        )
+
+        serializer = ResetCurrentUserPassword(
+            data={"password": "NewPass1!", "re_password": "NewPass1!"}
+        )
+
+        self.assertTrue(user.require_password_change)
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.assertTrue(serializer.reset_password(str(user.id)))
 
         user.refresh_from_db()
         self.assertFalse(user.require_password_change)
