@@ -571,3 +571,84 @@ class WorkspaceRoleListDeniedTests(TestCase):
         response = self.client.get(f'{ADMIN_API_PREFIX}/role_list/current_user')
 
         self.assertEqual(response.status_code, 403)
+
+
+class SystemRoleListHappyPathTests(TestCase):
+    def setUp(self):
+        self.admin = PermissionHappyPathMixin.create_admin_user('system-role-admin')
+        self.client = PermissionHappyPathMixin.setup_authenticated_client(self.admin)
+        PermissionHappyPathMixin.create_ce_user('system-role-user')
+
+    def test_admin_can_retrieve_system_role_list(self):
+        response = self.client.get(f'{ADMIN_API_PREFIX}/system/role')
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+        self.assertEqual(payload['data']['custom_role'], [])
+        self.assertEqual(
+            [item['id'] for item in payload['data']['internal_role']],
+            ['ADMIN', 'USER'],
+        )
+        self.assertEqual(
+            payload['data']['internal_role'][0]['user_count'],
+            User.objects.filter(role='ADMIN', is_active=True).count(),
+        )
+        self.assertEqual(
+            payload['data']['internal_role'][1]['user_count'],
+            User.objects.filter(role='USER', is_active=True).count(),
+        )
+
+    def test_admin_can_retrieve_system_role_permissions(self):
+        response = self.client.get(f'{ADMIN_API_PREFIX}/system/role/ADMIN/permission')
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+        self.assertEqual(payload['data'][0]['id'], 'ROLE')
+        self.assertEqual(payload['data'][0]['children'][0]['id'], 'ROLE')
+        self.assertEqual(
+            [item['id'] for item in payload['data'][0]['children'][0]['permission']],
+            [
+                'ROLE:READ',
+                'ROLE:READ+CREATE',
+                'ROLE:READ+EDIT',
+                'ROLE:READ+DELETE',
+                'ROLE:READ+ADD_MEMBER',
+                'ROLE:READ+REMOVE_MEMBER',
+            ],
+        )
+
+    def test_admin_can_retrieve_system_role_members(self):
+        response = self.client.get(
+            f'{ADMIN_API_PREFIX}/system/role/USER/user_list/1/20',
+            {'username': 'system-role-user'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+        self.assertEqual(payload['data']['total'], 1)
+        self.assertEqual(payload['data']['records'][0]['username'], 'system-role-user')
+        self.assertEqual(payload['data']['records'][0]['workspace_name'], '')
+
+
+class SystemRoleListDeniedTests(TestCase):
+    def setUp(self):
+        self.user = PermissionHappyPathMixin.create_ce_user('system-role-denied-user')
+        self.client = PermissionHappyPathMixin.setup_authenticated_client(self.user)
+
+    def test_non_admin_cannot_access_system_role_list(self):
+        response = self.client.get(f'{ADMIN_API_PREFIX}/system/role')
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_admin_cannot_access_system_role_permissions(self):
+        response = self.client.get(f'{ADMIN_API_PREFIX}/system/role/ADMIN/permission')
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_admin_cannot_access_system_role_members(self):
+        response = self.client.get(f'{ADMIN_API_PREFIX}/system/role/USER/user_list/1/20')
+
+        self.assertEqual(response.status_code, 403)
