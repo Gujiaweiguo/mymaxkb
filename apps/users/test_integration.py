@@ -44,6 +44,9 @@ class UserAPIIntegrationTests(TestCase):
             is_active=True,
             require_password_change=False,
         )
+        version, get_key = Cache_Version.SYSTEM.value
+        cache.delete(get_key(f"system_{self.admin_username}"), version=version)
+        cache.delete(get_key(f"system_{self.admin_username}_lock"), version=version)
 
     def test_login_with_valid_credentials(self):
         response = self.client.post(
@@ -188,6 +191,9 @@ class LoginContractIntegrationTests(TestCase):
             is_active=True,
             require_password_change=False,
         )
+        version, get_key = Cache_Version.SYSTEM.value
+        cache.delete(get_key(f"system_{self.admin_username}"), version=version)
+        cache.delete(get_key(f"system_{self.admin_username}_lock"), version=version)
 
     def test_login_returns_token_for_active_local_admin(self):
         response = self.client.post(
