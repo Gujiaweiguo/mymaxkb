@@ -14,7 +14,19 @@ from typing import List, Dict
 
 from application.flow.i_step_node import NodeResult, INode
 from application.flow.step_node.ai_chat_step_node.i_chat_node import IChatNode
-from application.flow.tools import Reasoning, mcp_response_generator
+try:
+    from application.flow.tools import Reasoning, mcp_response_generator
+except Exception as _flow_tools_import_error:
+    class Reasoning:
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError(
+                f"application.flow.tools unavailable: {_flow_tools_import_error}"
+            )
+
+    def mcp_response_generator(*args, **kwargs):
+        raise RuntimeError(
+            f"application.flow.tools unavailable: {_flow_tools_import_error}"
+        )
 from application.models import Application, ApplicationApiKey, ApplicationAccessToken
 from common.exception.app_exception import AppApiException
 from common.utils.rsa_util import rsa_long_decrypt

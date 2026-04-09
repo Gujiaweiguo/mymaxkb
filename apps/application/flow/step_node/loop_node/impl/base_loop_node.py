@@ -14,7 +14,14 @@ from django.utils.translation import gettext as _
 from application.flow.common import Answer, WorkflowMode
 from application.flow.i_step_node import NodeResult, WorkFlowPostHandler, INode
 from application.flow.step_node.loop_node.i_loop_node import ILoopNode
-from application.flow.tools import Reasoning
+try:
+    from application.flow.tools import Reasoning
+except Exception as _flow_tools_import_error:
+    class Reasoning:
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError(
+                f"application.flow.tools unavailable: {_flow_tools_import_error}"
+            )
 from application.models import ChatRecord
 from common.handle.impl.response.loop_to_response import LoopToResponse
 from maxkb.const import CONFIG
