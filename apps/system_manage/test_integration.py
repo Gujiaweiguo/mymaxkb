@@ -1049,3 +1049,34 @@ class ResourceMappingIntegrationTests(TestCase):
         self.assertEqual(payload["code"], 200)
         self.assertEqual(payload["data"]["total"], 0)
         self.assertEqual(payload["data"]["records"], [])
+
+    def test_admin_can_page_system_resource_mappings(self):
+        ResourceMapping.objects.create(
+            source_type="APPLICATION",
+            target_type="KNOWLEDGE",
+            source_id=str(self.application.id),
+            target_id=str(self.knowledge.id),
+        )
+
+        response = self.client.get(
+            f"{ADMIN_API_PREFIX}/system/resource/resource_mapping/KNOWLEDGE/{self.knowledge.id}/1/20"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["code"], 200)
+        self.assertEqual(payload["data"]["total"], 1)
+        self.assertEqual(len(payload["data"]["records"]), 1)
+        record = payload["data"]["records"][0]
+        self.assertEqual(record["source_type"], "APPLICATION")
+        self.assertEqual(record["target_type"], "KNOWLEDGE")
+        self.assertEqual(str(record["target_id"]), str(self.knowledge.id))
+
+    def test_regular_user_cannot_page_system_resource_mappings(self):
+        self.client.force_authenticate(user=self.regular_user, token=get_auth(self.regular_user))
+
+        response = self.client.get(
+            f"{ADMIN_API_PREFIX}/system/resource/resource_mapping/KNOWLEDGE/{self.knowledge.id}/1/20"
+        )
+
+        self.assertEqual(response.status_code, 403)
