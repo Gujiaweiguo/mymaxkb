@@ -38,7 +38,7 @@ class WorkspaceAPIIntegrationTests(TestCase):
             source="LOCAL",
             is_active=True,
         )
-        self.client.force_authenticate(user=self.admin_user, token="test-token")
+        self.client.force_authenticate(user=self.admin_user, token=get_auth(self.admin_user))
 
     def test_create_workspace(self):
         response = self.client.post(
@@ -131,7 +131,7 @@ class WorkspaceMemberIntegrationTests(TestCase):
             id="member-workspace",
             name="Member Workspace",
         )
-        self.client.force_authenticate(user=self.admin_user, token="test-token")
+        self.client.force_authenticate(user=self.admin_user, token=get_auth(self.admin_user))
 
     def test_add_workspace_member(self):
         member = User.objects.create(

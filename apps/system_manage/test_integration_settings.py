@@ -3,6 +3,7 @@ import uuid_utils.compat as uuid
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from common.auth.handle.impl.user_token import get_auth
 from common.utils.common import password_encrypt
 from users.models import User
 from system_manage.models import SystemSetting, SettingType, Workspace
@@ -25,7 +26,7 @@ class SystemSettingsAPIIntegrationTests(TestCase):
             source="LOCAL",
             is_active=True,
         )
-        self.client.force_authenticate(user=self.admin_user, token="test-token")
+        self.client.force_authenticate(user=self.admin_user, token=get_auth(self.admin_user))
 
     def test_get_email_setting(self):
         response = self.client.get(f"{ADMIN_API_PREFIX}/email_setting")
@@ -85,7 +86,7 @@ class ChatUserAPIIntegrationTests(TestCase):
             source="LOCAL",
             is_active=True,
         )
-        self.client.force_authenticate(user=self.admin_user, token="test-token")
+        self.client.force_authenticate(user=self.admin_user, token=get_auth(self.admin_user))
 
     def test_get_chat_user_list(self):
         response = self.client.get(f"{ADMIN_API_PREFIX}/system/chat_user/list")
@@ -123,7 +124,7 @@ class SystemAPIIntegrationTests(TestCase):
             source="LOCAL",
             is_active=True,
         )
-        self.client.force_authenticate(user=self.admin_user, token="test-token")
+        self.client.force_authenticate(user=self.admin_user, token=get_auth(self.admin_user))
 
     def test_get_system_info(self):
         response = self.client.get(f"{ADMIN_API_PREFIX}/profile")
