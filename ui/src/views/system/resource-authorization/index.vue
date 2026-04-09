@@ -51,7 +51,6 @@
                         <el-text
                           class="color-input-placeholder ellipsis-1"
                           :title="row.roles.join('，')"
-                          v-if="hasPermission([EditionConst.IS_EE, EditionConst.IS_PE], 'OR')"
                           >({{
                             row.roles.map((item: any) => i18n_name(item))?.join('，')
                           }})</el-text
@@ -84,8 +83,6 @@ import { MsgSuccess, MsgConfirm } from '@/utils/message'
 import { SourceTypeEnum } from '@/enums/common'
 import { t } from '@/locales'
 import AuthorizationApi from '@/api/system/resource-authorization'
-import { EditionConst } from '@/utils/permission/data'
-import { hasPermission } from '@/utils/permission/index'
 import type { WorkspaceItem } from '@/api/type/workspace'
 import { loadPermissionApi } from '@/utils/dynamics-api/permission-api.ts'
 

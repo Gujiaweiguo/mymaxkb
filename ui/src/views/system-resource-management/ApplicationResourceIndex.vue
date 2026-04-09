@@ -233,7 +233,7 @@
               effect="dark"
               :content="$t('views.application.operation.toChat')"
               placement="top"
-              v-if="!isCeEdition"
+              v-if="!isCeEdition || user.is_admin()"
             >
               <span class="mr-8">
                 <el-button
@@ -250,7 +250,7 @@
               effect="dark"
               :content="$t('views.system.resource_management.management')"
               placement="top"
-              v-if="!isCeEdition && managePermission()"
+              v-if="permissionPrecise.jump_read()"
             >
               <span class="mr-8">
                 <el-button
@@ -284,22 +284,30 @@
                     {{ $t('views.system.resourceAuthorization.title') }}
                   </el-dropdown-item>
                   <el-dropdown-item
+                    text
+                    @click.stop="openResourceMappingDrawer(row)"
+                    v-if="permissionPrecise.relate_map()"
+                  >
+                    <AppIcon iconName="app-resource-mapping" class="color-secondary"></AppIcon>
+                    {{ $t('views.system.resourceMapping.title') }}
+                  </el-dropdown-item>
+                  <el-dropdown-item
                     @click.stop="exportApplication(row)"
-                    v-if="!isCeEdition && permissionPrecise.export()"
+                    v-if="(!isCeEdition || user.is_admin()) && permissionPrecise.export()"
                   >
                     <AppIcon iconName="app-export" class="color-secondary"></AppIcon>
                     {{ $t('common.export') }}
                   </el-dropdown-item>
                   <el-dropdown-item
                     @click.stop="openTriggerDrawer(row)"
-                    v-if="!isCeEdition && permissionPrecise.trigger_read()"
+                    v-if="(!isCeEdition || user.is_admin()) && permissionPrecise.trigger_read()"
                   >
                     <AppIcon iconName="app-trigger" class="color-secondary"></AppIcon>
                     {{ $t('views.trigger.title') }}
                   </el-dropdown-item>
                   <el-dropdown-item
                     @click.stop="deleteApplication(row)"
-                    v-if="!isCeEdition && permissionPrecise.delete()"
+                    v-if="(!isCeEdition || user.is_admin()) && permissionPrecise.delete()"
                   >
                     <AppIcon iconName="app-delete" class="color-secondary"></AppIcon>
                     {{ $t('common.delete') }}
@@ -315,6 +323,7 @@
       :type="SourceTypeEnum.APPLICATION"
       ref="ResourceAuthorizationDrawerRef"
     />
+    <ResourceMappingDrawer ref="resourceMappingDrawerRef"></ResourceMappingDrawer>
     <ResourceTriggerDrawer
       ref="resourceTriggerDrawerRef"
       :source="SourceTypeEnum.APPLICATION"
@@ -327,6 +336,7 @@ import { onMounted, ref, reactive, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import ApplicationResourceApi from '@/api/system-resource-management/application'
 import ResourceAuthorizationDrawer from '@/components/resource-authorization-drawer/index.vue'
+import ResourceMappingDrawer from '@/components/resource_mapping/index.vue'
 import { t } from '@/locales'
 import { isAppIcon, resetUrl } from '@/utils/common'
 import ResourceTriggerDrawer from '@/views/trigger/ResourceTriggerDrawer.vue'
@@ -350,25 +360,23 @@ const permissionPrecise = computed(() => {
   return permissionMap['application']['systemManage']
 })
 
-const managePermission = () => {
-  return (
-    permissionPrecise.value.overview_read() ||
-    permissionPrecise.value.access_read() ||
-    permissionPrecise.value.edit() ||
-    permissionPrecise.value.chat_log_read() ||
-    permissionPrecise.value.chat_user_read()
-  )
-}
-
 const MoreFilledPermission = () => {
   if (isCeEdition.value) {
-    return permissionPrecise.value.auth()
+    return (
+      permissionPrecise.value.auth() ||
+      permissionPrecise.value.relate_map() ||
+      (user.is_admin() &&
+        (permissionPrecise.value.export() ||
+          permissionPrecise.value.delete() ||
+          permissionPrecise.value.trigger_read()))
+    )
   }
 
   return (
     permissionPrecise.value.export() ||
     permissionPrecise.value.delete() ||
     permissionPrecise.value.auth() ||
+    permissionPrecise.value.relate_map() ||
     permissionPrecise.value.trigger_read()
   )
 }
@@ -379,12 +387,17 @@ const openTriggerDrawer = (data: any) => {
 }
 
 const ResourceAuthorizationDrawerRef = ref()
+const resourceMappingDrawerRef = ref<InstanceType<typeof ResourceMappingDrawer>>()
 
 function openAuthorization(item: any) {
   if (item?.workspace_id) {
     user.setWorkspaceId(item.workspace_id)
   }
   ResourceAuthorizationDrawerRef.value.open(item.id)
+}
+
+function openResourceMappingDrawer(item: any) {
+  resourceMappingDrawerRef.value?.open('APPLICATION', item)
 }
 
 const apiInputParams = ref([])

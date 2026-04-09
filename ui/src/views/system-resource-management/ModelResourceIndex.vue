@@ -104,7 +104,7 @@
         </el-table-column>
 
         <el-table-column
-          v-if="user.isEE()"
+          v-if="canUseWorkspaceFilter"
           width="150"
           prop="workspace_name"
           :label="$t('views.workspace.title')"
@@ -319,6 +319,9 @@ const MoreFilledPermission = () => {
 const ResourceAuthorizationDrawerRef = ref()
 
 function openAuthorization(item: any) {
+  if (item?.workspace_id) {
+    user.setWorkspaceId(item.workspace_id)
+  }
   ResourceAuthorizationDrawerRef.value.open(item.id)
 }
 
@@ -359,6 +362,10 @@ const permissionPrecise = computed(() => {
   return permissionMap['model']['systemManage']
 })
 
+const canUseWorkspaceFilter = computed(() => {
+  return user.isEE() || (user.isCE() && user.is_admin())
+})
+
 const workspaceOptions = ref<any[]>([])
 const workspaceVisible = ref(false)
 const workspaceArr = ref<any[]>([])
@@ -394,7 +401,7 @@ function filterWorkspaceChange(val: string) {
 }
 
 async function getWorkspaceList() {
-  if (user.isEE()) {
+  if (canUseWorkspaceFilter.value) {
     const res = await loadPermissionApi('workspace').getSystemWorkspaceList(loading)
     workspaceOptions.value = res.data.map((item: any) => ({
       label: item.name,
