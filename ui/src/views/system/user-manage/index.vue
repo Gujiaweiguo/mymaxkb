@@ -37,11 +37,7 @@
             <el-option :label="$t('views.userManage.userForm.nick_name.label')" value="nick_name" />
             <el-option :label="$t('views.login.loginForm.email.label')" value="email" />
             <el-option :label="$t('common.status.label')" value="is_active" />
-            <el-option
-              v-if="user.isEE() || user.isPE()"
-              :label="$t('views.userManage.source.label')"
-              value="source"
-            />
+            <el-option :label="$t('views.userManage.source.label')" value="source" />
           </el-select>
           <el-input
             v-if="search_type === 'username'"
@@ -86,13 +82,17 @@
             :placeholder="$t('common.inputPlaceholder')"
           >
             <el-option :label="$t('views.userManage.source.local')" value="LOCAL" />
-            <el-option label="CAS" value="CAS" />
-            <el-option label="LDAP" value="LDAP" />
-            <el-option label="OIDC" value="OIDC" />
-            <el-option label="OAuth2" value="OAuth2" />
-            <el-option :label="$t('views.userManage.source.wecom')" value="wecom" />
-            <el-option :label="$t('views.userManage.source.lark')" value="lark" />
-            <el-option :label="$t('views.userManage.source.dingtalk')" value="dingtalk" />
+            <el-option v-if="!user.isCE()" label="CAS" value="CAS" />
+            <el-option v-if="!user.isCE()" label="LDAP" value="LDAP" />
+            <el-option v-if="!user.isCE()" label="OIDC" value="OIDC" />
+            <el-option v-if="!user.isCE()" label="OAuth2" value="OAuth2" />
+            <el-option v-if="!user.isCE()" :label="$t('views.userManage.source.wecom')" value="wecom" />
+            <el-option v-if="!user.isCE()" :label="$t('views.userManage.source.lark')" value="lark" />
+            <el-option
+              v-if="!user.isCE()"
+              :label="$t('views.userManage.source.dingtalk')"
+              value="dingtalk"
+            />
           </el-select>
         </div>
       </div>
@@ -161,7 +161,6 @@
           prop="role_name"
           :label="$t('views.role.member.role')"
           width="210"
-          v-if="user.isEE() || user.isPE()"
         >
           <template #default="{ row }">
             <el-popover :width="500" :persistent="false">
