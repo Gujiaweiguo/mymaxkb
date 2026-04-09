@@ -6,6 +6,10 @@ app_name = "application"
 # @formatter:off
 urlpatterns = [
     path(
+        "system/resource/application",
+        views.SystemResourceApplicationView.as_view(),
+    ),
+    path(
         "system/resource/application/<int:current_page>/<int:page_size>",
         views.SystemResourceApplicationView.Page.as_view(),
     ),
@@ -90,6 +94,114 @@ urlpatterns = [
     path(
         "system/resource/application/<str:application_id>/platform/<str:platform_type>",
         views.SystemResourceApplicationPlatformConfigView.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/access_token",
+        views.SystemResourceApplicationAccessTokenView.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/setting",
+        views.SystemResourceApplicationSettingView.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/open",
+        views.SystemResourceApplicationOpenView.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/play_demo_text",
+        views.SystemResourceApplicationPlayDemoTextView.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/text_to_speech",
+        views.SystemResourceApplicationTextToSpeechView.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/speech_to_text",
+        views.SystemResourceApplicationSpeechToTextView.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/mcp_tools",
+        views.SystemResourceApplicationMcpToolsView.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/application_version",
+        views.SystemResourceApplicationVersionView.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/application_version/<str:application_version_id>",
+        views.SystemResourceApplicationVersionView.Operate.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/model/<str:model_id>/prompt_generate",
+        views.SystemResourceApplicationPromptGenerateView.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/application_key",
+        views.SystemResourceApplicationKeyView.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/application_key/<str:api_key_id>",
+        views.SystemResourceApplicationKeyView.Operate.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/application_key/<int:current_page>/<int:page_size>",
+        views.SystemResourceApplicationKeyView.Page.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/export",
+        views.SystemResourceApplicationExportView.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/application_stats",
+        views.SystemResourceApplicationStatsView.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/application_token_usage",
+        views.SystemResourceApplicationStatsView.TokenUsageStatistics.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/top_questions",
+        views.SystemResourceApplicationStatsView.TopQuestionsStatistics.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/publish",
+        views.SystemResourceApplicationPublishView.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>",
+        views.SystemResourceApplicationOperateView.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/chat/export",
+        views.SystemResourceApplicationChat.Export.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/add_knowledge",
+        views.SystemResourceApplicationChatRecordAddKnowledge.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/chat/<str:chat_id>/chat_record/<str:chat_record_id>/improve",
+        views.SystemResourceApplicationChatRecordImprove.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/chat/<str:chat_id>/chat_record/<str:chat_record_id>/knowledge/<str:knowledge_id>/document/<str:document_id>/improve",
+        views.SystemResourceApplicationChatRecordImproveParagraph.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/chat/<str:chat_id>/chat_record/<str:chat_record_id>/knowledge/<str:knowledge_id>/document/<str:document_id>/paragraph/<str:paragraph_id>/improve",
+        views.SystemResourceApplicationChatRecordImproveParagraph.Operate.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/chat/<int:current_page>/<int:page_size>",
+        views.SystemResourceApplicationChat.Page.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/chat/<str:chat_id>/chat_record/<str:chat_record_id>",
+        views.SystemResourceApplicationChatRecordOperate.as_view(),
+    ),
+    path(
+        "system/resource/application/<str:application_id>/chat/<str:chat_id>/chat_record/<int:current_page>/<int:page_size>",
+        views.SystemResourceApplicationChatRecord.Page.as_view(),
     ),
     path(
         "workspace/<str:workspace_id>/<str:resource_type>/<str:resource_id>/user_group",

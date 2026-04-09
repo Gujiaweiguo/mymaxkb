@@ -167,7 +167,7 @@ class ApplicationExportAPI(APIMixin):
 
     @staticmethod
     def get_response():
-        return DefaultResultSerializer
+        return OpenApiTypes.BINARY
 
 
 class ApplicationEditAPI(APIMixin):
@@ -187,7 +187,7 @@ class TextToSpeechAPI(APIMixin):
 
     @staticmethod
     def get_response():
-        return DefaultResultSerializer
+        return OpenApiTypes.BINARY
 
 
 class SpeechToTextAPI(APIMixin):

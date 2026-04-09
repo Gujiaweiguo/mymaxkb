@@ -242,8 +242,10 @@ class ApplicationChatQuerySerializers(serializers.Serializer):
             output.close()
             workbook.close()
 
-        response = StreamingHttpResponse(stream_response(),
-                                         content_type='application/vnd.open.xmlformats-officedocument.spreadsheetml.sheet')
+        response = StreamingHttpResponse(
+            stream_response(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
         response['Content-Disposition'] = 'attachment; filename="data.xlsx"'
         return response
 

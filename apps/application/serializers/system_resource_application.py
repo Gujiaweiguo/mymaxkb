@@ -54,9 +54,19 @@ class SystemResourceApplicationQuerySerializer(serializers.Serializer):
 
     def page(self, current_page: int, page_size: int):
         self.is_valid(raise_exception=True)
-        query_set = (
-            QuerySet(Application).select_related("user").order_by("-create_time")
-        )
+        query_set = self.get_query_set()
+
+        total = query_set.count()
+        start = (current_page - 1) * page_size
+        records = self.serialize_records(query_set[start : start + page_size])
+        return Page(total, records, current_page, page_size)
+
+    def list(self):
+        self.is_valid(raise_exception=True)
+        return self.serialize_records(self.get_query_set())
+
+    def get_query_set(self):
+        query_set = QuerySet(Application).select_related("user").order_by("-create_time")
 
         if self.validated_data.get("name"):
             query_set = query_set.filter(name__contains=self.validated_data.get("name"))
@@ -73,13 +83,15 @@ class SystemResourceApplicationQuerySerializer(serializers.Serializer):
         if status_list:
             query_set = query_set.filter(is_publish__in=status_list)
 
+        return query_set
+
+    @staticmethod
+    def serialize_records(query_set):
         workspace_name_map = {
             workspace.id: workspace.name for workspace in QuerySet(Workspace).all()
         }
 
-        total = query_set.count()
-        start = (current_page - 1) * page_size
-        records = [
+        return [
             {
                 "id": application.id,
                 "name": application.name,
@@ -95,6 +107,5 @@ class SystemResourceApplicationQuerySerializer(serializers.Serializer):
                 "update_time": application.update_time,
                 "resource_count": 0,
             }
-            for application in query_set[start : start + page_size]
+            for application in query_set
         ]
-        return Page(total, records, current_page, page_size)
