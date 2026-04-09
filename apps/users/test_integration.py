@@ -30,6 +30,7 @@ class UserAPIIntegrationTests(TestCase):
             role="ADMIN",
             source="LOCAL",
             is_active=True,
+            require_password_change=False,
         )
         self.regular_user = User.objects.create(
             id=uuid.uuid7(),
@@ -41,6 +42,7 @@ class UserAPIIntegrationTests(TestCase):
             role="USER",
             source="LOCAL",
             is_active=True,
+            require_password_change=False,
         )
 
     def test_login_with_valid_credentials(self):
