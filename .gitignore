@@ -195,5 +195,7 @@ config.yml
 # Local agent dependencies / caches
 .opencode/node_modules/
 .opencode/bun.lock
+.opencode/package-lock.json
+.sisyphus/
 .ruff_cache/
 .perm_check
