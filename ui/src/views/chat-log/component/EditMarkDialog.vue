@@ -11,7 +11,7 @@
       <div class="flex-between">
         <h4 :id="titleId" :class="titleClass">{{ $t('views.chatLog.editMark') }}</h4>
         <div class="text-right">
-          <el-button text @click="isEdit = true" v-if="!isEdit">
+          <el-button text @click="isEdit = true" v-if="!isEdit && apiType === 'workspace'">
             <AppIcon iconName="app-edit"></AppIcon>
           </el-button>
           <el-button text style="margin-left: 4px" @click="deleteMark">

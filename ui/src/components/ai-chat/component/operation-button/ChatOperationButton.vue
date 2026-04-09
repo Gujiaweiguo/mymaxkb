@@ -159,6 +159,7 @@ import { nextTick, onMounted, ref, onBeforeUnmount, type Ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { copyClick } from '@/utils/clipboard'
 import applicationApi from '@/api/application/application'
+import systemResourceApplicationApi from '@/api/system-resource-management/application'
 import chatAPI from '@/api/chat/chat'
 import { datetimeFormat } from '@/utils/time'
 import { MsgError } from '@/utils/message'
@@ -357,7 +358,9 @@ const getTextToSpeechAPI = () => {
       return chatAPI.textToSpeech(data, loading)
     }
   } else {
-    return applicationApi.postTextToSpeech
+    return route.path.includes('resource-management')
+      ? systemResourceApplicationApi.postTextToSpeech
+      : applicationApi.postTextToSpeech
   }
 }
 const textToSpeechAPI = getTextToSpeechAPI()

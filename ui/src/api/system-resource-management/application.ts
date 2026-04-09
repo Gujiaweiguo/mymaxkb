@@ -249,16 +249,6 @@ const exportApplication = (
 }
 
 /**
- * 导入应用
- */
-const importApplication: (data: any, loading?: Ref<boolean>) => Promise<Result<any>> = (
-  data,
-  loading,
-) => {
-  return post(`${prefix}/import`, data, undefined, loading)
-}
-
-/**
  * 对话
  * @param 参数
  * chat_id: string
@@ -316,11 +306,16 @@ const updatePlatformConfig: (
 /**
  * mcp 节点
  */
-const getMcpTools: (application_id: string, loading?: Ref<boolean>) => Promise<Result<any>> = (
+const getMcpTools: (
+  application_id: string,
+  mcp_servers: any,
+  loading?: Ref<boolean>,
+) => Promise<Result<any>> = (
   application_id,
+  mcp_servers,
   loading,
 ) => {
-  return get(`${prefix}/${application_id}/mcp_tools`, undefined, loading)
+  return post(`${prefix}/${application_id}/mcp_tools`, { mcp_servers }, undefined, loading)
 }
 
 export default {
@@ -332,7 +327,6 @@ export default {
   getAccessToken,
   putAccessToken,
   exportApplication,
-  importApplication,
   getStatistics,
   open,
   chat,
