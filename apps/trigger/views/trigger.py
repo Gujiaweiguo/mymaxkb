@@ -13,13 +13,16 @@ from rest_framework.request import Request
 from rest_framework.views import APIView
 
 from application.api.application_api import ApplicationCreateAPI
+from application.models import Application
 from common import result
 from common.auth import TokenAuth
 from common.auth.authentication import has_permissions
+from common.exception.app_exception import AppApiException
 from common.constants.permission_constants import PermissionConstants, RoleConstants, ViewPermission, CompareConstants, \
     Permission, Group, Operate
 from common.log.log import log
 from common.result import DefaultResultSerializer
+from tools.models import Tool
 from trigger.models import Trigger
 from trigger.serializers.task_source_trigger import TaskSourceTriggerListSerializer, TaskSourceTriggerOperateSerializer, \
     TaskSourceTriggerSerializer
@@ -29,6 +32,41 @@ from trigger.api.trigger import TriggerCreateAPI, TriggerOperateAPI, TriggerEdit
     TriggerBatchActiveAPI, TaskSourceTriggerOperateAPI, TaskSourceTriggerAPI, TaskSourceTriggerCreateAPI, \
     TriggerQueryAPI, TriggerQueryPageAPI
 from trigger.serializers.trigger import TriggerSerializer
+
+
+def get_system_resource_trigger_permission(source_type: str, operate: str):
+    source_permission_map = {
+        'APPLICATION': {
+            'read': PermissionConstants.RESOURCE_APPLICATION_TRIGGER_READ,
+            'create': PermissionConstants.RESOURCE_APPLICATION_TRIGGER_CREATE,
+            'edit': PermissionConstants.RESOURCE_APPLICATION_TRIGGER_EDIT,
+            'delete': PermissionConstants.RESOURCE_APPLICATION_TRIGGER_DELETE,
+        },
+        'TOOL': {
+            'read': PermissionConstants.RESOURCE_TOOL_TRIGGER_READ,
+            'create': PermissionConstants.RESOURCE_TOOL_TRIGGER_CREATE,
+            'edit': PermissionConstants.RESOURCE_TOOL_TRIGGER_EDIT,
+            'delete': PermissionConstants.RESOURCE_TOOL_TRIGGER_DELETE,
+        },
+    }
+    permission = source_permission_map.get(source_type, {}).get(operate)
+    if permission is None:
+        raise AppApiException(404, _('Unsupported system resource trigger type'))
+    return permission
+
+
+def get_system_resource_workspace_id(source_type: str, source_id: str):
+    source_model_map = {
+        'APPLICATION': Application,
+        'TOOL': Tool,
+    }
+    source_model = source_model_map.get(source_type)
+    if source_model is None:
+        raise AppApiException(404, _('Unsupported system resource trigger type'))
+    source = QuerySet(source_model).filter(id=source_id).first()
+    if source is None:
+        raise AppApiException(404, _('%s id does not exist') % source_type)
+    return source.workspace_id
 
 
 def get_trigger_operation_object(trigger_id):
@@ -397,6 +435,131 @@ class TaskSourceTriggerView(APIView):
             get_operation_object=lambda r, k: get_trigger_operation_object(k.get('trigger_id')),
         )
         def delete(self, request: Request, workspace_id: str, source_type: str, source_id: str, trigger_id: str):
+            return result.success(TaskSourceTriggerOperateSerializer(
+                data={'trigger_id': trigger_id, 'workspace_id': workspace_id,
+                      'source_id': source_id, 'source_type': source_type}
+            ).delete())
+
+
+class SystemResourceTriggerView(APIView):
+    authentication_classes = [TokenAuth]
+
+    @extend_schema(
+        methods=['POST'],
+        description=_('Create trigger in system resource source'),
+        summary=_('Create trigger in system resource source'),
+        operation_id=_('Create trigger in system resource source'),  # type: ignore
+        parameters=TaskSourceTriggerCreateAPI.get_parameters(),
+        request=TaskSourceTriggerCreateAPI.get_request(),
+        responses=TaskSourceTriggerCreateAPI.get_response(),
+        tags=[_('Trigger')]  # type: ignore
+    )
+    @has_permissions(
+        lambda r, kwargs: get_system_resource_trigger_permission(kwargs.get('source_type'), 'create'),
+        RoleConstants.ADMIN,
+    )
+    @log(
+        menu='Trigger', operate='Create trigger in system resource source',
+        get_operation_object=lambda r, k: r.data.get('name'),
+    )
+    def post(self, request: Request, source_type: str, source_id: str):
+        workspace_id = get_system_resource_workspace_id(source_type, source_id)
+        return result.success(TaskSourceTriggerSerializer(data={
+            'workspace_id': workspace_id,
+            'user_id': request.user.id,
+        }).insert({**request.data, 'source_id': source_id,
+                   'workspace_id': workspace_id,
+                   'is_active': True,
+                   'source_type': source_type}))
+
+    @extend_schema(
+        methods=['GET'],
+        description=_('Get the trigger list of system resource source'),
+        summary=_('Get the trigger list of system resource source'),
+        operation_id=_('Get the trigger list of system resource source'),  # type: ignore
+        parameters=TaskSourceTriggerAPI.get_parameters(),
+        responses=DefaultResultSerializer,
+        tags=[_('Trigger')]  # type: ignore
+    )
+    @has_permissions(
+        lambda r, kwargs: get_system_resource_trigger_permission(kwargs.get('source_type'), 'read'),
+        RoleConstants.ADMIN,
+    )
+    def get(self, request: Request, source_type: str, source_id: str):
+        workspace_id = get_system_resource_workspace_id(source_type, source_id)
+        return result.success(TaskSourceTriggerListSerializer(data={
+            'workspace_id': workspace_id,
+            'source_id': source_id,
+            'source_type': source_type,
+        }).list())
+
+    class Operate(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['GET'],
+            description=_('Get system resource task source trigger details'),
+            summary=_('Get system resource task source trigger details'),
+            operation_id=_('Get system resource task source trigger details'),  # type: ignore
+            parameters=TaskSourceTriggerOperateAPI.get_parameters(),
+            responses=result.DefaultResultSerializer,
+            tags=[_('Trigger')]  # type: ignore
+        )
+        @has_permissions(
+            lambda r, kwargs: get_system_resource_trigger_permission(kwargs.get('source_type'), 'read'),
+            RoleConstants.ADMIN,
+        )
+        def get(self, request: Request, source_type: str, source_id: str, trigger_id: str):
+            workspace_id = get_system_resource_workspace_id(source_type, source_id)
+            return result.success(TaskSourceTriggerOperateSerializer(
+                data={'trigger_id': trigger_id, 'workspace_id': workspace_id,
+                      'source_id': source_id, 'source_type': source_type}
+            ).one())
+
+        @extend_schema(
+            methods=['PUT'],
+            description=_('Modify the system resource task source trigger'),
+            summary=_('Modify the system resource task source trigger'),
+            operation_id=_('Modify the system resource task source trigger'),  # type: ignore
+            parameters=TaskSourceTriggerOperateAPI.get_parameters(),
+            request=TaskSourceTriggerOperateAPI.get_request(),
+            responses=result.DefaultResultSerializer,
+            tags=[_('Trigger')]  # type: ignore
+        )
+        @has_permissions(
+            lambda r, kwargs: get_system_resource_trigger_permission(kwargs.get('source_type'), 'edit'),
+            RoleConstants.ADMIN,
+        )
+        @log(
+            menu='Trigger', operate='Modify the system resource source trigger',
+            get_operation_object=lambda r, k: get_trigger_operation_object(k.get('trigger_id')),
+        )
+        def put(self, request: Request, source_type: str, source_id: str, trigger_id: str):
+            workspace_id = get_system_resource_workspace_id(source_type, source_id)
+            return result.success(TaskSourceTriggerOperateSerializer(
+                data={'trigger_id': trigger_id, 'workspace_id': workspace_id,
+                      'source_id': source_id, 'source_type': source_type}
+            ).edit(request.data))
+
+        @extend_schema(
+            methods=['DELETE'],
+            description=_('Delete the system resource task source trigger'),
+            summary=_('Delete the system resource task source trigger'),
+            operation_id=_('Delete the system resource task source trigger'),  # type: ignore
+            parameters=TaskSourceTriggerOperateAPI.get_parameters(),
+            responses=result.DefaultResultSerializer,
+            tags=[_('Trigger')]  # type: ignore
+        )
+        @has_permissions(
+            lambda r, kwargs: get_system_resource_trigger_permission(kwargs.get('source_type'), 'delete'),
+            RoleConstants.ADMIN,
+        )
+        @log(
+            menu='Trigger', operate='Delete the system resource source trigger',
+            get_operation_object=lambda r, k: get_trigger_operation_object(k.get('trigger_id')),
+        )
+        def delete(self, request: Request, source_type: str, source_id: str, trigger_id: str):
+            workspace_id = get_system_resource_workspace_id(source_type, source_id)
             return result.success(TaskSourceTriggerOperateSerializer(
                 data={'trigger_id': trigger_id, 'workspace_id': workspace_id,
                       'source_id': source_id, 'source_type': source_type}

@@ -1543,6 +1543,10 @@ class PermissionConstants(Enum):
         group=Group.SYSTEM_RES_APPLICATION, operate=Operate.AUTH, role_list=[RoleConstants.ADMIN],
         parent_group=[SystemGroup.RESOURCE_APPLICATION], is_ee=settings.edition == "EE"
     )
+    RESOURCE_APPLICATION_RELATE_RESOURCE_VIEW = Permission(
+        group=Group.SYSTEM_RES_APPLICATION, operate=Operate.RELATE_VIEW, role_list=[RoleConstants.ADMIN],
+        parent_group=[SystemGroup.RESOURCE_APPLICATION], is_ee=settings.edition == "EE"
+    )
     RESOURCE_APPLICATION_TRIGGER_READ = Permission(
         group=Group.SYSTEM_RES_APPLICATION, operate=Operate.TRIGGER_READ, role_list=[RoleConstants.ADMIN],
         parent_group=[SystemGroup.RESOURCE_APPLICATION], is_ee=settings.edition == "EE"
