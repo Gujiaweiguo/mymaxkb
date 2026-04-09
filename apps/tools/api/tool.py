@@ -5,7 +5,7 @@ from drf_spectacular.utils import OpenApiParameter
 from common.mixins.api_mixin import APIMixin
 from common.result import ResultSerializer, DefaultResultSerializer
 from tools.serializers.tool import ToolModelSerializer, ToolCreateRequest, ToolDebugRequest, ToolEditRequest, \
-    PylintInstance, AddInternalToolRequest
+    PylintInstance, AddInternalToolRequest, ToolTestConnectionRequest
 
 
 class ToolCreateResponse(ResultSerializer):
@@ -104,6 +104,16 @@ class ToolDebugApi(APIMixin):
         return DefaultResultSerializer
 
 
+class ToolTestConnectionApi(APIMixin):
+    @staticmethod
+    def get_request():
+        return ToolTestConnectionRequest
+
+    @staticmethod
+    def get_response():
+        return DefaultResultSerializer
+
+
 class ToolExportAPI(APIMixin):
     @staticmethod
     def get_parameters():
@@ -126,7 +136,7 @@ class ToolExportAPI(APIMixin):
 
     @staticmethod
     def get_response():
-        return DefaultResultSerializer
+        return OpenApiTypes.BINARY
 
 
 class ToolImportAPI(APIMixin):
@@ -264,7 +274,7 @@ class EditIconAPI(APIMixin):
             'multipart/form-data': {
                 'type': 'object',
                 'properties': {
-                    'icon': {
+                    'file': {
                         'type': 'string',
                         'format': 'binary'  # Tells Swagger it's a file
                     }

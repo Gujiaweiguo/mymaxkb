@@ -233,6 +233,10 @@ class PylintInstance(serializers.Serializer):
     code = serializers.CharField(required=True, allow_null=True, allow_blank=True, label=_('function content'))
 
 
+class ToolTestConnectionRequest(serializers.Serializer):
+    code = serializers.CharField(required=True, label=_('tool content'))
+
+
 class ToolSerializer(serializers.Serializer):
     class Query(serializers.Serializer):
         workspace_id = serializers.CharField(required=True, label=_('workspace id'))
