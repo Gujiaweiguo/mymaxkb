@@ -296,7 +296,12 @@ class ApplicationChatRecordAddKnowledgeSerializer(serializers.Serializer):
         knowledge_id = instance['knowledge_id']
 
         # 获取所有聊天记录
-        chat_record_list = list(ChatRecord.objects.filter(chat_id__in=chat_ids))
+        chat_record_list = list(
+            ChatRecord.objects.filter(
+                chat_id__in=chat_ids,
+                chat__application_id=instance['application_id'],
+            )
+        )
         if len(chat_record_list) < len(chat_ids):
             raise AppApiException(500, gettext("Conversation records that do not exist"))
 

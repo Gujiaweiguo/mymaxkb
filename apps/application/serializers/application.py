@@ -483,6 +483,10 @@ class ApplicationEditSerializer(serializers.Serializer):
 
     stt_autosend = serializers.BooleanField(required=False, label=_('Voice recognition automatic transmission'))
 
+    clean_time = serializers.IntegerField(required=False, min_value=1, label=_('Clean time'))
+
+    file_clean_time = serializers.IntegerField(required=False, min_value=1, label=_('File clean time'))
+
 
 class ApplicationSerializer(serializers.Serializer):
     workspace_id = serializers.CharField(required=True, label=_('workspace id'))
@@ -796,7 +800,11 @@ class ApplicationOperateSerializer(serializers.Serializer):
         if with_valid:
             self.is_valid(raise_exception=True)
             McpServersSerializer(data=instance).is_valid(raise_exception=True)
-        servers = json.loads(instance.get('mcp_servers'))
+        mcp_servers = instance.get('mcp_servers')
+        if isinstance(mcp_servers, str):
+            servers = json.loads(mcp_servers)
+        else:
+            servers = mcp_servers
         for server, config in servers.items():
             if config.get('transport') not in ['sse', 'streamable_http']:
                 raise AppApiException(500, _('Only support transport=sse or transport=streamable_http'))
@@ -1285,6 +1293,7 @@ class ApplicationOperateSerializer(serializers.Serializer):
                                                              **application.stt_model_params_setting)
             text = model.speech_to_text(instance.get('file'))
             return text
+        raise AppApiException(500, _('Speech recognition is not enabled'))
 
     def text_to_speech(self, instance, debug=True, with_valid=True):
         if with_valid:
@@ -1302,6 +1311,7 @@ class ApplicationOperateSerializer(serializers.Serializer):
             content = _remove_empty_lines(instance.get('text', ''))
 
             return model.text_to_speech(content)
+        raise AppApiException(500, _('Speech synthesis is not enabled'))
 
     def play_demo_text(self, instance, with_valid=True):
         text = '你好，这里是语音播放测试'

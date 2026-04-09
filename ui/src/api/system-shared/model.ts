@@ -1,5 +1,5 @@
 import { Result } from '@/request/Result'
-import { get, post, del, put } from '@/request/index'
+import { get } from '@/request/index'
 import { type Ref } from 'vue'
 import type {
   ListModelRequest,
@@ -33,6 +33,10 @@ const getSelectModelList: (
   return get(`${prefix}`, data, loading)
 }
 
+const unsupportedAction = <T>(action: string): Promise<Result<T>> => {
+  return Promise.reject(new Error(`Unsupported action in system shared model API: ${action}`))
+}
+
 /**
  * 获取模型参数表单
  * @param model_id 模型id
@@ -43,7 +47,7 @@ const getModelParamsForm: (
   model_id: string,
   loading?: Ref<boolean>,
 ) => Promise<Result<Array<FormField>>> = (model_id, loading) => {
-  return get(`${prefix}/${model_id}/model_params_form`, {}, loading)
+  return unsupportedAction<Array<FormField>>('getModelParamsForm')
 }
 
 /**
@@ -56,7 +60,7 @@ const createModel: (
   request: CreateModelRequest,
   loading?: Ref<boolean>,
 ) => Promise<Result<Model>> = (request, loading) => {
-  return post(`${prefix}`, request, {}, loading)
+  return unsupportedAction<Model>('createModel')
 }
 
 /**
@@ -70,7 +74,7 @@ const updateModel: (
   request: EditModelRequest,
   loading?: Ref<boolean>,
 ) => Promise<Result<Model>> = (model_id, request, loading) => {
-  return put(`${prefix}/${model_id}`, request, {}, loading)
+  return unsupportedAction<Model>('updateModel')
 }
 
 /**
@@ -84,7 +88,7 @@ const updateModelParamsForm: (
   request: any[],
   loading?: Ref<boolean>,
 ) => Promise<Result<Model>> = (model_id, request, loading) => {
-  return put(`${prefix}/${model_id}/model_params_form`, request, {}, loading)
+  return unsupportedAction<Model>('updateModelParamsForm')
 }
 
 /**
@@ -97,7 +101,7 @@ const getModelById: (model_id: string, loading?: Ref<boolean>) => Promise<Result
   model_id,
   loading,
 ) => {
-  return get(`${prefix}/${model_id}`, {}, loading)
+  return unsupportedAction<Model>('getModelById')
 }
 /**
  * 获取模型信息不包括认证信息根据模型id
@@ -109,7 +113,7 @@ const getModelMetaById: (model_id: string, loading?: Ref<boolean>) => Promise<Re
   model_id,
   loading,
 ) => {
-  return get(`${prefix}/${model_id}/meta`, {}, loading)
+  return unsupportedAction<Model>('getModelMetaById')
 }
 /**
  * 暂停下载
@@ -121,13 +125,13 @@ const pauseDownload: (model_id: string, loading?: Ref<boolean>) => Promise<Resul
   model_id,
   loading,
 ) => {
-  return put(`${prefix}/${model_id}/pause_download`, undefined, {}, loading)
+  return unsupportedAction<boolean>('pauseDownload')
 }
 const deleteModel: (model_id: string, loading?: Ref<boolean>) => Promise<Result<boolean>> = (
   model_id,
   loading,
 ) => {
-  return del(`${prefix}/${model_id}`, undefined, {}, loading)
+  return unsupportedAction<boolean>('deleteModel')
 }
 
 export default {

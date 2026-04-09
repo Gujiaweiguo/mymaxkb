@@ -401,6 +401,7 @@ import { t } from '@/locales'
 import Recorder from 'recorder-core'
 import TouchChat from './TouchChat.vue'
 import applicationApi from '@/api/application/application'
+import systemResourceApplicationApi from '@/api/system-resource-management/application'
 import { MsgAlert, MsgWarning } from '@/utils/message'
 import { type chatType } from '@/api/type/application'
 import { useRoute, useRouter } from 'vue-router'
@@ -789,7 +790,9 @@ const getSpeechToTextAPI = () => {
       return chatAPI.speechToText(data, loading)
     }
   } else {
-    return applicationApi.speechToText
+    return route.path.includes('resource-management')
+      ? systemResourceApplicationApi.speechToText
+      : applicationApi.speechToText
   }
 }
 const speechToTextAPI = getSpeechToTextAPI()

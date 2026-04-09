@@ -106,10 +106,10 @@
             :placeholder="$t('common.inputPlaceholder')"
           >
             <el-option :label="$t('views.userManage.source.local')" value="LOCAL" />
-            <el-option label="CAS" value="CAS" />
-            <el-option label="LDAP" value="LDAP" />
-            <el-option label="OIDC" value="OIDC" />
-            <el-option label="OAuth2" value="OAuth2" />
+            <el-option v-if="!user.isCE()" label="CAS" value="CAS" />
+            <el-option v-if="!user.isCE()" label="LDAP" value="LDAP" />
+            <el-option v-if="!user.isCE()" label="OIDC" value="OIDC" />
+            <el-option v-if="!user.isCE()" label="OAuth2" value="OAuth2" />
             <el-option :label="$t('views.userManage.source.wecom')" value="wecom" />
             <el-option :label="$t('views.userManage.source.lark')" value="lark" />
             <el-option :label="$t('views.userManage.source.dingtalk')" value="dingtalk" />

@@ -38,14 +38,14 @@ class ResourceMappingAPI(APIMixin):
                 required=True,
             ),
             OpenApiParameter(
-                name="source",
+                name="resource",
                 description="资源类型",
                 type=OpenApiTypes.STR,
                 location='path',
                 required=True,
             ),
             OpenApiParameter(
-                name="source_id",
+                name="resource_id",
                 description="资源id",
                 type=OpenApiTypes.STR,
                 location='path',
@@ -71,6 +71,28 @@ class ResourceMappingAPI(APIMixin):
                 type=OpenApiTypes.STR,
                 location='query',
                 required=False
+             ),
+            OpenApiParameter(
+                name="user_name",
+                description="创建者",
+                type=OpenApiTypes.STR,
+                location='query',
+                required=False
+            ),
+            OpenApiParameter(
+                name="source_type[]",
+                description="关联资源类型",
+                type=OpenApiTypes.STR,
+                location='query',
+                required=False,
+                many=True,
+            ),
+            OpenApiParameter(
+                name="workspace_ids",
+                description="工作空间id列表(JSON字符串)",
+                type=OpenApiTypes.STR,
+                location='query',
+                required=False,
             ),
 
         ]

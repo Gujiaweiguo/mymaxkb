@@ -21,3 +21,4 @@ from .appearance_setting import *
 from .log_management import *
 from .system_api_key import *
 from .platform_source import *
+from .role import *

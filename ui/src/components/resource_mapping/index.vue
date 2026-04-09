@@ -16,6 +16,15 @@
         :type="currentSource.type"
       />
       <el-avatar
+        v-else-if="currentSourceType === 'APPLICATION' && isAppIcon(currentSource?.icon)"
+        shape="square"
+        :size="24"
+        style="background: none"
+        class="mr-12"
+      >
+        <img :src="resetUrl(currentSource?.icon, resetUrl('./favicon.ico'))" alt="" />
+      </el-avatar>
+      <el-avatar
         v-else-if="currentSourceType === 'TOOL' && isAppIcon(currentSource?.icon)"
         shape="square"
         :size="24"
@@ -257,7 +266,9 @@ const apiType = computed(() => {
 const showWorkspace = computed(() => (user.isPE() || user.isEE()) && route.path.includes('shared'))
 
 const currentSourceName = computed(() => {
-  if (currentSourceType.value === 'TOOL') {
+  if (currentSourceType.value === 'APPLICATION') {
+    return t('views.application.title')
+  } else if (currentSourceType.value === 'TOOL') {
     return t('views.tool.title')
   } else if (currentSourceType.value === 'MODEL') {
     return t('views.model.title')

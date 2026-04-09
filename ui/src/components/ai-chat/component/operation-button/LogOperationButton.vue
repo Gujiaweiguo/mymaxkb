@@ -33,7 +33,7 @@
           </el-tooltip>
         </span>
 
-        <template v-if="permissionPrecise.chat_log_add_knowledge(id)">
+        <template v-if="canCreateAnnotation">
           <span class="ml-8" v-if="buttonData.improve_paragraph_id_list.length === 0">
             <el-tooltip effect="dark" :content="$t('views.chatLog.editContent')" placement="top">
               <el-button text @click="editContent(data)">
@@ -41,14 +41,14 @@
               </el-button>
             </el-tooltip>
           </span>
-          <span v-else class="ml-8">
-            <el-tooltip effect="dark" :content="$t('views.chatLog.editMark')" placement="top">
-              <el-button text @click="editMark(data)">
-                <AppIcon iconName="app-document-active" class="primary"></AppIcon>
-              </el-button>
-            </el-tooltip>
-          </span>
         </template>
+        <span class="ml-8" v-else-if="canEditMarkedAnnotation">
+          <el-tooltip effect="dark" :content="$t('views.chatLog.editMark')" placement="top">
+            <el-button text @click="editMark(data)">
+              <AppIcon iconName="app-document-active" class="primary"></AppIcon>
+            </el-button>
+          </el-tooltip>
+        </span>
         <span class="ml-8" v-if="buttonData?.vote_status === '0'">
           <el-button text disabled>
             <AppIcon iconName="app-like-color"></AppIcon>
@@ -97,8 +97,11 @@ import EditContentDialog from '@/views/chat-log/component/EditContentDialog.vue'
 import EditMarkDialog from '@/views/chat-log/component/EditMarkDialog.vue'
 import { datetimeFormat } from '@/utils/time'
 import applicationApi from '@/api/application/application'
+import systemResourceApplicationApi from '@/api/system-resource-management/application'
 import { useRoute } from 'vue-router'
 import permissionMap from '@/permission'
+import { PermissionConst, RoleConst } from '@/utils/permission/data'
+import { hasPermission } from '@/utils/permission'
 import { MsgError } from '@/utils/message'
 import { t } from '@/locales'
 import VoteReasonContent from '@/components/ai-chat/component/operation-button/VoteReasonContent.vue'
@@ -129,6 +132,35 @@ const apiType = computed(() => {
 })
 const permissionPrecise = computed(() => {
   return permissionMap['application'][apiType.value]
+})
+const canCreateAnnotation = computed(() => {
+  if (buttonData.value.improve_paragraph_id_list.length !== 0) {
+    return false
+  }
+  if (apiType.value === 'workspace') {
+    return permissionMap.application.workspace.chat_log_add_knowledge(id)
+  }
+  return (
+    permissionMap.application.systemManage.chat_log_annotation() &&
+    hasPermission([RoleConst.ADMIN, PermissionConst.RESOURCE_KNOWLEDGE_DOCUMENT_EDIT], 'OR')
+  )
+})
+const canEditMarkedAnnotation = computed(() => {
+  if (buttonData.value.improve_paragraph_id_list.length === 0) {
+    return false
+  }
+  if (apiType.value === 'workspace') {
+    return permissionMap.application.workspace.chat_log_annotation(id)
+  }
+  return (
+    permissionMap.application.systemManage.chat_log_annotation() &&
+    hasPermission([RoleConst.ADMIN, PermissionConst.RESOURCE_KNOWLEDGE_DOCUMENT_EDIT], 'OR')
+  )
+})
+const textToSpeechApi = computed(() => {
+  return apiType.value === 'systemManage'
+    ? systemResourceApplicationApi.postTextToSpeech
+    : applicationApi.postTextToSpeech
 })
 
 const emit = defineEmits(['update:data'])
@@ -245,8 +277,8 @@ const playAnswerTextPart = () => {
       audioPlayer.value[currentAudioIndex.value].play()
       return
     }
-    applicationApi
-      .postTextToSpeech(
+    textToSpeechApi
+      .value(
         (props.applicationId as string) || (id as string),
         { text: audioList.value[currentAudioIndex.value] },
         loading,

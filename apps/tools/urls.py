@@ -5,6 +5,16 @@ from . import views
 app_name = "tool"
 # @formatter:off
 urlpatterns = [
+    path('system/resource/tool/upload_skill_file', views.SystemResourceToolView.UploadSkillFile.as_view()),
+    path('system/resource/tool/pylint', views.SystemResourceToolView.Pylint.as_view()),
+    path('system/resource/tool/test_connection', views.SystemResourceToolView.TestConnection.as_view()),
+    path('system/resource/tool/debug', views.SystemResourceToolView.Debug.as_view()),
+    path('system/resource/tool/<str:tool_id>/tool_record/<str:record_id>', views.SystemResourceToolView.ToolRecord.as_view()),
+    path('system/resource/tool/<str:tool_id>/tool_record/<int:current_page>/<int:page_size>', views.SystemResourceToolView.PageToolRecord.as_view()),
+    path('system/resource/tool/<int:current_page>/<int:page_size>', views.SystemResourceToolView.Page.as_view()),
+    path('system/resource/tool/<str:tool_id>/export', views.SystemResourceToolView.Export.as_view()),
+    path('system/resource/tool/<str:tool_id>/edit_icon', views.SystemResourceToolView.EditIcon.as_view()),
+    path('system/resource/tool/<str:tool_id>', views.SystemResourceToolView.Operate.as_view()),
     path('workspace/internal/tool', views.ToolView.InternalTool.as_view()),
     path('workspace/store/tool', views.ToolView.StoreTool.as_view()),
     path('workspace/<str:workspace_id>/tool', views.ToolView.as_view()),

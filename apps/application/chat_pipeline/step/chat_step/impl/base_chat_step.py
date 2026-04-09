@@ -32,7 +32,19 @@ from application.chat_pipeline.step.chat_step.i_chat_step import (
     IChatStep,
     PostResponseHandler,
 )
-from application.flow.tools import Reasoning, mcp_response_generator
+try:
+    from application.flow.tools import Reasoning, mcp_response_generator
+except Exception as _flow_tools_import_error:
+    class Reasoning:
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError(
+                f"application.flow.tools unavailable: {_flow_tools_import_error}"
+            )
+
+    def mcp_response_generator(*args, **kwargs):
+        raise RuntimeError(
+            f"application.flow.tools unavailable: {_flow_tools_import_error}"
+        )
 from application.models import (
     ApplicationChatUserStats,
     ChatUserType,

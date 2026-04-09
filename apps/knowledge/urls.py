@@ -6,6 +6,66 @@ app_name = "knowledge"
 # @formatter:off
 urlpatterns = [
     path(
+        "system/resource/knowledge/<int:current_page>/<int:page_size>",
+        views.SystemResourceKnowledgeView.Page.as_view(),
+    ),
+    path(
+        "system/resource/knowledge/<str:knowledge_id>/export",
+        views.SystemResourceKnowledgeView.Export.as_view(),
+    ),
+    path(
+        "system/resource/knowledge/<str:knowledge_id>/export_zip",
+        views.SystemResourceKnowledgeView.ExportZip.as_view(),
+    ),
+    path(
+        "system/resource/knowledge/<str:knowledge_id>/embedding",
+        views.SystemResourceKnowledgeView.Embedding.as_view(),
+    ),
+    path(
+        "system/resource/knowledge/<str:knowledge_id>/hit_test",
+        views.SystemResourceKnowledgeView.HitTest.as_view(),
+    ),
+    path(
+        "system/resource/knowledge/<str:knowledge_id>/generate_related",
+        views.SystemResourceKnowledgeView.GenerateRelated.as_view(),
+    ),
+    path(
+        "system/resource/knowledge/<str:knowledge_id>/sync",
+        views.SystemResourceKnowledgeView.SyncWeb.as_view(),
+    ),
+    path(
+        "system/resource/knowledge/<str:knowledge_id>/document/<int:current_page>/<int:page_size>",
+        views.SystemResourceDocumentView.Page.as_view(),
+    ),
+    path(
+        "system/resource/knowledge/<str:knowledge_id>/document/<str:document_id>/export",
+        views.SystemResourceDocumentView.Export.as_view(),
+    ),
+    path(
+        "system/resource/knowledge/<str:knowledge_id>/document/<str:document_id>/export_zip",
+        views.SystemResourceDocumentView.ExportZip.as_view(),
+    ),
+    path(
+        "system/resource/knowledge/<str:knowledge_id>/document/<str:document_id>/refresh",
+        views.SystemResourceDocumentView.Refresh.as_view(),
+    ),
+    path(
+        "system/resource/knowledge/<str:knowledge_id>/document/<str:document_id>/sync",
+        views.SystemResourceDocumentView.Sync.as_view(),
+    ),
+    path(
+        "system/resource/knowledge/<str:knowledge_id>/document/<str:document_id>/cancel_task",
+        views.SystemResourceDocumentView.CancelTask.as_view(),
+    ),
+    path(
+        "system/resource/knowledge/<str:knowledge_id>/document/<str:document_id>",
+        views.SystemResourceDocumentView.Operate.as_view(),
+    ),
+    path(
+        "system/resource/knowledge/<str:knowledge_id>",
+        views.SystemResourceKnowledgeView.Operate.as_view(),
+    ),
+    path(
         "workspace/<str:workspace_id>/KNOWLEDGE/<str:resource_id>/user_group",
         views.WorkspaceKnowledgeChatUserGroupView.as_view(),
     ),

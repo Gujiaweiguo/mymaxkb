@@ -45,7 +45,10 @@
           />
         </div>
         <div style="display: flex; align-items: center" class="float-right">
-          <el-button @click="dialogVisible = true" v-if="permissionPrecise.chat_log_clear(id)">
+          <el-button
+            @click="openClearStrategyDialog"
+            v-if="canClearChatLog"
+          >
             {{ $t('views.chatLog.buttons.clearStrategy') }}
           </el-button>
           <el-button @click="exportLog" v-if="permissionPrecise.chat_log_export(id)">
@@ -54,7 +57,7 @@
           <el-button
             @click="openDocumentDialog"
             :disabled="multipleSelection.length === 0"
-            v-if="permissionPrecise.chat_log_add_knowledge(id)"
+            v-if="canAddKnowledge"
             >{{ $t('views.chatLog.addToKnowledge') }}
           </el-button>
         </div>
@@ -306,6 +309,21 @@ const apiType = computed(() => {
 const permissionPrecise = computed(() => {
   return permissionMap['application'][apiType.value]
 })
+const canClearChatLog = computed(() => {
+  if (apiType.value === 'workspace') {
+    return (
+      permissionMap.application.workspace.chat_log_clear(id) &&
+      permissionMap.application.workspace.edit(id)
+    )
+  }
+  return permissionMap.application.systemManage.chat_log_clear() && permissionMap.application.systemManage.edit()
+})
+const canAddKnowledge = computed(() => {
+  if (apiType.value === 'workspace') {
+    return permissionMap.application.workspace.chat_log_add_knowledge(id)
+  }
+  return permissionMap.application.systemManage.chat_log_add_knowledge()
+})
 
 const {
   params: { id },
@@ -551,13 +569,22 @@ function getList() {
 }
 
 function getDetail(isLoading = false) {
-  loadSharedApi({ type: 'application', systemType: apiType.value })
+  return loadSharedApi({ type: 'application', systemType: apiType.value })
     .getApplicationDetail(id as string, isLoading ? loading : undefined)
     .then((res: any) => {
       detail.value = res.data
       days.value = res.data.clean_time
       file_days.value = res.data.file_clean_time
     })
+}
+
+function openClearStrategyDialog() {
+  dialogVisible.value = true
+  const canReadOverview =
+    apiType.value === 'workspace' ? true : permissionMap.application.systemManage.overview_read()
+  if (canReadOverview) {
+    getDetail(true).catch(() => {})
+  }
 }
 
 const exportLog = () => {
@@ -567,23 +594,21 @@ const exportLog = () => {
       arr.push(v.id)
     }
   })
-  if (detail.value) {
-    const obj: any = {
-      start_time: daterange.value.start_time,
-      end_time: daterange.value.end_time,
-      ...filter.value,
-    }
-    if (search_form.value[search_type.value]) {
-      obj[search_type.value] = search_form.value[search_type.value]
-    }
-    loadSharedApi({ type: 'chatLog', systemType: apiType.value }).postExportChatLog(
-      detail.value.id,
-      detail.value.name,
-      obj,
-      { select_ids: arr },
-      loading,
-    )
+  const obj: any = {
+    start_time: daterange.value.start_time,
+    end_time: daterange.value.end_time,
+    ...filter.value,
   }
+  if (search_form.value[search_type.value]) {
+    obj[search_type.value] = search_form.value[search_type.value]
+  }
+  loadSharedApi({ type: 'chatLog', systemType: apiType.value }).postExportChatLog(
+    id as string,
+    detail.value?.name || `application-${id}`,
+    obj,
+    { select_ids: arr },
+    loading,
+  )
 }
 
 function refresh() {
@@ -617,7 +642,6 @@ function saveCleanTime() {
     .then(() => {
       MsgSuccess(t('common.saveSuccess'))
       dialogVisible.value = false
-      getDetail(true)
     })
     .catch(() => {
       dialogVisible.value = false
@@ -660,7 +684,6 @@ const getSourceTypeName = (sourceType: SourceType | undefined) => {
 
 onMounted(() => {
   changeDayHandle(history_day.value)
-  getDetail()
 })
 </script>
 <style lang="scss" scoped>

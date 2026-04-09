@@ -363,6 +363,30 @@ class LoginSerializerContractTests(TestCase):
             "This account has been locked for 7 minutes, please try again later",
         )
 
+    @patch("users.serializers.login.DatabaseModelManage.get_model", return_value=None)
+    def test_ce_login_rejects_locked_account_when_lock_cache_is_set(self, _get_model):
+        self._create_login_auth_setting(lock_time=7)
+        cache.set(
+            system_get_key(f"system_{self.admin_user.username}_lock"),
+            1,
+            timeout=420,
+            version=system_version,
+        )
+
+        with self.assertRaises(AppApiException) as context:
+            LoginSerializer.login(
+                {
+                    "username": self.admin_user.username,
+                    "password": "Admin123!",
+                }
+            )
+
+        self.assertEqual(context.exception.code, 1005)
+        self.assertEqual(
+            str(context.exception.message),
+            "This account has been locked for 7 minutes, please try again later",
+        )
+
     @patch("users.serializers.login.DatabaseModelManage.get_model")
     def test_login_requires_captcha_after_max_attempts_threshold(self, get_model):
         get_model.side_effect = self._get_model_side_effect
@@ -384,6 +408,52 @@ class LoginSerializerContractTests(TestCase):
 
         self.assertEqual(context.exception.code, 1005)
         self.assertEqual(str(context.exception.message), "Captcha is required")
+
+    @patch("users.serializers.login.DatabaseModelManage.get_model", return_value=None)
+    def test_ce_login_requires_captcha_after_max_attempts_threshold(self, _get_model):
+        self._create_login_auth_setting(max_attempts=2)
+        cache.set(
+            system_get_key(f"system_{self.admin_user.username}"),
+            2,
+            timeout=600,
+            version=system_version,
+        )
+
+        with self.assertRaises(AppApiException) as context:
+            LoginSerializer.login(
+                {
+                    "username": self.admin_user.username,
+                    "password": "Admin123!",
+                }
+            )
+
+        self.assertEqual(context.exception.code, 1005)
+        self.assertEqual(str(context.exception.message), "Captcha is required")
+
+    @patch("users.serializers.login.DatabaseModelManage.get_model", return_value=None)
+    def test_ce_login_locks_account_after_failed_attempt_threshold(self, _get_model):
+        self._create_login_auth_setting(max_attempts=5, failed_attempts=1, lock_time=7)
+
+        with self.assertRaises(AppApiException) as context:
+            LoginSerializer.login(
+                {
+                    "username": self.admin_user.username,
+                    "password": "WrongPassword",
+                }
+            )
+
+        self.assertEqual(context.exception.code, 1005)
+        self.assertEqual(
+            str(context.exception.message),
+            "This account has been locked for 7 minutes, please try again later",
+        )
+        self.assertEqual(
+            cache.get(
+                system_get_key(f"system_{self.admin_user.username}_lock"),
+                version=system_version,
+            ),
+            1,
+        )
 
     @patch("users.serializers.login.DatabaseModelManage.get_model")
     def test_login_rejects_invalid_captcha_when_required(self, get_model):

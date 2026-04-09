@@ -153,6 +153,14 @@ const systemManage = {
             ],
             'OR'
     ),
+    chat_log_annotation: () =>
+        hasPermission(
+            [
+              RoleConst.ADMIN,
+              PermissionConst.RESOURCE_APPLICATION_CHAT_LOG_ANNOTATION
+            ],
+            'OR'
+    ),
     overview_read: () => 
       hasPermission(
         [
@@ -192,6 +200,14 @@ const systemManage = {
           RoleConst.ADMIN,
           PermissionConst.RESOURCE_APPLICATION_CHAT_LOG_READ
         ],
-        'OR')
+        'OR'),
+    relate_map: () =>
+      hasPermission(
+        [
+          RoleConst.ADMIN,
+          PermissionConst.RESOURCE_APPLICATION_RELATE_RESOURCE_VIEW
+        ],
+        'OR'
+      )
 }
 export default systemManage

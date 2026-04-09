@@ -233,25 +233,39 @@ class KnowledgePageAPI(KnowledgeReadAPI):
         ]
 
 
+def get_knowledge_sync_base_parameters():
+    return [
+        OpenApiParameter(
+            name="workspace_id",
+            description="工作空间id",
+            type=OpenApiTypes.STR,
+            location="path",
+            required=True,
+        ),
+        OpenApiParameter(
+            name="knowledge_id",
+            description="知识库id",
+            type=OpenApiTypes.STR,
+            location="path",
+            required=True,
+        ),
+    ]
+
+
+def get_knowledge_sync_type_parameter():
+    return OpenApiParameter(
+        name="sync_type",
+        description="同步类型: replace|complete",
+        type=OpenApiTypes.STR,
+        location="query",
+        required=True,
+    )
+
+
 class SyncWebAPI(APIMixin):
     @staticmethod
     def get_parameters():
-        return [
-            OpenApiParameter(
-                name="workspace_id",
-                description="工作空间id",
-                type=OpenApiTypes.STR,
-                location="path",
-                required=True,
-            ),
-            OpenApiParameter(
-                name="knowledge_id",
-                description="知识库id",
-                type=OpenApiTypes.STR,
-                location="path",
-                required=True,
-            ),
-        ]
+        return [*get_knowledge_sync_base_parameters(), get_knowledge_sync_type_parameter()]
 
     @staticmethod
     def get_response():
@@ -260,18 +274,28 @@ class SyncWebAPI(APIMixin):
 
 class GenerateRelatedAPI(SyncWebAPI):
     @staticmethod
+    def get_parameters():
+        return get_knowledge_sync_base_parameters()
+
+    @staticmethod
     def get_request():
         return GenerateRelatedSerializer
 
 
 class HitTestAPI(SyncWebAPI):
     @staticmethod
+    def get_parameters():
+        return get_knowledge_sync_base_parameters()
+
+    @staticmethod
     def get_request():
         return HitTestSerializer
 
 
 class EmbeddingAPI(SyncWebAPI):
-    pass
+    @staticmethod
+    def get_parameters():
+        return get_knowledge_sync_base_parameters()
 
 
 class GetModelAPI(SyncWebAPI):

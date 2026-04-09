@@ -24,6 +24,12 @@ urlpatterns = [
         views.WorkspaceMemberDeleteView.as_view(),
     ),
     path("role_list/current_user", views.WorkspaceRoleListView.as_view()),
+    path("system/role", views.SystemRoleListView.as_view()),
+    path("system/role/<str:role_id>/permission", views.SystemRolePermissionView.as_view()),
+    path(
+        "system/role/<str:role_id>/user_list/<int:current_page>/<int:page_size>",
+        views.SystemRoleMemberPageView.as_view(),
+    ),
     path("system/chat_user/list", views.ChatUserListView.as_view()),
     path("system/chat_user", views.ChatUserManageView.as_view()),
     path(
@@ -78,6 +84,10 @@ urlpatterns = [
     path(
         "workspace/<str:workspace_id>/resource_mapping/<str:resource>/<str:resource_id>/<int:current_page>/<int:page_size>",
         views.ResourceMappingView.as_view(),
+    ),
+    path(
+        "system/resource/resource_mapping/<str:resource>/<str:resource_id>/<int:current_page>/<int:page_size>",
+        views.SystemResourceMappingView.as_view(),
     ),
     path("email_setting", views.SystemSetting.Email.as_view()),
     path("display/info", views.AppearanceSettingView.as_view()),

@@ -68,12 +68,7 @@
               @click="exportLog"
               style="margin-left: 10px"
               v-hasPermission="
-                new ComplexPermission(
-                  [RoleConst.ADMIN],
-                  [PermissionConst.OPERATION_LOG_EXPORT],
-                  [EditionConst.IS_EE, EditionConst.IS_PE],
-                  'OR',
-                )
+                new ComplexPermission([RoleConst.ADMIN], [PermissionConst.OPERATION_LOG_EXPORT], [], 'OR')
               "
               >{{ $t('common.export') }}
             </el-button>
@@ -83,7 +78,7 @@
                 new ComplexPermission(
                   [RoleConst.ADMIN],
                   [PermissionConst.OPERATION_LOG_CLEAR_POLICY],
-                  [EditionConst.IS_EE, EditionConst.IS_PE],
+                  [],
                   'OR',
                 )
               "
@@ -175,7 +170,6 @@
             :label="$t('views.operateLog.table.user')"
           />
           <el-table-column
-            v-if="user.isEE()"
             width="200"
             prop="workspace_name"
             :label="$t('views.workspace.title')"
@@ -301,7 +295,7 @@ import { t } from '@/locales'
 import { beforeDay, datetimeFormat, nowDate } from '@/utils/time'
 import useStore from '@/stores'
 import WorkspaceApi from '@/api/system/workspace.ts'
-import { EditionConst, PermissionConst, RoleConst } from '@/utils/permission/data.ts'
+import { PermissionConst, RoleConst } from '@/utils/permission/data.ts'
 import { ComplexPermission } from '@/utils/permission/type.ts'
 import { MsgSuccess } from '@/utils/message.ts'
 
@@ -472,7 +466,7 @@ const exportLog = () => {
 }
 
 async function getWorkspaceList() {
-  if (user.isEE()) {
+  if (user.isEE() || (user.isCE() && user.is_admin())) {
     const res = await WorkspaceApi.getSystemWorkspaceList(loading)
     workspaceOptions.value = res.data.map((item: any) => ({
       label: item.name,

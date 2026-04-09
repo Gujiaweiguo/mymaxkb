@@ -40,7 +40,7 @@
       </el-table-column>
     </app-table>
   </el-scrollbar>
-  <div class="footer border-t">
+  <div v-if="!user.isCE()" class="footer border-t">
     <el-button type="primary" :disabled="disabled" :loading="loading" @click="handleSave">
       {{ $t('common.save') }}
     </el-button>
@@ -61,6 +61,9 @@ import {MsgSuccess} from '@/utils/message'
 import {t} from '@/locales'
 import {hasPermission} from "@/utils/permission";
 import {EditionConst, RoleConst} from "@/utils/permission/data.ts";
+import useStore from '@/stores'
+
+const { user } = useStore()
 
 const props = defineProps<{
   currentRole?: RoleItem

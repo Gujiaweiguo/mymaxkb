@@ -48,6 +48,10 @@ export function loadPermissionApi(type: string) {
     return systemApiMap[type]
   }
 
+  if (type === 'role' && hasPermission([EditionConst.IS_CE, RoleConst.ADMIN], 'AND')) {
+    return systemApiMap.role
+  }
+
   if (hasPermission([EditionConst.IS_EE, EditionConst.IS_PE], 'OR')) {
     user.getHasPermissionWorkspaceManage()
     if (hasPermission(systemPermissionMap[type as keyof typeof systemPermissionMap], 'OR')) {

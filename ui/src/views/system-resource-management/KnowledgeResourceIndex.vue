@@ -84,7 +84,7 @@
           </template>
         </el-table-column>
         <el-table-column
-          v-if="user.isEE()"
+          v-if="canUseWorkspaceFilter"
           width="150"
           prop="workspace_name"
           :label="$t('views.workspace.title')"
@@ -319,6 +319,8 @@ import ResourceMappingDrawer from '@/components/resource_mapping/index.vue'
 const router = useRouter()
 const { user } = useStore()
 
+const canUseWorkspaceFilter = computed(() => user.isEE() || (user.isCE() && user.is_admin()))
+
 const permissionPrecise = computed(() => {
   return permissionMap['knowledge']['systemManage']
 })
@@ -377,6 +379,9 @@ const ResourceAuthorizationDrawerRef = ref()
 const AuthorizedWorkspaceDialogRef = ref<InstanceType<typeof AuthorizedWorkspaceDialog>>()
 
 function openAuthorization(item: any) {
+  if (item?.workspace_id) {
+    user.setWorkspaceId(item.workspace_id)
+  }
   ResourceAuthorizationDrawerRef.value.open(item.id)
 }
 
@@ -465,7 +470,7 @@ function filterWorkspaceChange(val: string) {
 }
 
 async function getWorkspaceList() {
-  if (user.isEE()) {
+  if (canUseWorkspaceFilter.value) {
     const res = await loadPermissionApi('workspace').getSystemWorkspaceList(loading)
     workspaceOptions.value = res.data.map((item: any) => ({
       label: item.name,

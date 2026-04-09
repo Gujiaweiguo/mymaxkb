@@ -139,20 +139,17 @@ class LoginSerializer(serializers.Serializer):
             license_validator() if license_validator() is not None else False
         )
 
-        if is_license_valid:
-            # 检查账户是否被锁定
-            if LoginSerializer._is_account_locked(username, failed_attempts):
-                raise AppApiException(
-                    1005,
-                    _(
-                        "This account has been locked for %s minutes, please try again later"
-                    )
-                    % lock_time,
-                )
+        # 检查账户是否被锁定
+        if LoginSerializer._is_account_locked(username, failed_attempts):
+            raise AppApiException(
+                1005,
+                _("This account has been locked for %s minutes, please try again later")
+                % lock_time,
+            )
 
-            # 验证验证码
-            if LoginSerializer._need_captcha(username, max_attempts):
-                LoginSerializer._validate_captcha(username, captcha)
+        # 验证验证码
+        if LoginSerializer._need_captcha(username, max_attempts):
+            LoginSerializer._validate_captcha(username, captcha)
 
         # 验证用户凭据
         user = (
@@ -235,7 +232,7 @@ class LoginSerializer(serializers.Serializer):
         record_login_fail(username)
         record_login_fail_lock(username, lock_time)
 
-        if not is_license_valid or failed_attempts <= 0:
+        if failed_attempts <= 0:
             return
 
         fail_count = (
@@ -246,7 +243,7 @@ class LoginSerializer(serializers.Serializer):
         )
         remain_attempts = failed_attempts - fail_count
 
-        if remain_attempts > 0:
+        if is_license_valid and remain_attempts > 0:
             raise AppApiException(
                 1005,
                 _(

@@ -29,7 +29,8 @@ class ValidAndPublicAuthTests(TestCase):
             is_active=True,
         )
 
-    def test_authenticated_actor_can_validate_application_count_allowance(self):
+    @patch('system_manage.serializers.valid_serializers.QuerySet.count', return_value=0)
+    def test_authenticated_actor_can_validate_application_count_allowance(self, _count_mock):
         self.client.force_authenticate(user=self.admin_user, token=get_auth(self.admin_user))
 
         response = self.client.get(f'{ADMIN_API_PREFIX}/valid/application/5')

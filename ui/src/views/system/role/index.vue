@@ -36,6 +36,7 @@
                 <div class="ml-8 border-t flex-between mb-8" style="padding-top: 12px">
                   <span class="color-secondary lighter">{{ $t('views.role.customRole') }}</span>
                   <el-tooltip
+                    v-if="!user.isCE()"
                     effect="dark"
                     :content="`${$t('common.create')}${$t('views.role.customRole')}`"
                     placement="top"
@@ -153,7 +154,7 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { t } from '@/locales'
 import { i18n_name } from '@/utils/common'
 import PermissionConfiguration from './component/PermissionConfiguration.vue'
@@ -167,6 +168,9 @@ import { loadPermissionApi } from '@/utils/dynamics-api/permission-api'
 import { PermissionConst, RoleConst } from '@/utils/permission/data'
 import { ComplexPermission } from '@/utils/permission/type'
 import { hasPermission } from '@/utils/permission/index'
+import useStore from '@/stores'
+
+const { user } = useStore()
 
 const filterText = ref('')
 const loading = ref(false)
@@ -262,7 +266,7 @@ function deleteRole(item: RoleItem) {
 }
 
 const currentTab = ref('permission')
-const tabList = [
+const allTabList = [
   {
     value: 'permission',
     label: t('views.role.permission.title'),
@@ -272,6 +276,9 @@ const tabList = [
     label: t('views.role.member.title'),
   },
 ]
+const tabList = computed(() => {
+  return allTabList
+})
 const mouseId = ref('')
 
 function mouseenter(row: any) {

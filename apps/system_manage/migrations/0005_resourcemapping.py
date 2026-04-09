@@ -10,17 +10,25 @@ from knowledge.models import Knowledge
 
 def get_initialization_resource_mapping():
     from django.db.models import QuerySet
-    from application.flow.tools import get_workflow_resource, get_node_handle_callback, \
-        get_instance_resource
     from system_manage.models.resource_mapping import ResourceType
     from application.models import Application
     from knowledge.models import KnowledgeWorkflow
-    from application.flow.tools import application_instance_field_call_dict, knowledge_instance_field_call_dict
     from application.models.application import ApplicationKnowledgeMapping
     from system_manage.models.resource_mapping import ResourceMapping
+
+    try:
+        from application.flow.tools import get_workflow_resource, get_node_handle_callback, get_instance_resource
+        from application.flow.tools import application_instance_field_call_dict, knowledge_instance_field_call_dict
+
+        flow_tools_available = True
+    except Exception:
+        flow_tools_available = False
+
     resource_mapping_list = []
     ids = list(Application.objects.values_list('id', flat=True))
     for app_id in ids:
+        if not flow_tools_available:
+            continue
         try:
             application = Application.objects.get(id=app_id)
             workflow_mapping = get_workflow_resource(application.work_flow,
@@ -34,6 +42,8 @@ def get_initialization_resource_mapping():
             pass
     knowledge_ids = list(Knowledge.objects.values_list('id', flat=True))
     for knowledge_id in knowledge_ids:
+        if not flow_tools_available:
+            continue
         try:
             knowledge = Knowledge.objects.get(id=knowledge_id)
             if knowledge.type == 4:

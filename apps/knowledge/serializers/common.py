@@ -17,11 +17,6 @@ from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from application.flow.tools import (
-    save_workflow_mapping,
-    get_instance_resource,
-    knowledge_instance_field_call_dict,
-)
 from common.config.embedding_config import ModelManage
 from common.db.search import native_search
 from common.db.sql_execute import sql_execute, update_execute
@@ -387,6 +382,18 @@ def drop_knowledge_index(knowledge_id=None, document_id=None):
 
 
 def update_resource_mapping_by_knowledge(knowledge_id: str):
+    try:
+        from application.flow.tools import (
+            save_workflow_mapping,
+            get_instance_resource,
+            knowledge_instance_field_call_dict,
+        )
+    except Exception as e:
+        maxkb_logger.warning(
+            f"skip update_resource_mapping_by_knowledge due to unavailable flow tools: {e}"
+        )
+        return
+
     knowledge = QuerySet(Knowledge).filter(id=knowledge_id).first()
     instance_mapping = get_instance_resource(
         knowledge,

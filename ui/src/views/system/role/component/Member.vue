@@ -2,6 +2,7 @@
   <div>
     <div class="flex-between mb-16">
       <el-button
+        v-if="!user.isCE()"
         type="primary"
         @click="handleAdd"
         v-hasPermission="
@@ -51,11 +52,11 @@
       <el-table-column prop="nick_name" :label="$t('views.userManage.userForm.nick_name.label')" />
       <el-table-column prop="username" :label="$t('views.login.loginForm.username.label')" />
       <el-table-column
-        v-if="props.currentRole?.type !== RoleTypeEnum.ADMIN"
+        v-if="props.currentRole?.type !== RoleTypeEnum.ADMIN && !user.isCE()"
         prop="workspace_name"
         :label="$t('views.role.member.workspace')"
       />
-      <el-table-column :label="$t('common.operation')" width="100" fixed="right">
+      <el-table-column v-if="!user.isCE()" :label="$t('common.operation')" width="100" fixed="right">
         <template #default="{ row }">
           <el-tooltip
             effect="dark"
@@ -85,7 +86,12 @@
       </el-table-column>
     </app-table>
   </div>
-  <AddMemberDrawer ref="addMemberDrawerRef" :currentRole="props.currentRole" @refresh="getList" />
+  <AddMemberDrawer
+    v-if="!user.isCE()"
+    ref="addMemberDrawerRef"
+    :currentRole="props.currentRole"
+    @refresh="getList"
+  />
 </template>
 
 <script setup lang="ts">
@@ -98,6 +104,9 @@ import { RoleTypeEnum } from '@/enums/system'
 import { loadPermissionApi } from '@/utils/dynamics-api/permission-api'
 import { PermissionConst, RoleConst } from '@/utils/permission/data'
 import { ComplexPermission } from '@/utils/permission/type'
+import useStore from '@/stores'
+
+const { user } = useStore()
 const props = defineProps<{
   currentRole?: RoleItem
 }>()

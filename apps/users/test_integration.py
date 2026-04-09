@@ -30,6 +30,7 @@ class UserAPIIntegrationTests(TestCase):
             role="ADMIN",
             source="LOCAL",
             is_active=True,
+            require_password_change=False,
         )
         self.regular_user = User.objects.create(
             id=uuid.uuid7(),
@@ -41,7 +42,11 @@ class UserAPIIntegrationTests(TestCase):
             role="USER",
             source="LOCAL",
             is_active=True,
+            require_password_change=False,
         )
+        version, get_key = Cache_Version.SYSTEM.value
+        cache.delete(get_key(f"system_{self.admin_username}"), version=version)
+        cache.delete(get_key(f"system_{self.admin_username}_lock"), version=version)
 
     def test_login_with_valid_credentials(self):
         response = self.client.post(
@@ -184,7 +189,11 @@ class LoginContractIntegrationTests(TestCase):
             role="ADMIN",
             source="LOCAL",
             is_active=True,
+            require_password_change=False,
         )
+        version, get_key = Cache_Version.SYSTEM.value
+        cache.delete(get_key(f"system_{self.admin_username}"), version=version)
+        cache.delete(get_key(f"system_{self.admin_username}_lock"), version=version)
 
     def test_login_returns_token_for_active_local_admin(self):
         response = self.client.post(

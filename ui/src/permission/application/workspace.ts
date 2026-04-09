@@ -255,6 +255,16 @@ const workspace = {
             ],
             'OR'
     ),
+    chat_log_annotation: (source_id:string) => 
+        hasPermission(
+            [
+              new ComplexPermission([RoleConst.USER],[PermissionConst.APPLICATION.getApplicationWorkspaceResourcePermission(source_id)],[],'AND'),
+              RoleConst.WORKSPACE_MANAGE.getWorkspaceRole,
+              PermissionConst.APPLICATION_CHAT_LOG_ANNOTATION.getWorkspacePermissionWorkspaceManageRole,
+              PermissionConst.APPLICATION_CHAT_LOG_ANNOTATION.getApplicationWorkspaceResourcePermission(source_id)  
+            ],
+            'OR'
+    ),
     overview_read: () => false,
     jump_read: (source_id: string) => 
       hasPermission(

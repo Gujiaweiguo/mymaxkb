@@ -19,6 +19,12 @@ urlpatterns = [
     path('workspace/<str:workspace_id>/model/<str:model_id>/pause_download', views.ModelSetting.PauseDownload.as_view()),
     path('workspace/<str:workspace_id>/model/<str:model_id>/meta', views.ModelSetting.ModelMeta.as_view()),
     path('system/shared/workspace/<str:workspace_id>/model', views.WorkspaceSharedModelSetting.as_view()),
+    path('system/shared/model', views.SystemSharedModelSetting.as_view()),
+    path('system/resource/model/<int:current_page>/<int:page_size>', views.SystemResourceModelView.Page.as_view()),
+    path('system/resource/model/<str:model_id>/meta', views.SystemResourceModelView.ModelMeta.as_view()),
+    path('system/resource/model/<str:model_id>/pause_download', views.SystemResourceModelView.PauseDownload.as_view()),
+    path('system/resource/model/<str:model_id>/model_params_form', views.SystemResourceModelView.ModelParamsForm.as_view()),
+    path('system/resource/model/<str:model_id>', views.SystemResourceModelView.Operate.as_view()),
 ]
 
 if os.environ.get('SERVER_NAME', 'web') == 'local_model':
