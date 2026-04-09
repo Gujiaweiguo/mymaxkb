@@ -62,7 +62,7 @@
 
       <div class="percentage-label flex-center">
         {{ $t('views.model.download.downloading') }} <span class="dotting"></span>
-        <el-button link type="primary" class="ml-16" @click.stop="cancelDownload"
+        <el-button v-if="!readonlySystemShare" link type="primary" class="ml-16" @click.stop="cancelDownload"
           >{{ $t('views.model.download.cancelDownload') }}
         </el-button>
       </div>
@@ -75,11 +75,11 @@
         </el-button>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item
-              v-if="permissionPrecise.modify(model.id)"
-              text
-              @click.stop="openEditModel"
-            >
+              <el-dropdown-item
+                v-if="!readonlySystemShare && permissionPrecise.modify(model.id)"
+                text
+                @click.stop="openEditModel"
+              >
               <AppIcon iconName="app-edit" class="color-secondary"></AppIcon>
               {{ $t('common.edit') }}
             </el-dropdown-item>
@@ -93,9 +93,10 @@
 
             <el-dropdown-item
               v-if="
-                (currentModel.model_type === 'TTS' ||
-                  currentModel.model_type === 'STT' ||
-                  currentModel.model_type === 'LLM' ||
+                  !readonlySystemShare &&
+                  (currentModel.model_type === 'TTS' ||
+                    currentModel.model_type === 'STT' ||
+                    currentModel.model_type === 'LLM' ||
                   currentModel.model_type === 'IMAGE' ||
                   currentModel.model_type === 'TTI' ||
                   currentModel.model_type === 'ITV' ||
@@ -118,8 +119,8 @@
             <el-dropdown-item
               text
               @click.stop="openResourceMappingDrawer(model)"
-              v-if="permissionPrecise.relate_map(model.id)"
-            >
+                v-if="!readonlySystemShare && permissionPrecise.relate_map(model.id)"
+              >
               <AppIcon iconName="app-resource-mapping" class="color-secondary"></AppIcon>
               {{ $t('views.system.resourceMapping.title') }}
             </el-dropdown-item>
@@ -127,8 +128,8 @@
               divided
               text
               @click.stop="deleteModel"
-              v-if="permissionPrecise.delete(model.id)"
-            >
+                v-if="!readonlySystemShare && permissionPrecise.delete(model.id)"
+              >
               <AppIcon iconName="app-delete" class="color-secondary"></AppIcon>
               {{ $t('common.delete') }}
             </el-dropdown-item>
@@ -186,6 +187,7 @@ const openResourceMappingDrawer = (model: any) => {
 const isSystemShare = computed(() => {
   return props.apiType === 'systemShare'
 })
+const readonlySystemShare = computed(() => props.apiType === 'systemShare')
 
 const permissionPrecise = computed(() => {
   return permissionMap['model'][props.apiType]
@@ -312,7 +314,9 @@ function openAuthorizedWorkspaceDialog(row: any) {
 }
 
 onMounted(() => {
-  initInterval()
+  if (!readonlySystemShare.value) {
+    initInterval()
+  }
 })
 onBeforeUnmount(() => {
   // 清除定时任务

@@ -59,7 +59,7 @@
             </el-select>
           </div>
           <el-button
-            v-if="!isShared && permissionPrecise.create()"
+            v-if="!readonlySystemShare && !isShared && permissionPrecise.create()"
             class="ml-16"
             type="primary"
             @click="openCreateModel(active_provider)"
@@ -103,13 +103,13 @@
       ref="createModelRef"
       @submit="list_model"
       @change="openCreateModel($event)"
-      v-if="!isShared"
+      v-if="!readonlySystemShare && !isShared"
     ></CreateModelDialog>
 
     <SelectProviderDialog
       ref="selectProviderRef"
       @change="(provider, modelType) => openCreateModel(provider, modelType)"
-      v-if="!isShared"
+      v-if="!readonlySystemShare && !isShared"
     ></SelectProviderDialog>
   </LayoutContainer>
 </template>
@@ -139,6 +139,7 @@ const apiType = computed(() => {
     return 'workspace'
   }
 })
+const readonlySystemShare = computed(() => apiType.value === 'systemShare')
 const permissionPrecise = computed(() => {
   return permissionMap['model'][apiType.value]
 })

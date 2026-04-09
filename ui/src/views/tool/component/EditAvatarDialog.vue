@@ -116,8 +116,17 @@ const onChange = (file: any) => {
 
 function submit() {
   if (radioType.value === 'default') {
-    emit('refresh', '')
-    dialogVisible.value = false
+    if (apiType.value === 'systemManage' && detail.value?.id) {
+      loadSharedApi({ type: 'tool', systemType: apiType.value })
+        .putTool(detail.value.id, { icon: '' }, loading)
+        .then(() => {
+          emit('refresh', '')
+          dialogVisible.value = false
+        })
+    } else {
+      emit('refresh', '')
+      dialogVisible.value = false
+    }
   } else if (radioType.value === 'custom' && iconFile.value) {
     const fd = new FormData()
     fd.append('file', iconFile.value.raw)
