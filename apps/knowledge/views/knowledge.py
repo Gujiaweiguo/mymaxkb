@@ -1,4 +1,5 @@
 from django.utils.translation import gettext_lazy as _
+from django.db.models import QuerySet
 from drf_spectacular.utils import extend_schema
 from rest_framework.request import Request
 from rest_framework.views import APIView
@@ -11,6 +12,7 @@ from common.constants.permission_constants import (
     ViewPermission,
     CompareConstants,
 )
+from common.exception.app_exception import NotFound404
 from common.log.log import log
 from common.result import result
 from knowledge.api.knowledge import (
@@ -29,11 +31,46 @@ from knowledge.api.knowledge import (
     KnowledgeLarkCreateAPI,
     KnowledgeLarkUpdateAPI,
 )
-from knowledge.models import KnowledgeScope
+from knowledge.api.system_resource_knowledge import (
+    SystemResourceDocumentCancelTaskAPI,
+    SystemResourceDocumentExportAPI,
+    SystemResourceDocumentExportZipAPI,
+    SystemResourceDocumentDeleteAPI,
+    SystemResourceDocumentEditAPI,
+    SystemResourceDocumentPageAPI,
+    SystemResourceDocumentRefreshAPI,
+    SystemResourceDocumentReadAPI,
+    SystemResourceDocumentSyncAPI,
+)
+from knowledge.api.system_resource_knowledge import (
+    SystemResourceKnowledgeDeleteAPI,
+    SystemResourceKnowledgeEditAPI,
+    SystemResourceKnowledgeEmbeddingAPI,
+    SystemResourceKnowledgeExportAPI,
+    SystemResourceKnowledgeGenerateRelatedAPI,
+    SystemResourceKnowledgeHitTestAPI,
+    SystemResourceKnowledgeQueryAPI,
+    SystemResourceKnowledgeReadAPI,
+    SystemResourceKnowledgeSyncAPI,
+)
+from knowledge.models import Knowledge, KnowledgeScope
+from knowledge.serializers.document import DocumentSerializers
 from knowledge.serializers.common import get_knowledge_operation_object
 from knowledge.serializers.knowledge import KnowledgeSerializer
+from knowledge.serializers.system_resource_knowledge import SystemResourceKnowledgeQuerySerializer
+from knowledge.views.common import (
+    get_document_operation_object,
+    get_knowledge_document_operation_object,
+)
 from models_provider.serializers.model_serializer import ModelSerializer
 from tools.api.tool import GetInternalToolAPI
+
+
+def get_system_resource_knowledge_workspace_id(knowledge_id: str):
+    knowledge = QuerySet(Knowledge).filter(id=knowledge_id).only('workspace_id').first()
+    if knowledge is None:
+        raise NotFound404(404, _("Knowledge id does not exist"))
+    return knowledge.workspace_id
 
 
 class KnowledgeView(APIView):
@@ -564,6 +601,575 @@ class KnowledgeView(APIView):
                     }
                 ).list()
             )
+
+
+class SystemResourceKnowledgeView(APIView):
+    authentication_classes = [TokenAuth]
+
+    class Export(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['GET'],
+            description=_('Export system knowledge resource'),
+            summary=_('Export system knowledge resource'),
+            operation_id=_('Export system knowledge resource'),  # type: ignore
+            parameters=SystemResourceKnowledgeExportAPI.get_parameters(),
+            responses=SystemResourceKnowledgeExportAPI.get_response(),
+            tags=[_('Knowledge Base')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_EXPORT, RoleConstants.ADMIN)
+        @log(
+            menu='Knowledge Base',
+            operate='Export knowledge base',
+            get_operation_object=lambda r, keywords: get_knowledge_operation_object(keywords.get('knowledge_id')),
+        )
+        def get(self, request: Request, knowledge_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            return KnowledgeSerializer.Operate(
+                data={
+                    'user_id': request.user.id,
+                    'workspace_id': workspace_id,
+                    'knowledge_id': knowledge_id,
+                }
+            ).export_excel()
+
+    class ExportZip(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['GET'],
+            description=_('Export system knowledge resource with images'),
+            summary=_('Export system knowledge resource with images'),
+            operation_id=_('Export system knowledge resource with images'),  # type: ignore
+            parameters=SystemResourceKnowledgeExportAPI.get_parameters(),
+            responses=SystemResourceKnowledgeExportAPI.get_response(),
+            tags=[_('Knowledge Base')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_EXPORT, RoleConstants.ADMIN)
+        @log(
+            menu='Knowledge Base',
+            operate='Export knowledge base containing images',
+            get_operation_object=lambda r, keywords: get_knowledge_operation_object(keywords.get('knowledge_id')),
+        )
+        def get(self, request: Request, knowledge_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            return KnowledgeSerializer.Operate(
+                data={
+                    'user_id': request.user.id,
+                    'workspace_id': workspace_id,
+                    'knowledge_id': knowledge_id,
+                }
+            ).export_zip()
+
+    class Embedding(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['PUT'],
+            description=_('Re-vectorize system knowledge resource'),
+            summary=_('Re-vectorize system knowledge resource'),
+            operation_id=_('Re-vectorize system knowledge resource'),  # type: ignore
+            parameters=SystemResourceKnowledgeEmbeddingAPI.get_parameters(),
+            responses=SystemResourceKnowledgeEmbeddingAPI.get_response(),
+            tags=[_('Knowledge Base')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_VECTOR, RoleConstants.ADMIN)
+        @log(
+            menu='Knowledge Base',
+            operate='Re-vectorize',
+            get_operation_object=lambda r, keywords: get_knowledge_operation_object(keywords.get('knowledge_id')),
+        )
+        def put(self, request: Request, knowledge_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            return result.success(
+                KnowledgeSerializer.Operate(
+                    data={
+                        'user_id': request.user.id,
+                        'workspace_id': workspace_id,
+                        'knowledge_id': knowledge_id,
+                    }
+                ).embedding()
+            )
+
+    class HitTest(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['POST'],
+            description=_('Hit test system knowledge resource'),
+            summary=_('Hit test system knowledge resource'),
+            operation_id=_('Hit test system knowledge resource'),  # type: ignore
+            parameters=SystemResourceKnowledgeHitTestAPI.get_parameters(),
+            request=SystemResourceKnowledgeHitTestAPI.get_request(),
+            responses=SystemResourceKnowledgeHitTestAPI.get_response(),
+            tags=[_('Knowledge Base')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_HIT_TEST, RoleConstants.ADMIN)
+        def post(self, request: Request, knowledge_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            return result.success(
+                KnowledgeSerializer.HitTest(
+                    data={
+                        'workspace_id': workspace_id,
+                        'knowledge_id': knowledge_id,
+                        'user_id': request.user.id,
+                        'query_text': request.data.get('query_text'),
+                        'top_number': request.data.get('top_number'),
+                        'similarity': request.data.get('similarity'),
+                        'search_mode': request.data.get('search_mode'),
+                    }
+                ).hit_test()
+            )
+
+    class GenerateRelated(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['PUT'],
+            description=_('Generate related for system knowledge resource'),
+            summary=_('Generate related for system knowledge resource'),
+            operation_id=_('Generate related for system knowledge resource'),  # type: ignore
+            parameters=SystemResourceKnowledgeGenerateRelatedAPI.get_parameters(),
+            request=SystemResourceKnowledgeGenerateRelatedAPI.get_request(),
+            responses=SystemResourceKnowledgeGenerateRelatedAPI.get_response(),
+            tags=[_('Knowledge Base')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_GENERATE, RoleConstants.ADMIN)
+        @log(
+            menu='document',
+            operate='Generate related documents',
+            get_operation_object=lambda r, k: get_knowledge_operation_object(k.get('knowledge_id')),
+        )
+        def put(self, request: Request, knowledge_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            return result.success(
+                KnowledgeSerializer.Operate(
+                    data={
+                        'knowledge_id': knowledge_id,
+                        'workspace_id': workspace_id,
+                        'user_id': request.user.id,
+                    }
+                ).generate_related(request.data)
+            )
+
+    class SyncWeb(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['PUT'],
+            description=_('Synchronize system knowledge resource'),
+            summary=_('Synchronize system knowledge resource'),
+            operation_id=_('Synchronize system knowledge resource'),  # type: ignore
+            parameters=SystemResourceKnowledgeSyncAPI.get_parameters(),
+            responses=SystemResourceKnowledgeSyncAPI.get_response(),
+            tags=[_('Knowledge Base')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_SYNC, RoleConstants.ADMIN)
+        @log(
+            menu='Knowledge Base',
+            operate='Synchronize the knowledge base of the website',
+            get_operation_object=lambda r, keywords: get_knowledge_operation_object(
+                keywords.get('knowledge_id')
+            ),
+        )
+        def put(self, request: Request, knowledge_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            return result.success(
+                KnowledgeSerializer.SyncWeb(
+                    data={
+                        'workspace_id': workspace_id,
+                        'sync_type': request.query_params.get('sync_type'),
+                        'knowledge_id': knowledge_id,
+                        'user_id': str(request.user.id),
+                    }
+            ).sync()
+            )
+    class Operate(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['GET'],
+            description=_('Get system knowledge resource detail'),
+            summary=_('Get system knowledge resource detail'),
+            operation_id=_('Get system knowledge resource detail'),  # type: ignore
+            parameters=SystemResourceKnowledgeReadAPI.get_parameters(),
+            responses=SystemResourceKnowledgeReadAPI.get_response(),
+            tags=[_('Knowledge Base')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_READ, RoleConstants.ADMIN)
+        def get(self, request: Request, knowledge_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            return result.success(
+                KnowledgeSerializer.Operate(
+                    data={
+                        'user_id': request.user.id,
+                        'workspace_id': workspace_id,
+                        'knowledge_id': knowledge_id,
+                    }
+                ).one()
+            )
+
+        @extend_schema(
+            methods=['PUT'],
+            description=_('Edit system knowledge resource'),
+            summary=_('Edit system knowledge resource'),
+            operation_id=_('Edit system knowledge resource'),  # type: ignore
+            parameters=SystemResourceKnowledgeEditAPI.get_parameters(),
+            request=SystemResourceKnowledgeEditAPI.get_request(),
+            responses=SystemResourceKnowledgeEditAPI.get_response(),
+            tags=[_('Knowledge Base')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_EDIT, RoleConstants.ADMIN)
+        @log(
+            menu='Knowledge Base',
+            operate='Modify knowledge base information',
+            get_operation_object=lambda r, keywords: get_knowledge_operation_object(keywords.get('knowledge_id')),
+        )
+        def put(self, request: Request, knowledge_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            return result.success(
+                KnowledgeSerializer.Operate(
+                    data={
+                        'user_id': request.user.id,
+                        'workspace_id': workspace_id,
+                        'knowledge_id': knowledge_id,
+                    }
+                ).edit(request.data)
+            )
+
+        @extend_schema(
+            methods=['DELETE'],
+            description=_('Delete system knowledge resource'),
+            summary=_('Delete system knowledge resource'),
+            operation_id=_('Delete system knowledge resource'),  # type: ignore
+            parameters=SystemResourceKnowledgeDeleteAPI.get_parameters(),
+            responses=SystemResourceKnowledgeDeleteAPI.get_response(),
+            tags=[_('Knowledge Base')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_DELETE, RoleConstants.ADMIN)
+        @log(
+            menu='Knowledge Base',
+            operate='Delete knowledge base',
+            get_operation_object=lambda r, keywords: get_knowledge_operation_object(keywords.get('knowledge_id')),
+        )
+        def delete(self, request: Request, knowledge_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            return result.success(
+                KnowledgeSerializer.Operate(
+                    data={
+                        'user_id': request.user.id,
+                        'workspace_id': workspace_id,
+                        'knowledge_id': knowledge_id,
+                    }
+                ).delete()
+            )
+
+    class Page(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['GET'],
+            description=_('Get system knowledge resource list by page'),
+            summary=_('Get system knowledge resource list by page'),
+            operation_id=_('Get system knowledge resource list by page'),  # type: ignore
+            parameters=SystemResourceKnowledgeQueryAPI.get_parameters(),
+            responses=SystemResourceKnowledgeQueryAPI.get_response(),
+            tags=[_('Knowledge Base')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_READ, RoleConstants.ADMIN)
+        def get(self, request: Request, current_page: int, page_size: int):
+            serializer = SystemResourceKnowledgeQuerySerializer(data=request.query_params)
+            return result.success(serializer.page(current_page, page_size))
+
+
+class SystemResourceDocumentView(APIView):
+    authentication_classes = [TokenAuth]
+
+    class Sync(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['PUT'],
+            description=_('Sync system resource document'),
+            summary=_('Sync system resource document'),
+            operation_id=_('Sync system resource document'),  # type: ignore
+            parameters=SystemResourceDocumentSyncAPI.get_parameters(),
+            responses=SystemResourceDocumentSyncAPI.get_response(),
+            tags=[_('Knowledge Base/Documentation')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_DOCUMENT_SYNC, RoleConstants.ADMIN)
+        @log(
+            menu='document',
+            operate='Sync system resource document',
+            get_operation_object=lambda r, keywords: get_knowledge_document_operation_object(
+                get_knowledge_operation_object(keywords.get('knowledge_id')),
+                get_document_operation_object(keywords.get('document_id')),
+            ),
+        )
+        def put(self, request: Request, knowledge_id: str, document_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            return result.success(
+                DocumentSerializers.Sync(
+                    data={
+                        'document_id': document_id,
+                        'knowledge_id': knowledge_id,
+                        'workspace_id': workspace_id,
+                    }
+                ).sync()
+            )
+
+    class Refresh(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['PUT'],
+            description=_('Refresh system resource document vector library'),
+            summary=_('Refresh system resource document vector library'),
+            operation_id=_('Refresh system resource document vector library'),  # type: ignore
+            parameters=SystemResourceDocumentRefreshAPI.get_parameters(),
+            request=SystemResourceDocumentRefreshAPI.get_request(),
+            responses=SystemResourceDocumentRefreshAPI.get_response(),
+            tags=[_('Knowledge Base/Documentation')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_DOCUMENT_VECTOR, RoleConstants.ADMIN)
+        @log(
+            menu='document',
+            operate='Refresh system resource document vector library',
+            get_operation_object=lambda r, keywords: get_knowledge_document_operation_object(
+                get_knowledge_operation_object(keywords.get('knowledge_id')),
+                get_document_operation_object(keywords.get('document_id')),
+            ),
+        )
+        def put(self, request: Request, knowledge_id: str, document_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            return result.success(
+                DocumentSerializers.Operate(
+                    data={
+                        'document_id': document_id,
+                        'knowledge_id': knowledge_id,
+                        'workspace_id': workspace_id,
+                    }
+                ).refresh(request.data.get('state_list'))
+            )
+
+    class CancelTask(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['PUT'],
+            description=_('Cancel task system resource document'),
+            summary=_('Cancel task system resource document'),
+            operation_id=_('Cancel task system resource document'),  # type: ignore
+            parameters=SystemResourceDocumentCancelTaskAPI.get_parameters(),
+            request=SystemResourceDocumentCancelTaskAPI.get_request(),
+            responses=SystemResourceDocumentCancelTaskAPI.get_response(),
+            tags=[_('Knowledge Base/Documentation')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_DOCUMENT_EDIT, RoleConstants.ADMIN)
+        @log(
+            menu='document',
+            operate='Cancel task system resource document',
+            get_operation_object=lambda r, keywords: get_knowledge_document_operation_object(
+                get_knowledge_operation_object(keywords.get('knowledge_id')),
+                get_document_operation_object(keywords.get('document_id')),
+            ),
+        )
+        def put(self, request: Request, knowledge_id: str, document_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            return result.success(
+                DocumentSerializers.Operate(
+                    data={
+                        'workspace_id': workspace_id,
+                        'document_id': document_id,
+                        'knowledge_id': knowledge_id,
+                    }
+                ).cancel(request.data)
+            )
+
+    class ExportZip(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['GET'],
+            description=_('Export zip system resource document'),
+            summary=_('Export zip system resource document'),
+            operation_id=_('Export zip system resource document'),  # type: ignore
+            parameters=SystemResourceDocumentExportZipAPI.get_parameters(),
+            responses=SystemResourceDocumentExportZipAPI.get_response(),
+            tags=[_('Knowledge Base/Documentation')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_DOCUMENT_EXPORT, RoleConstants.ADMIN)
+        @log(
+            menu='document',
+            operate='Export zip system resource document',
+            get_operation_object=lambda r, keywords: get_knowledge_document_operation_object(
+                get_knowledge_operation_object(keywords.get('knowledge_id')),
+                get_document_operation_object(keywords.get('document_id')),
+            ),
+        )
+        def get(self, request: Request, knowledge_id: str, document_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            return DocumentSerializers.Operate(
+                data={
+                    'workspace_id': workspace_id,
+                    'document_id': document_id,
+                    'knowledge_id': knowledge_id,
+                }
+            ).export_zip()
+
+    class Export(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['GET'],
+            description=_('Export system resource document'),
+            summary=_('Export system resource document'),
+            operation_id=_('Export system resource document'),  # type: ignore
+            parameters=SystemResourceDocumentExportAPI.get_parameters(),
+            responses=SystemResourceDocumentExportAPI.get_response(),
+            tags=[_('Knowledge Base/Documentation')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_DOCUMENT_EXPORT, RoleConstants.ADMIN)
+        @log(
+            menu='document',
+            operate='Export system resource document',
+            get_operation_object=lambda r, keywords: get_knowledge_document_operation_object(
+                get_knowledge_operation_object(keywords.get('knowledge_id')),
+                get_document_operation_object(keywords.get('document_id')),
+            ),
+        )
+        def get(self, request: Request, knowledge_id: str, document_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            return DocumentSerializers.Operate(
+                data={
+                    'workspace_id': workspace_id,
+                    'document_id': document_id,
+                    'knowledge_id': knowledge_id,
+                }
+            ).export()
+
+    class Page(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['GET'],
+            description=_('Get system resource document list by page'),
+            summary=_('Get system resource document list by page'),
+            operation_id=_('Get system resource document list by page'),  # type: ignore
+            parameters=SystemResourceDocumentPageAPI.get_parameters(),
+            responses=SystemResourceDocumentPageAPI.get_response(),
+            tags=[_('Knowledge Base/Documentation')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_READ, RoleConstants.ADMIN)
+        def get(self, request: Request, knowledge_id: str, current_page: int, page_size: int):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            raw_tags = request.query_params.getlist('tags[]')
+            return result.success(
+                DocumentSerializers.Query(
+                    data={
+                        'workspace_id': workspace_id,
+                        'knowledge_id': knowledge_id,
+                        'folder_id': request.query_params.get('folder_id'),
+                        'name': request.query_params.get('name'),
+                        'tag': request.query_params.get('tag'),
+                        'tag_exclude': request.query_params.get('tag_exclude'),
+                        'tag_ids': [tag for tag in raw_tags if tag != 'NO_TAG'],
+                        'no_tag': 'NO_TAG' in raw_tags,
+                        'desc': request.query_params.get('desc'),
+                        'user_id': request.query_params.get('user_id'),
+                        'status': request.query_params.get('status'),
+                        'is_active': request.query_params.get('is_active'),
+                        'hit_handling_method': request.query_params.get('hit_handling_method'),
+                        'order_by': request.query_params.get('order_by'),
+                    }
+                ).page(current_page, page_size)
+            )
+
+    class Operate(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            description=_('Get system resource document details'),
+            summary=_('Get system resource document details'),
+            operation_id=_('Get system resource document details'),  # type: ignore
+            parameters=SystemResourceDocumentReadAPI.get_parameters(),
+            responses=SystemResourceDocumentReadAPI.get_response(),
+            tags=[_('Knowledge Base/Documentation')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_READ, RoleConstants.ADMIN)
+        def get(self, request: Request, knowledge_id: str, document_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            operate = DocumentSerializers.Operate(
+                data={
+                    'document_id': document_id,
+                    'knowledge_id': knowledge_id,
+                    'workspace_id': workspace_id,
+                }
+            )
+            operate.is_valid(raise_exception=True)
+            return result.success(operate.one())
+
+        @extend_schema(
+            methods=['PUT'],
+            description=_('Edit system resource document'),
+            summary=_('Edit system resource document'),
+            operation_id=_('Edit system resource document'),  # type: ignore
+            parameters=SystemResourceDocumentEditAPI.get_parameters(),
+            request=SystemResourceDocumentEditAPI.get_request(),
+            responses=SystemResourceDocumentEditAPI.get_response(),
+            tags=[_('Knowledge Base/Documentation')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_DOCUMENT_EDIT, RoleConstants.ADMIN)
+        @log(
+            menu='document',
+            operate='Modify system resource document',
+            get_operation_object=lambda r, keywords: get_knowledge_document_operation_object(
+                get_knowledge_operation_object(keywords.get('knowledge_id')),
+                get_document_operation_object(keywords.get('document_id')),
+            ),
+        )
+        def put(self, request: Request, knowledge_id: str, document_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            return result.success(
+                DocumentSerializers.Operate(
+                    data={
+                        'document_id': document_id,
+                        'knowledge_id': knowledge_id,
+                        'workspace_id': workspace_id,
+                    }
+                ).edit(request.data, with_valid=True)
+            )
+
+        @extend_schema(
+            methods=['DELETE'],
+            description=_('Delete system resource document'),
+            summary=_('Delete system resource document'),
+            operation_id=_('Delete system resource document'),  # type: ignore
+            parameters=SystemResourceDocumentDeleteAPI.get_parameters(),
+            responses=SystemResourceDocumentDeleteAPI.get_response(),
+            tags=[_('Knowledge Base/Documentation')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_KNOWLEDGE_DOCUMENT_DELETE, RoleConstants.ADMIN)
+        @log(
+            menu='document',
+            operate='Delete system resource document',
+            get_operation_object=lambda r, keywords: get_knowledge_document_operation_object(
+                get_knowledge_operation_object(keywords.get('knowledge_id')),
+                get_document_operation_object(keywords.get('document_id')),
+            ),
+        )
+        def delete(self, request: Request, knowledge_id: str, document_id: str):
+            workspace_id = get_system_resource_knowledge_workspace_id(knowledge_id)
+            operate = DocumentSerializers.Operate(
+                data={
+                    'document_id': document_id,
+                    'knowledge_id': knowledge_id,
+                    'workspace_id': workspace_id,
+                }
+            )
+            operate.is_valid(raise_exception=True)
+            return result.success(operate.delete())
 
 
 class KnowledgeBaseView(APIView):
