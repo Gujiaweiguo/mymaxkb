@@ -184,6 +184,7 @@ class LoginContractIntegrationTests(TestCase):
             role="ADMIN",
             source="LOCAL",
             is_active=True,
+            require_password_change=False,
         )
 
     def test_login_returns_token_for_active_local_admin(self):
