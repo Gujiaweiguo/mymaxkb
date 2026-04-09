@@ -13,7 +13,10 @@ from knowledge.models import File
 from common.utils.logger import maxkb_logger
 from common.result import result
 from application.flow.i_step_node import WorkFlowPostHandler
-from application.flow.backend.sandbox_shell import SandboxShellBackend
+# SandboxShellBackend imported lazily inside _yield_mcp_response to avoid
+# pulling in deepagents/langgraph at module-load time (they may be
+# incompatible with the installed langgraph version).
+
 import asyncio
 import io
 import json
@@ -28,12 +31,9 @@ from typing import Iterator
 
 import uuid_utils.compat as uuid
 from asgiref.sync import sync_to_async
-from deepagents import create_deep_agent
 from django.db.models import QuerySet
 from django.http import StreamingHttpResponse
 from langchain_core.messages import BaseMessageChunk, BaseMessage, ToolMessage, AIMessageChunk
-from langchain_mcp_adapters.client import MultiServerMCPClient
-from langgraph.checkpoint.memory import MemorySaver
 
 # ---------------------------------------------------------------------------
 # Fix: qwen's OpenAI-compatible streaming sends id='' (empty string) for
@@ -352,6 +352,7 @@ def _extract_tool_id(raw_id):
 
 
 async def _initialize_skills(mcp_servers, temp_dir):
+    from langchain_mcp_adapters.client import MultiServerMCPClient
     skills_dir = os.path.join(temp_dir, 'skills')
     mcp_config = json.loads(mcp_servers)
     if "skills" in mcp_config:
@@ -402,6 +403,9 @@ async def _initialize_skills(mcp_servers, temp_dir):
 
 async def _yield_mcp_response(chat_model, message_list, mcp_servers, mcp_output_enable=True, tool_init_params={},
                               source_id=None, source_type=None, temp_dir=None, chat_id=None):
+    from langgraph.checkpoint.memory import MemorySaver
+    from deepagents import create_deep_agent
+    from application.flow.backend.sandbox_shell import SandboxShellBackend
     try:
         checkpointer = MemorySaver()
         client = await _initialize_skills(mcp_servers, temp_dir)
