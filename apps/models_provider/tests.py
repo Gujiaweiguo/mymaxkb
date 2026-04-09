@@ -1,9 +1,21 @@
+import uuid
+import json
+from types import SimpleNamespace
+from unittest.mock import patch
+
 from django.test import TestCase
 from django.db import IntegrityError
+from rest_framework.test import APIRequestFactory, force_authenticate
 
+from common.constants.permission_constants import Group
+from common.utils.rsa_util import rsa_long_encrypt
 from models_provider.models import Model, Status
 from models_provider.tools import get_provider, get_model_default_params
 from models_provider.constants.model_provider_constants import ModelProvideConstants
+from models_provider.views.model import SystemSharedModelSetting, SystemResourceModelView
+from system_manage.models import Workspace
+from system_manage.models.resource_mapping import ResourceMapping
+from users.models import User
 
 
 class StatusEnumTests(TestCase):
@@ -123,3 +135,294 @@ class ModelUniqueConstraintTests(TestCase):
             workspace_id="workspace2"
         )
         self.assertIsNotNone(model2.id)
+
+
+class SystemSharedModelSettingTests(TestCase):
+    def setUp(self):
+        self.factory = APIRequestFactory()
+        self.admin = User.objects.create(
+            id=uuid.uuid4(),
+            email='shared-model-admin@example.com',
+            phone='',
+            nick_name='shared-model-admin',
+            username='shared-model-admin',
+            password='hashed',
+            role='ADMIN',
+            source='LOCAL',
+            is_active=True,
+        )
+        self.owner = User.objects.create(
+            id=uuid.uuid4(),
+            email='shared-model-owner@example.com',
+            phone='',
+            nick_name='shared-model-owner',
+            username='shared-model-owner',
+            password='hashed',
+            role='USER',
+            source='LOCAL',
+            is_active=True,
+        )
+        self.auth_token = SimpleNamespace(role_list=['ADMIN'], permission_list=[])
+
+    def test_admin_can_list_system_shared_models(self):
+        model = Model.objects.create(
+            name='shared-model',
+            model_type='LLM',
+            model_name='gpt-4',
+            provider='model_openai_provider',
+            credential='encrypted',
+            workspace_id='workspace-a',
+            user=self.owner,
+        )
+        request = self.factory.get('/system/shared/model')
+        force_authenticate(request, user=self.admin, token=self.auth_token)
+
+        response = SystemSharedModelSetting.as_view()(request)
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+        matching_models = [item for item in payload['data'] if item['id'] == str(model.id)]
+        self.assertEqual(len(matching_models), 1)
+        self.assertEqual(matching_models[0]['username'], self.owner.username)
+
+    def test_non_admin_cannot_list_system_shared_models(self):
+        request = self.factory.get('/system/shared/model')
+        force_authenticate(
+            request,
+            user=self.owner,
+            token=SimpleNamespace(role_list=['USER'], permission_list=[]),
+        )
+
+        response = SystemSharedModelSetting.as_view()(request)
+
+        self.assertEqual(response.status_code, 403)
+
+
+class SystemResourceModelViewTests(TestCase):
+    def setUp(self):
+        self.factory = APIRequestFactory()
+        self.admin = User.objects.create(
+            id=uuid.uuid4(),
+            email='resource-model-admin@example.com',
+            phone='',
+            nick_name='resource-model-admin',
+            username='resource-model-admin',
+            password='hashed',
+            role='ADMIN',
+            source='LOCAL',
+            is_active=True,
+        )
+        self.owner = User.objects.create(
+            id=uuid.uuid4(),
+            email='resource-model-owner@example.com',
+            phone='',
+            nick_name='resource-model-owner',
+            username='resource-model-owner',
+            password='hashed',
+            role='USER',
+            source='LOCAL',
+            is_active=True,
+        )
+        self.admin_auth = SimpleNamespace(role_list=['ADMIN'], permission_list=[])
+        self.user_auth = SimpleNamespace(role_list=['USER'], permission_list=[])
+        Workspace.objects.create(id='workspace-a', name='Workspace A')
+        Workspace.objects.create(id='workspace-b', name='Workspace B')
+
+    def create_model(self, name: str, workspace_id: str, model_params_form=None):
+        return Model.objects.create(
+            name=name,
+            model_type='LLM',
+            model_name='gpt-4o-mini',
+            provider='model_openai_provider',
+            credential=rsa_long_encrypt(json.dumps({'api_key': 'secret-key'})),
+            workspace_id=workspace_id,
+            user=self.owner,
+            model_params_form=model_params_form or [],
+        )
+
+    def test_admin_can_page_system_resource_models_with_workspace_metadata(self):
+        model = self.create_model('workspace-model-a', 'workspace-a')
+        self.create_model('workspace-model-b', 'workspace-b')
+        self.create_model('shared-model', 'None')
+        ResourceMapping.objects.create(
+            source_type=Group.APPLICATION.value,
+            target_type=Group.MODEL.value,
+            source_id='application-1',
+            target_id=str(model.id),
+        )
+
+        request = self.factory.get(
+            '/system/resource/model/1/20',
+            {'workspace_ids': json.dumps(['workspace-a'])},
+        )
+        force_authenticate(request, user=self.admin, token=self.admin_auth)
+
+        response = SystemResourceModelView.Page.as_view()(request, current_page=1, page_size=20)
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+        self.assertEqual(payload['data']['total'], 1)
+        record = payload['data']['records'][0]
+        self.assertEqual(str(record['id']), str(model.id))
+        self.assertEqual(record['workspace_id'], 'workspace-a')
+        self.assertEqual(record['workspace_name'], 'Workspace A')
+        self.assertEqual(record['resource_count'], 1)
+        self.assertEqual(record['username'], self.owner.username)
+
+    def test_non_admin_cannot_page_system_resource_models(self):
+        request = self.factory.get('/system/resource/model/1/20')
+        force_authenticate(request, user=self.owner, token=self.user_auth)
+
+        response = SystemResourceModelView.Page.as_view()(request, current_page=1, page_size=20)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_admin_can_get_update_and_delete_system_resource_model(self):
+        model = self.create_model('workspace-model', 'workspace-a')
+
+        get_request = self.factory.get(f'/system/resource/model/{model.id}')
+        force_authenticate(get_request, user=self.admin, token=self.admin_auth)
+        get_response = SystemResourceModelView.Operate.as_view()(get_request, model_id=str(model.id))
+
+        self.assertEqual(get_response.status_code, 200)
+        get_payload = json.loads(get_response.content)
+        self.assertEqual(get_payload['data']['workspace_id'], 'workspace-a')
+        self.assertEqual(get_payload['data']['credential']['api_key'], 'secr***************-key')
+
+        meta_request = self.factory.get(f'/system/resource/model/{model.id}/meta')
+        force_authenticate(meta_request, user=self.admin, token=self.admin_auth)
+        meta_response = SystemResourceModelView.ModelMeta.as_view()(meta_request, model_id=str(model.id))
+
+        self.assertEqual(meta_response.status_code, 200)
+        meta_payload = json.loads(meta_response.content)
+        self.assertEqual(meta_payload['data']['workspace_id'], 'workspace-a')
+        self.assertEqual(meta_payload['data']['name'], 'workspace-model')
+        self.assertNotIn('credential', meta_payload['data'])
+
+        with patch(
+            'models_provider.serializers.model_serializer.ModelSerializer.Operate.edit',
+            return_value={'id': str(model.id), 'name': 'updated-model'},
+        ) as edit_mock:
+            put_request = self.factory.put(
+                f'/system/resource/model/{model.id}',
+                data={'name': 'updated-model'},
+                format='json',
+            )
+            force_authenticate(put_request, user=self.admin, token=self.admin_auth)
+            put_response = SystemResourceModelView.Operate.as_view()(put_request, model_id=str(model.id))
+
+        self.assertEqual(put_response.status_code, 200)
+        put_payload = json.loads(put_response.content)
+        self.assertEqual(put_payload['data']['name'], 'updated-model')
+        edit_mock.assert_called_once()
+
+        delete_request = self.factory.delete(f'/system/resource/model/{model.id}')
+        force_authenticate(delete_request, user=self.admin, token=self.admin_auth)
+        delete_response = SystemResourceModelView.Operate.as_view()(delete_request, model_id=str(model.id))
+
+        self.assertEqual(delete_response.status_code, 200)
+        self.assertFalse(Model.objects.filter(id=model.id).exists())
+
+    def test_admin_cannot_edit_or_delete_shared_model_through_system_resource(self):
+        model = self.create_model('shared-model', 'None')
+
+        meta_request = self.factory.get(f'/system/resource/model/{model.id}/meta')
+        force_authenticate(meta_request, user=self.admin, token=self.admin_auth)
+        meta_response = SystemResourceModelView.ModelMeta.as_view()(meta_request, model_id=str(model.id))
+
+        self.assertEqual(meta_response.status_code, 200)
+        meta_payload = json.loads(meta_response.content)
+        self.assertEqual(meta_payload['code'], 500)
+        self.assertIn('Shared models cannot be deleted or modified', meta_payload['message'])
+
+        get_request = self.factory.get(f'/system/resource/model/{model.id}')
+        force_authenticate(get_request, user=self.admin, token=self.admin_auth)
+        get_response = SystemResourceModelView.Operate.as_view()(get_request, model_id=str(model.id))
+
+        self.assertEqual(get_response.status_code, 200)
+        get_payload = json.loads(get_response.content)
+        self.assertEqual(get_payload['code'], 500)
+        self.assertIn('Shared models cannot be deleted or modified', get_payload['message'])
+
+        put_request = self.factory.put(
+            f'/system/resource/model/{model.id}',
+            data={'name': 'should-not-update'},
+            format='json',
+        )
+        force_authenticate(put_request, user=self.admin, token=self.admin_auth)
+        put_response = SystemResourceModelView.Operate.as_view()(put_request, model_id=str(model.id))
+
+        self.assertEqual(put_response.status_code, 200)
+        put_payload = json.loads(put_response.content)
+        self.assertEqual(put_payload['code'], 500)
+        self.assertIn('Shared models cannot be deleted or modified', put_payload['message'])
+
+        delete_request = self.factory.delete(f'/system/resource/model/{model.id}')
+        force_authenticate(delete_request, user=self.admin, token=self.admin_auth)
+        delete_response = SystemResourceModelView.Operate.as_view()(delete_request, model_id=str(model.id))
+
+        self.assertEqual(delete_response.status_code, 200)
+        delete_payload = json.loads(delete_response.content)
+        self.assertEqual(delete_payload['code'], 500)
+        self.assertIn('Shared models cannot be deleted or modified', delete_payload['message'])
+
+    def test_admin_cannot_delete_model_with_related_resources(self):
+        model = self.create_model('workspace-model-linked', 'workspace-a')
+        ResourceMapping.objects.create(
+            source_type=Group.APPLICATION.value,
+            target_type=Group.MODEL.value,
+            source_id='application-1',
+            target_id=str(model.id),
+        )
+
+        delete_request = self.factory.delete(f'/system/resource/model/{model.id}')
+        force_authenticate(delete_request, user=self.admin, token=self.admin_auth)
+        delete_response = SystemResourceModelView.Operate.as_view()(delete_request, model_id=str(model.id))
+
+        self.assertEqual(delete_response.status_code, 200)
+        delete_payload = json.loads(delete_response.content)
+        self.assertEqual(delete_payload['code'], 500)
+        self.assertIn('associated with resources', delete_payload['message'])
+        self.assertTrue(Model.objects.filter(id=model.id).exists())
+
+    def test_admin_can_get_and_save_system_resource_model_params_form(self):
+        model = self.create_model(
+            'workspace-model',
+            'workspace-a',
+            model_params_form=[{'field': 'temperature', 'default_value': 0.7}],
+        )
+
+        get_request = self.factory.get(f'/system/resource/model/{model.id}/model_params_form')
+        force_authenticate(get_request, user=self.admin, token=self.admin_auth)
+        get_response = SystemResourceModelView.ModelParamsForm.as_view()(get_request, model_id=str(model.id))
+
+        self.assertEqual(get_response.status_code, 200)
+        get_payload = json.loads(get_response.content)
+        self.assertEqual(get_payload['data'][0]['field'], 'temperature')
+
+        put_request = self.factory.put(
+            f'/system/resource/model/{model.id}/model_params_form',
+            data=[{'field': 'max_tokens', 'default_value': 2048}],
+            format='json',
+        )
+        force_authenticate(put_request, user=self.admin, token=self.admin_auth)
+        put_response = SystemResourceModelView.ModelParamsForm.as_view()(put_request, model_id=str(model.id))
+
+        self.assertEqual(put_response.status_code, 200)
+        model.refresh_from_db()
+        self.assertEqual(model.model_params_form, [{'field': 'max_tokens', 'default_value': 2048}])
+
+    def test_admin_can_pause_system_resource_model_download(self):
+        model = self.create_model('downloading-model', 'workspace-a')
+        model.status = Status.DOWNLOAD
+        model.save(update_fields=['status'])
+
+        pause_request = self.factory.put(f'/system/resource/model/{model.id}/pause_download')
+        force_authenticate(pause_request, user=self.admin, token=self.admin_auth)
+        pause_response = SystemResourceModelView.PauseDownload.as_view()(pause_request, model_id=str(model.id))
+
+        self.assertEqual(pause_response.status_code, 200)
+        model.refresh_from_db()
+        self.assertEqual(model.status, Status.PAUSE_DOWNLOAD)

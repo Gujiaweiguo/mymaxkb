@@ -18,6 +18,7 @@ from common.constants.permission_constants import ResourcePermission, ResourceAu
 from common.database_model_manage.database_model_manage import DatabaseModelManage
 from common.db.search import native_search
 from common.exception.app_exception import AppApiException
+from common.result import Page
 from common.utils.common import get_file_content
 from common.utils.rsa_util import rsa_long_encrypt, rsa_long_decrypt
 from maxkb.conf import PROJECT_DIR
@@ -26,6 +27,7 @@ from models_provider.constants.model_provider_constants import ModelProvideConst
 from models_provider.models import Model, Status
 from models_provider.tools import get_model_credential
 from system_manage.models import WorkspaceUserResourcePermission, AuthTargetType
+from system_manage.models.workspace import Workspace
 from system_manage.models.resource_mapping import ResourceMapping
 from system_manage.serializers.resource_mapping_serializers import ResourceMappingSerializer
 from system_manage.serializers.user_resource_permission import UserResourcePermissionSerializer
@@ -138,20 +140,22 @@ class ModelSerializer(serializers.Serializer):
 
         def one(self, with_valid=False):
             if with_valid:
-                super().is_valid(raise_exception=True)
-            model = QuerySet(Model).get(
-                id=self.data.get('id'), workspace_id=self.data.get('workspace_id', 'None')
-            )
+                self.is_valid(raise_exception=True)
+            filter_dict = {'id': self.data.get('id')}
+            if 'workspace_id' in self.data:
+                filter_dict['workspace_id'] = self.data.get('workspace_id')
+            model = QuerySet(Model).get(**filter_dict)
             return ModelSerializer.model_to_dict(model)
 
         def one_meta(self, with_valid=False):
-            model = None
             if with_valid:
-                super().is_valid(raise_exception=True)
-                model = QuerySet(Model).filter(id=self.data.get("id"),
-                                               workspace_id=self.data.get('workspace_id', 'None')).first()
-                if model is None:
-                    raise AppApiException(500, _('Model does not exist'))
+                self.is_valid(raise_exception=True)
+            filter_dict = {'id': self.data.get('id')}
+            if 'workspace_id' in self.data:
+                filter_dict['workspace_id'] = self.data.get('workspace_id')
+            model = QuerySet(Model).filter(**filter_dict).first()
+            if model is None:
+                raise AppApiException(500, _('Model does not exist'))
             return {'id': str(model.id), 'provider': model.provider, 'name': model.name, 'model_type': model.model_type,
                     'model_name': model.model_name,
                     'status': model.status,
@@ -168,36 +172,40 @@ class ModelSerializer(serializers.Serializer):
         @transaction.atomic
         def delete(self, with_valid=True):
             if with_valid:
-                super().is_valid(raise_exception=True)
-            model_id = self.data.get('id')
+                self.is_valid(raise_exception=True)
+            model_id = str(self.data.get('id'))
             model = Model.objects.filter(id=model_id).first()
             if model is None:
                 return True
+            from application.models import Application
+            from knowledge.models import Knowledge
+
+            application_count = 0
+            knowledge_count = 0
+            if model.model_type == 'LLM':
+                application_count = Application.objects.filter(model_id=model_id).count()
+            elif model.model_type == 'EMBEDDING':
+                knowledge_count = Knowledge.objects.filter(embedding_model_id=model_id).count()
+            elif model.model_type == 'TTS':
+                application_count = Application.objects.filter(tts_model_id=model_id).count()
+            elif model.model_type == 'STT':
+                application_count = Application.objects.filter(stt_model_id=model_id).count()
+
+            resource_mapping_count = ResourceMapping.objects.filter(target_id=model_id).count()
+            if application_count > 0:
+                raise AppApiException(500, _('The model is associated with applications and cannot be deleted'))
+            if knowledge_count > 0:
+                raise AppApiException(500, _('The model is associated with knowledge bases and cannot be deleted'))
+            if resource_mapping_count > 0:
+                raise AppApiException(500, _('The model is associated with resources and cannot be deleted'))
             QuerySet(WorkspaceUserResourcePermission).filter(target=model_id).delete()
-            # TODO : 这里可以添加模型删除的逻辑,需要注意删除模型时的权限和关联关系
-            # if model.model_type == 'LLM':
-            #     application_count = Application.objects.filter(model_id=model_id).count()
-            #     if application_count > 0:
-            #         raise AppApiException(500, f"该模型关联了{application_count} 个应用，无法删除该模型。")
-            # elif model.model_type == 'EMBEDDING':
-            #     dataset_count = DataSet.objects.filter(embedding_model_id=model_id).count()
-            #     if dataset_count > 0:
-            #         raise AppApiException(500, f"该模型关联了{dataset_count} 个知识库，无法删除该模型。")
-            # elif model.model_type == 'TTS':
-            #     dataset_count = Application.objects.filter(tts_model_id=model_id).count()
-            #     if dataset_count > 0:
-            #         raise AppApiException(500, f"该模型关联了{dataset_count} 个应用，无法删除该模型。")
-            # elif model.model_type == 'STT':
-            #     dataset_count = Application.objects.filter(stt_model_id=model_id).count()
-            #     if dataset_count > 0:
-            #         raise AppApiException(500, f"该模型关联了{dataset_count} 个应用，无法删除该模型。")
             model.delete()
             ResourceMapping.objects.filter(target_id=model_id).delete()
             return True
 
         def edit(self, instance: Dict, user_id: str, with_valid=True):
             if with_valid:
-                super().is_valid(raise_exception=True)
+                self.is_valid(raise_exception=True)
             model = QuerySet(Model).filter(id=self.data.get('id')).first()
 
             credential, model_credential, provider_handler = ModelSerializer.Edit(
@@ -491,7 +499,7 @@ class ModelSerializer(serializers.Serializer):
 
 
 class WorkspaceSharedModelSerializer(serializers.Serializer):
-    workspace_id = serializers.CharField(required=True, label=_('workspace id'))
+    workspace_id = serializers.CharField(required=True, allow_blank=True, label=_('workspace id'))
     name = serializers.CharField(required=False, max_length=64, label=_('model name'))
     model_type = serializers.CharField(required=False, label=_('model type'))
     model_name = serializers.CharField(required=False, label=_('base model'))
@@ -538,3 +546,87 @@ class WorkspaceSharedModelSerializer(serializers.Serializer):
                     queryset = queryset.filter(**{field: value})
 
         return queryset
+
+
+class SystemResourceModelItemSerializer(serializers.Serializer):
+    id = serializers.UUIDField(required=True)
+    provider = serializers.CharField(required=True)
+    name = serializers.CharField(required=True)
+    model_type = serializers.CharField(required=True)
+    model_name = serializers.CharField(required=True)
+    status = serializers.CharField(required=True)
+    meta = serializers.DictField(required=True)
+    workspace_id = serializers.CharField(required=True)
+    workspace_name = serializers.CharField(required=True)
+    username = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    nick_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    create_time = serializers.DateTimeField(required=True)
+    update_time = serializers.DateTimeField(required=True)
+    resource_count = serializers.IntegerField(required=True)
+
+
+class SystemResourceModelQuerySerializer(serializers.Serializer):
+    name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    create_user = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    model_type = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    workspace_ids = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+    @staticmethod
+    def _parse_json_list(raw_value):
+        if not raw_value:
+            return []
+        try:
+            value = json.loads(raw_value)
+            return value if isinstance(value, list) else []
+        except Exception:
+            return []
+
+    def page(self, current_page: int, page_size: int):
+        self.is_valid(raise_exception=True)
+        query_set = self.get_query_set()
+        total = query_set.count()
+        start = (current_page - 1) * page_size
+        records = self.serialize_records(query_set[start:start + page_size])
+        return Page(total, records, current_page, page_size)
+
+    def get_query_set(self):
+        query_set = QuerySet(Model).select_related('user').exclude(workspace_id='None').order_by('-create_time')
+
+        if self.validated_data.get('name'):
+            query_set = query_set.filter(name__contains=self.validated_data.get('name'))
+        if self.validated_data.get('create_user'):
+            query_set = query_set.filter(user_id=self.validated_data.get('create_user'))
+        if self.validated_data.get('model_type'):
+            query_set = query_set.filter(model_type=self.validated_data.get('model_type'))
+
+        workspace_ids = self._parse_json_list(self.validated_data.get('workspace_ids'))
+        if workspace_ids:
+            query_set = query_set.filter(workspace_id__in=workspace_ids)
+
+        return query_set
+
+    @staticmethod
+    def serialize_records(query_set):
+        workspace_name_map = {
+            workspace.id: workspace.name for workspace in QuerySet(Workspace).all()
+        }
+
+        return ResourceMappingSerializer().get_resource_count([
+            {
+                'id': model.id,
+                'provider': model.provider,
+                'name': model.name,
+                'model_type': model.model_type,
+                'model_name': model.model_name,
+                'status': model.status,
+                'meta': model.meta,
+                'workspace_id': model.workspace_id,
+                'workspace_name': workspace_name_map.get(model.workspace_id, model.workspace_id),
+                'username': model.user.username if model.user else '',
+                'nick_name': model.user.nick_name if model.user else '',
+                'create_time': model.create_time,
+                'update_time': model.update_time,
+                'resource_count': 0,
+            }
+            for model in query_set
+        ])

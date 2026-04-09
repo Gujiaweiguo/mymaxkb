@@ -18,11 +18,18 @@ from common.constants.permission_constants import PermissionConstants, RoleConst
 from common.log.log import log
 from common.result import result
 from common.utils.common import query_params_to_single_dict
-from models_provider.api.model import ModelCreateAPI, GetModelApi, ModelEditApi, ModelListResponse, DefaultModelResponse
+from models_provider.api.model import (
+    ModelCreateAPI,
+    GetModelApi,
+    ModelEditApi,
+    ModelListResponse,
+    DefaultModelResponse,
+    SystemResourceModelQueryAPI,
+)
 from models_provider.api.provide import ProvideApi
 from models_provider.models import Model
 from models_provider.serializers.model_serializer import ModelSerializer, \
-    WorkspaceSharedModelSerializer
+    WorkspaceSharedModelSerializer, SystemResourceModelQuerySerializer
 from system_manage.views import encryption_str
 
 
@@ -287,6 +294,175 @@ class WorkspaceSharedModelSetting(APIView):
         return result.success(
             WorkspaceSharedModelSerializer(data={**query_params_to_single_dict(request.query_params),
                                                  'workspace_id': workspace_id}).get_share_model_list())
+
+
+class SystemSharedModelSetting(APIView):
+    authentication_classes = [TokenAuth]
+
+    @extend_schema(
+        methods=['Get'],
+        summary=_('Get shared model list for system management'),
+        description=_('Get shared model list for system management'),
+        operation_id=_('Get shared model list for system management'),  # type: ignore
+        parameters=ModelListResponse.get_parameters(),
+        responses=DefaultModelResponse.get_response(),
+        tags=[_('Shared Model')]
+    )  # type: ignore
+    @has_permissions(RoleConstants.ADMIN)
+    def get(self, request: Request):
+        return result.success(
+            WorkspaceSharedModelSerializer(
+                data={**query_params_to_single_dict(request.query_params), 'workspace_id': ''}
+            ).get_share_model_list()
+        )
+
+
+class SystemResourceModelView(APIView):
+    authentication_classes = [TokenAuth]
+
+    class Page(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['GET'],
+            description=_('Get system model resource list by page'),
+            summary=_('Get system model resource list by page'),
+            operation_id=_('Get system model resource list by page'),  # type: ignore
+            parameters=SystemResourceModelQueryAPI.get_parameters(),
+            responses=SystemResourceModelQueryAPI.get_response(),
+            tags=[_('Model')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_MODEL_READ, RoleConstants.ADMIN)
+        def get(self, request: Request, current_page: int, page_size: int):
+            serializer = SystemResourceModelQuerySerializer(data=request.query_params)
+            return result.success(serializer.page(current_page, page_size))
+
+    class Operate(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['GET'],
+            summary=_('Query system model details'),
+            description=_('Query system model details'),
+            operation_id=_('Query system model details'),  # type: ignore
+            parameters=GetModelApi.get_query_params_api()[1:],
+            responses=GetModelApi.get_response(),
+            tags=[_('Model')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_MODEL_READ, RoleConstants.ADMIN)
+        def get(self, request: Request, model_id: str):
+            return result.success(ModelSerializer.Operate(data={'id': model_id}).one(with_valid=True))
+
+        @extend_schema(
+            methods=['PUT'],
+            summary=_('Update system model'),
+            description=_('Update system model'),
+            operation_id=_('Update system model'),  # type: ignore
+            request=ModelEditApi.get_request(),
+            parameters=GetModelApi.get_query_params_api()[1:],
+            responses=ModelEditApi.get_response(),
+            tags=[_('Model')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_MODEL_EDIT, RoleConstants.ADMIN)
+        @log(
+            menu='model', operate='Update system model',
+            get_operation_object=lambda r, k: get_model_operation_object(k.get('model_id')),
+            get_details=get_edit_model_details,
+        )
+        def put(self, request: Request, model_id: str):
+            return result.success(
+                ModelSerializer.Operate(data={'id': model_id}).edit(request.data, str(request.user.id))
+            )
+
+        @extend_schema(
+            methods=['DELETE'],
+            summary=_('Delete system model'),
+            description=_('Delete system model'),
+            operation_id=_('Delete system model'),  # type: ignore
+            parameters=GetModelApi.get_query_params_api()[1:],
+            responses=DefaultModelResponse.get_response(),
+            tags=[_('Model')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_MODEL_DELETE, RoleConstants.ADMIN)
+        @log(
+            menu='model', operate='Delete system model',
+            get_operation_object=lambda r, k: get_model_operation_object(k.get('model_id')),
+        )
+        def delete(self, request: Request, model_id: str):
+            return result.success(ModelSerializer.Operate(data={'id': model_id}).delete())
+
+    class ModelParamsForm(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['GET'],
+            summary=_('Get system model parameter form'),
+            description=_('Get system model parameter form'),
+            operation_id=_('Get system model parameter form'),  # type: ignore
+            parameters=GetModelApi.get_query_params_api()[1:],
+            responses=ProvideApi.ModelParamsForm.get_response(),
+            tags=[_('Model')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_MODEL_READ, RoleConstants.ADMIN)
+        def get(self, request: Request, model_id: str):
+            return result.success(ModelSerializer.ModelParams(data={'id': model_id}).get_model_params())
+
+        @extend_schema(
+            methods=['PUT'],
+            summary=_('Save system model parameter form'),
+            description=_('Save system model parameter form'),
+            operation_id=_('Save system model parameter form'),  # type: ignore
+            parameters=GetModelApi.get_query_params_api()[1:],
+            request=GetModelApi.get_request(),
+            responses=ProvideApi.ModelParamsForm.get_response(),
+            tags=[_('Model')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_MODEL_EDIT, RoleConstants.ADMIN)
+        @log(
+            menu='model', operate='Save system model parameter form',
+            get_operation_object=lambda r, k: get_model_operation_object(k.get('model_id')),
+        )
+        def put(self, request: Request, model_id: str):
+            return result.success(
+                ModelSerializer.ModelParams(data={'id': model_id}).save_model_params_form(request.data)
+            )
+
+    class ModelMeta(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['GET'],
+            summary=_('Query system model meta information'),
+            description=_('Query system model meta information'),
+            operation_id=_('Query system model meta information'),  # type: ignore
+            parameters=GetModelApi.get_query_params_api()[1:],
+            responses=GetModelApi.get_response(),
+            tags=[_('Model')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_MODEL_READ, RoleConstants.ADMIN)
+        def get(self, request: Request, model_id: str):
+            return result.success(
+                ModelSerializer.Operate(data={'id': model_id}).one_meta(with_valid=True)
+            )
+
+    class PauseDownload(APIView):
+        authentication_classes = [TokenAuth]
+
+        @extend_schema(
+            methods=['PUT'],
+            summary=_('Pause system model download'),
+            description=_('Pause system model download'),
+            operation_id=_('Pause system model download'),  # type: ignore
+            parameters=GetModelApi.get_query_params_api()[1:],
+            request=GetModelApi.get_request(),
+            responses=DefaultModelResponse.get_response(),
+            tags=[_('Model')],  # type: ignore
+        )
+        @has_permissions(PermissionConstants.RESOURCE_MODEL_EDIT, RoleConstants.ADMIN)
+        def put(self, request: Request, model_id: str):
+            return result.success(
+                ModelSerializer.Operate(data={'id': model_id}).pause_download()
+            )
 
 
 class ModelList(APIView):
