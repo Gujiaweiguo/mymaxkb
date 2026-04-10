@@ -68,6 +68,8 @@ docker compose up -d
 
 本仓库默认采用本地优先的开发方式。后端建议使用 `uv` 管理的仓库内 `.venv`，前端建议使用 `ui/` 目录下的本地 Node 环境进行开发与验证。Docker Compose 仅在需要数据库、Redis、前后端联调、worker 流程验证或排查容器特有问题时按需启动，不建议将整套容器作为默认常驻环境。
 
+本地优先开发下，后端开发服务默认监听 `127.0.0.1:3080`（可通过 `MAXKB_DEV_HOST` / `MAXKB_DEV_PORT` 调整）；前端开发代理建议与后端保持一致，例如设置 `VITE_API_TARGET=http://127.0.0.1:3080`。
+
 ---
 
 - 你也可以通过 [1Panel 应用商店](https://apps.fit2cloud.com/1panel) 快速部署 MaxKB；
