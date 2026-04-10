@@ -52,6 +52,23 @@ cd ui
 npx playwright test
 ```
 
+## Quick Self-Check (Port 3080)
+
+Before starting new development work, run this minimal check to confirm local alignment:
+
+```bash
+# 1) Backend (expects http://127.0.0.1:3080/)
+set -a && source .env.local-dev && set +a
+.venv/bin/python main.py dev web
+
+# 2) Frontend quality checks
+cd ui
+npm run type-check && npm run lint && npm run test
+
+# 3) Manual smoke check
+# Open /admin/ and /chat/ in your local browser
+```
+
 ## Testing Workflow
 
 ### Backend tests
