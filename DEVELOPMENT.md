@@ -76,7 +76,7 @@ npm run lint
 
 ### E2E rerun guidance
 
-Playwright starts the two Vite frontends automatically, but it still requires the backend on port `8080` plus PostgreSQL and Redis.
+Playwright starts the two Vite frontends automatically, but it still requires the backend on port `3080` plus PostgreSQL and Redis.
 
 ```bash
 set -a
@@ -110,7 +110,7 @@ Use `MAXKB_*` environment variables in CI so the workflow matches the repo's rea
 |---------|------|-------------|
 | PostgreSQL | 5432 | User: `maxkb`, Password: `maxkb123`, DB: `maxkb` |
 | Redis | 6379 | Password: `maxkb123` |
-| Backend | 8080 | - |
+| Backend | 3080 | - |
 | Frontend | 5173 | - |
 
 ## Environment Variables
@@ -127,6 +127,8 @@ MAXKB_REDIS_HOST=127.0.0.1
 MAXKB_REDIS_PORT=6379
 MAXKB_REDIS_PASSWORD=maxkb123
 MAXKB_DEFAULT_PASSWORD=TestPassword123!
+MAXKB_DEV_HOST=127.0.0.1
+MAXKB_DEV_PORT=3080
 ```
 
 ## Stopping Services

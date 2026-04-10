@@ -83,6 +83,8 @@ Default local development convention:
 - run frontend locally from `ui/`
 - run Playwright against the local app stack
 
+For local-first development, the backend dev server defaults to `127.0.0.1:3080` (configurable via `MAXKB_DEV_HOST` / `MAXKB_DEV_PORT`). Frontend dev proxy should target the same backend (for example with `VITE_API_TARGET=http://127.0.0.1:3080`).
+
 See `DEVELOPMENT.md` for the full workflow.
 
 ## Testing
