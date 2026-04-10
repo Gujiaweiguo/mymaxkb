@@ -1,10 +1,16 @@
+import logging
 import math
 import os
 
 from django.core.management.base import BaseCommand
 from django.db.models import TextChoices
 
+from maxkb.const import CONFIG
+
 from .utils import ServicesUtil
+
+
+logger = logging.getLogger(__name__)
 
 
 class Services(TextChoices):
@@ -29,7 +35,9 @@ class Services(TextChoices):
 
     @classmethod
     def web_services(cls):
-        return [cls.gunicorn, cls.local_model]
+        local_model_enabled = CONFIG.get_enable_local_model()
+        logger.info('service startup config: local_model=%s', 'enabled' if local_model_enabled else 'disabled')
+        return [cls.gunicorn, cls.local_model] if local_model_enabled else [cls.gunicorn]
 
     @classmethod
     def celery_services(cls):
@@ -46,7 +54,13 @@ class Services(TextChoices):
 
     @classmethod
     def export_services_values(cls):
-        return [cls.all.value, cls.web.value, cls.task.value] + [s.value for s in cls.all_services()]
+        # Always include local_model as a valid CLI choice for standalone use,
+        # regardless of ENABLE_LOCAL_MODEL switch (which only affects web_services grouping).
+        base_values = [cls.all.value, cls.web.value, cls.task.value]
+        service_values = [s.value for s in cls.all_services()]
+        if cls.local_model.value not in service_values:
+            service_values.append(cls.local_model.value)
+        return base_values + service_values
 
     @classmethod
     def get_service_objects(cls, service_names, **kwargs):
