@@ -117,6 +117,8 @@ Use `MAXKB_*` environment variables in CI so the workflow matches the repo's rea
 
 Use `.env.local-dev` for the local-backend workflow. The committed `.env` remains for full Docker Compose startup.
 
+If your local setup previously used backend `8080`, update `.env.local-dev` to `MAXKB_DEV_PORT=3080` so frontend proxy and backend defaults stay aligned.
+
 ```env
 MAXKB_CONFIG_TYPE=ENV
 MAXKB_DB_HOST=127.0.0.1
