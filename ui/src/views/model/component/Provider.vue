@@ -86,14 +86,23 @@
               ref="commonList2"
             >
               <template #default="{ row }">
-                <div class="flex align-center">
+                <div class="flex align-center w-full">
                   <span
                     :innerHTML="row.icon"
                     alt=""
                     style="height: 20px; width: 20px"
                     class="mr-8"
                   />
-                  <span class="ellipsis-1" :title="row.name">{{ row.name }}</span>
+                  <span class="ellipsis-1 local-provider-name" :title="row.name">{{ row.name }}</span>
+                  <el-tag
+                    v-if="isLocalProvider(row.provider)"
+                    size="small"
+                    type="info"
+                    effect="plain"
+                    class="ml-8 local-provider-tip"
+                  >
+                    需要本地/外部模型服务
+                  </el-tag>
                 </div>
               </template>
             </common-list>
@@ -120,17 +129,24 @@ const emit = defineEmits(['click'])
 
 const online_provider_list = ref<Array<Provider>>([])
 const local_provider_list = ref<Array<Provider>>([])
+const local_provider = [
+  'model_ollama_provider',
+  'model_local_provider',
+  'local_model_provider',
+  'model_xinference_provider',
+  'model_vllm_provider',
+  'model_docker_ai_provider'
+]
+
+const isLocalProvider = (provider?: string) => {
+  return !!provider && local_provider.includes(provider)
+}
 
 watch(
   () => props.data,
   (list) => {
-    const local_provider = [
-      'model_ollama_provider',
-      'model_local_provider',
-      'model_xinference_provider',
-      'model_vllm_provider',
-      'model_docker_ai_provider'
-    ]
+    online_provider_list.value = []
+    local_provider_list.value = []
     list
       .filter((v) => v.provider)
       ?.forEach((item) => {
@@ -229,6 +245,15 @@ const handleSharedNodeClick = () => {
         background: var(--el-color-primary-light-9);
       }
     }
+  }
+
+  .local-provider-name {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .local-provider-tip {
+    flex-shrink: 0;
   }
 }
 </style>
