@@ -6,6 +6,8 @@
     @date：2025/11/5 15:30
     @desc:
 """
+import logging
+
 from typing import Sequence, Optional, Dict
 
 import requests
@@ -15,6 +17,8 @@ from langchain_core.documents import Document, BaseDocumentCompressor
 
 from maxkb.const import CONFIG
 from models_provider.base_model_provider import MaxKBBaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class LocalReranker(MaxKBBaseModel, BaseModel, BaseDocumentCompressor):
@@ -40,11 +44,18 @@ class LocalReranker(MaxKBBaseModel, BaseModel, BaseDocumentCompressor):
             return []
         prefix = CONFIG.get_admin_path()
         bind = f'{CONFIG.get("LOCAL_MODEL_HOST")}:{CONFIG.get("LOCAL_MODEL_PORT")}'
-        res = requests.post(
-            f'{CONFIG.get("LOCAL_MODEL_PROTOCOL")}://{bind}{prefix}/api/model/{self.model_id}/compress_documents',
-            json={'documents': [{'page_content': document.page_content, 'metadata': document.metadata} for document in
-                                documents], 'query': query}, headers={'Content-Type': 'application/json'})
-        result = res.json()
+        try:
+            res = requests.post(
+                f'{CONFIG.get("LOCAL_MODEL_PROTOCOL")}://{bind}{prefix}/api/model/{self.model_id}/compress_documents',
+                json={'documents': [{'page_content': document.page_content, 'metadata': document.metadata} for document in
+                                    documents], 'query': query}, headers={'Content-Type': 'application/json'}, timeout=5)
+            result = res.json()
+        except (requests.ConnectionError, requests.Timeout) as e:
+            logger.warning('local_model_unreachable: compress_documents failed: %s', e)
+            raise Exception('Local model service is unavailable') from None
+        except Exception as e:
+            logger.warning('local_model_unreachable: compress_documents failed: %s', e)
+            raise Exception('Local model service is unavailable') from None
         if result.get('code', 500) == 200:
             return [Document(page_content=document.get('page_content'), metadata=document.get('metadata')) for document
                     in result.get('data')]
