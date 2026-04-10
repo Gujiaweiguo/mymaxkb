@@ -69,7 +69,10 @@ def start_services():
 def dev():
     services = args.services if isinstance(args.services, list) else args.services
     if services.__contains__('web'):
-        management.call_command('runserver', "0.0.0.0:8080")
+        from maxkb.const import CONFIG
+        dev_host = CONFIG.get_str('DEV_HOST', '127.0.0.1')
+        dev_port = CONFIG.get_str('DEV_PORT', '3080')
+        management.call_command('runserver', f"{dev_host}:{dev_port}")
     elif services.__contains__('celery'):
         management.call_command('celery', 'celery')
     elif services.__contains__('local_model'):
