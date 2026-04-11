@@ -181,7 +181,7 @@ async function deleteUploadedDocument(page, knowledgeId: string, documentName: s
   }, { targetKnowledgeId: knowledgeId, targetDocumentName: documentName })
 }
 
-test.describe('Knowledge Base Management', () => {
+test.describe('@advisory Knowledge Base Management', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page)
     await page.goto('/admin/knowledge')

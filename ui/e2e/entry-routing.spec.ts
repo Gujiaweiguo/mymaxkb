@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 const ADMIN_LOGIN_URL = /\/admin\/login(?:$|\?|\/)/
 const CHAT_BASE = process.env.E2E_CHAT_BASE_URL || 'http://localhost:3001'
 
-test.describe('Entry path normalization', () => {
+test.describe('@advisory Entry path normalization', () => {
   test('should redirect /admin/.html to admin login instead of showing 404', async ({ page }) => {
     await page.goto('/admin/.html')
     await page.waitForLoadState('networkidle')

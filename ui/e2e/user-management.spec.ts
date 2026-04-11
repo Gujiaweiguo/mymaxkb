@@ -35,7 +35,7 @@ async function trackCreatedUser(page, resourceTracker, username: string) {
   resourceTracker.track({ type: 'user', id: userId!, name: username })
 }
 
-test.describe('User Management', () => {
+test.describe('@advisory User Management', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page)
     await page.goto('/admin/system/user')

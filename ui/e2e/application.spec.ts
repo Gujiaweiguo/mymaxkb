@@ -37,7 +37,7 @@ async function trackCreatedApplication(page, resourceTracker, applicationName: s
   return applicationId!
 }
 
-test.describe('Application Management', () => {
+test.describe('@advisory Application Management', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page)
   })

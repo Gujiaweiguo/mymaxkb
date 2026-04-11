@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 import { ADMIN_APPLICATION_URL, gotoLogin, loginAsAdmin } from './helpers/auth'
 
-test.describe('Login Flow', () => {
+test.describe('@advisory Login Flow', () => {
   test.beforeEach(async ({ page }) => {
     await gotoLogin(page)
   })

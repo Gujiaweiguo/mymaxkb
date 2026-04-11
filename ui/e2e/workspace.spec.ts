@@ -32,7 +32,7 @@ async function trackCreatedWorkspace(page, resourceTracker, workspaceName: strin
   resourceTracker.track({ type: 'workspace', id: workspaceId!, name: workspaceName })
 }
 
-test.describe('Workspace Management', () => {
+test.describe('@advisory Workspace Management', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page)
     await page.goto('/admin/system/workspace')

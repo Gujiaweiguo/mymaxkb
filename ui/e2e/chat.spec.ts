@@ -6,7 +6,7 @@ import {
   provisionRemoteChatAccessWithCleanup,
 } from './helpers/chat'
 
-test.describe('Chat Interaction', () => {
+test.describe('@deferred Chat Interaction', () => {
   test('should send a message to a published remote-backed chat application', async ({ page, resourceTracker }) => {
     test.skip(
       !(await getChatProviderConfig()),
