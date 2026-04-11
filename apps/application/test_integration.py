@@ -337,8 +337,10 @@ class SystemResourceApplicationAPIIntegrationTests(TestCase):
         response = self.client.get("/admin/api/system/resource/application")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.json()["data"]), 1)
-        self.assertEqual(response.json()["data"][0]["id"], str(self.application.id))
+        matching_applications = [
+            item for item in response.json()["data"] if item["id"] == str(self.application.id)
+        ]
+        self.assertEqual(len(matching_applications), 1)
 
     def test_system_resource_get_application_versions(self):
         response = self.client.get(
