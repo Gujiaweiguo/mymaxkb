@@ -3,8 +3,16 @@ name: CI
 on:
   push:
     branches: [main, master, v2]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
   pull_request:
     branches: [main, master, v2]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
 
 jobs:
   backend-tests:
@@ -62,6 +70,7 @@ jobs:
         uses: actions/setup-python@v6.2.0
         with:
           python-version: "3.11"
+          cache: 'pip'
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7.6.0
@@ -117,6 +126,8 @@ jobs:
         uses: actions/setup-node@v6.3.0
         with:
           node-version: "20"
+          cache: 'npm'
+          cache-dependency-path: ui/package-lock.json
 
       - name: Install dependencies
         working-directory: ui
@@ -192,6 +203,7 @@ jobs:
         uses: actions/setup-python@v6.2.0
         with:
           python-version: "3.11"
+          cache: 'pip'
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7.6.0
@@ -200,6 +212,8 @@ jobs:
         uses: actions/setup-node@v6.3.0
         with:
           node-version: "20"
+          cache: 'npm'
+          cache-dependency-path: ui/package-lock.json
 
       - name: Install backend dependencies
         run: |
@@ -244,10 +258,6 @@ jobs:
       - name: Install Playwright browsers
         working-directory: ui
         run: npx playwright install --with-deps chromium
-
-      - name: Build frontend
-        working-directory: ui
-        run: npm run build
 
       - name: Run database migrations
         run: |
