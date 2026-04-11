@@ -137,9 +137,15 @@ The repository CI is expected to run these layers:
 - frontend type-check via `npm run type-check`
 - frontend lint via `npm run lint`
 - frontend unit/component tests via `npm run test`
-- Playwright E2E via `npx playwright test`
+- advisory Playwright E2E via `npx playwright test --grep-invert @deferred`
 
 CI uses `MAXKB_*` environment variables, PostgreSQL, and Redis, matching the local-first workflow instead of a separate `DATABASE_URL`-style configuration.
+
+Current CI status policy:
+
+- **Required baseline**: Backend Tests, Frontend Tests
+- **Advisory**: `E2E Tests (Advisory)`
+- **Deferred**: credential-dependent Playwright coverage tagged `@deferred`, currently the remote-backed chat scenario
 
 ## Screenshots
 

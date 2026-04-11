@@ -117,9 +117,29 @@ CI is expected to use the same test layers and command shapes as local verificat
 
 - backend: `python apps/manage.py test --verbosity=1 --noinput`
 - frontend: `npm run test`, `npm run type-check`, `npm run lint`
-- E2E: `npx playwright test`
+- advisory E2E: `npx playwright test --grep-invert @deferred`
 
 Use `MAXKB_*` environment variables in CI so the workflow matches the repo's real Django configuration path.
+
+### Required vs advisory CI signals
+
+- **Required baseline**: `Backend Tests` and `Frontend Tests`
+- **Advisory baseline**: `E2E Tests (Advisory)`
+- **Deferred E2E coverage**: Playwright scenarios tagged `@deferred` stay out of the advisory CI run until they are stable and no longer depend on external credentials or non-deterministic setup
+
+Initial Playwright classification:
+
+- `@advisory`: login, entry routing, workspace, user management, application, and knowledge flows
+- `@deferred`: remote-backed chat flow requiring `SILICONCLOUD_API_KEY`
+
+Promotion criteria for moving an E2E scenario into the required baseline:
+
+1. The scenario passes consistently in CI without external manual setup.
+2. The scenario does not require third-party credentials that are intentionally absent from the default CI contract.
+3. The scenario protects a critical user journey that is not already covered well enough by backend or frontend required gates.
+4. The scenario has run stably as advisory before being promoted to a required status check.
+
+Note: local development commonly uses a Redis password from `.env.local-dev`, while the GitHub Actions Redis service runs without auth. CI keeps `MAXKB_REDIS_PASSWORD=''` intentionally so the workflow matches the unauthenticated service container it starts.
 
 ## Services
 
