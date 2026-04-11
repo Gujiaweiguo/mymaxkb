@@ -30,9 +30,9 @@
 
 ## 5. High-Value Coverage Gap Reduction
 
-- [ ] 5.1 Identify the smallest missing backend or frontend test additions needed to protect core chat, workflow, or retrieval-backed flows
-- [ ] 5.2 Implement the targeted high-value tests selected for the initial CI baseline
-- [ ] 5.3 Confirm the added tests strengthen baseline confidence without expanding this change into a full coverage rewrite
+- [x] 5.1 Identify the smallest missing backend or frontend test additions needed to protect core chat, workflow, or retrieval-backed flows
+- [x] 5.2 Implement the targeted high-value tests selected for the initial CI baseline
+- [x] 5.3 Confirm the added tests strengthen baseline confidence without expanding this change into a full coverage rewrite
 
 ## 6. Documentation and Developer Workflow Alignment
 
