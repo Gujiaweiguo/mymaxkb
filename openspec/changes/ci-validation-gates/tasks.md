@@ -43,5 +43,5 @@
 ## 7. Validation and Rollout
 
 - [x] 7.1 Run the full required backend and frontend validation commands locally before finalizing the change
-- [ ] 7.2 Verify the new CI workflows pass with the intended required baseline configuration
+- [x] 7.2 Verify the new CI workflows pass with the intended required baseline configuration
 - [x] 7.3 Enable or document branch protection expectations for the required CI jobs
