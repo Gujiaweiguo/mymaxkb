@@ -1,11 +1,14 @@
 import json
 import uuid_utils.compat as uuid
+from unittest.mock import patch
 from django.core import signing
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from application.models import Application, ApplicationAccessToken, ApplicationFolder, ApplicationTypeChoices
 from application.models.application_chat import Chat, ChatRecord, ChatUserType
+from application.models.application_chat import ChatSourceChoices
+from common.result import result
 from common.utils.common import password_encrypt
 from users.models import User
 
@@ -110,6 +113,33 @@ class ChatAPIIntegrationTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+
+    def test_chat_message_uses_online_source_for_anonymous_user(self):
+        chat = Chat.objects.create(
+            id=uuid.uuid7(),
+            application=self.application,
+            abstract="Message Chat",
+            chat_user_id=self.chat_user_id,
+            chat_user_type=ChatUserType.ANONYMOUS_USER,
+        )
+
+        with patch('chat.views.chat.ChatSerializers') as chat_serializers_cls:
+            chat_serializer_instance = chat_serializers_cls.return_value
+            chat_serializer_instance.chat.return_value = result.success({"ok": True})
+
+            response = self.client.post(
+                f'{CHAT_API_PREFIX}/chat_message/{chat.id}',
+                {},
+                format='json',
+            )
+
+        self.assertEqual(response.status_code, 200)
+        chat_serializers_cls.assert_called_once()
+        serializer_data = chat_serializers_cls.call_args.kwargs['data']
+        self.assertEqual(serializer_data['chat_id'], str(chat.id))
+        self.assertEqual(serializer_data['chat_user_id'], str(self.chat_user_id))
+        self.assertEqual(str(serializer_data['application_id']), str(self.application.id))
+        self.assertEqual(serializer_data['source']['type'], ChatSourceChoices.ONLINE.value)
 
 
 class ChatRecordIntegrationTests(TestCase):

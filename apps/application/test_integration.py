@@ -117,6 +117,41 @@ class ApplicationOperateSerializerMediaValidationTests(SimpleTestCase):
         self.assertEqual(cm.exception.code, 500)
         self.assertEqual(str(cm.exception.message), 'Speech synthesis is not enabled')
 
+    def test_get_search_node_collects_nested_search_knowledge_nodes(self):
+        work_flow = {
+            'nodes': [
+                {
+                    'id': 'search-top',
+                    'type': 'search-knowledge-node',
+                },
+                {
+                    'id': 'loop-1',
+                    'type': 'loop-node',
+                    'properties': {
+                        'node_data': {
+                            'loop_body': {
+                                'nodes': [
+                                    {
+                                        'id': 'search-inner',
+                                        'type': 'search-knowledge-node',
+                                    },
+                                    {
+                                        'id': 'chat-inner',
+                                        'type': 'ai-chat-node',
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            ]
+        }
+
+        nodes = ApplicationOperateSerializer.get_search_node(work_flow)
+
+        self.assertEqual(len(nodes), 2)
+        self.assertEqual([node.get('id') for node in nodes], ['search-top', 'search-inner'])
+
 
 class ApplicationAPIIntegrationTests(TestCase):
     def setUp(self):
@@ -682,6 +717,35 @@ class SystemResourceApplicationAPIIntegrationTests(TestCase):
             QuerySet(Paragraph).filter(knowledge_id=self.knowledge.id, document_id=self.document.id).exists()
         )
         embedding_by_paragraph_list_mock.assert_called_once()
+
+    def test_system_resource_add_chat_log_rejects_document_knowledge_mismatch(self):
+        another_knowledge = Knowledge.objects.create(
+            id=uuid.uuid7(),
+            name='another-knowledge',
+            user=self.admin_user,
+            workspace_id='default',
+            embedding_model_id=str(self.embedding_model.id),
+        )
+
+        response = self.client.post(
+            f"/admin/api/system/resource/application/{self.application.id}/add_knowledge",
+            {
+                "knowledge_id": str(another_knowledge.id),
+                "document_id": str(self.document.id),
+                "chat_ids": [str(self.chat.id)],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["code"], 500)
+        self.assertIn("document", str(response.json()["message"]).lower())
+        self.assertFalse(
+            QuerySet(Paragraph).filter(
+                knowledge_id=another_knowledge.id,
+                document_id=self.document.id,
+            ).exists()
+        )
 
     def test_system_resource_get_chat_record_improve_list(self):
         paragraph = Paragraph.objects.create(
