@@ -140,12 +140,13 @@ class ModelUniqueConstraintTests(TestCase):
 class SystemSharedModelSettingTests(TestCase):
     def setUp(self):
         self.factory = APIRequestFactory()
+        suffix = uuid.uuid4().hex[:8]
         self.admin = User.objects.create(
             id=uuid.uuid4(),
-            email='shared-model-admin@example.com',
+            email=f'shared-model-admin-{suffix}@example.com',
             phone='',
-            nick_name='shared-model-admin',
-            username='shared-model-admin',
+            nick_name=f'shared-model-admin-{suffix}',
+            username=f'shared-model-admin-{suffix}',
             password='hashed',
             role='ADMIN',
             source='LOCAL',
@@ -153,10 +154,10 @@ class SystemSharedModelSettingTests(TestCase):
         )
         self.owner = User.objects.create(
             id=uuid.uuid4(),
-            email='shared-model-owner@example.com',
+            email=f'shared-model-owner-{suffix}@example.com',
             phone='',
-            nick_name='shared-model-owner',
-            username='shared-model-owner',
+            nick_name=f'shared-model-owner-{suffix}',
+            username=f'shared-model-owner-{suffix}',
             password='hashed',
             role='USER',
             source='LOCAL',
@@ -202,12 +203,13 @@ class SystemSharedModelSettingTests(TestCase):
 class SystemResourceModelViewTests(TestCase):
     def setUp(self):
         self.factory = APIRequestFactory()
+        suffix = uuid.uuid4().hex[:8]
         self.admin = User.objects.create(
             id=uuid.uuid4(),
-            email='resource-model-admin@example.com',
+            email=f'resource-model-admin-{suffix}@example.com',
             phone='',
-            nick_name='resource-model-admin',
-            username='resource-model-admin',
+            nick_name=f'resource-model-admin-{suffix}',
+            username=f'resource-model-admin-{suffix}',
             password='hashed',
             role='ADMIN',
             source='LOCAL',
@@ -215,10 +217,10 @@ class SystemResourceModelViewTests(TestCase):
         )
         self.owner = User.objects.create(
             id=uuid.uuid4(),
-            email='resource-model-owner@example.com',
+            email=f'resource-model-owner-{suffix}@example.com',
             phone='',
-            nick_name='resource-model-owner',
-            username='resource-model-owner',
+            nick_name=f'resource-model-owner-{suffix}',
+            username=f'resource-model-owner-{suffix}',
             password='hashed',
             role='USER',
             source='LOCAL',
@@ -226,8 +228,8 @@ class SystemResourceModelViewTests(TestCase):
         )
         self.admin_auth = SimpleNamespace(role_list=['ADMIN'], permission_list=[])
         self.user_auth = SimpleNamespace(role_list=['USER'], permission_list=[])
-        Workspace.objects.create(id='workspace-a', name='Workspace A')
-        Workspace.objects.create(id='workspace-b', name='Workspace B')
+        Workspace.objects.get_or_create(id='workspace-a', defaults={'name': 'Workspace A'})
+        Workspace.objects.get_or_create(id='workspace-b', defaults={'name': 'Workspace B'})
 
     def create_model(self, name: str, workspace_id: str, model_params_form=None):
         return Model.objects.create(

@@ -119,12 +119,13 @@ class RestrictedUnpicklerTests(TestCase):
 class SystemResourceToolPageTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        suffix = uuid.uuid7().hex[:8]
         self.admin = User.objects.create(
             id=uuid.uuid7(),
-            email='system-tool-admin@example.com',
+            email=f'system-tool-admin-{suffix}@example.com',
             phone='',
-            nick_name='system-tool-admin',
-            username='system-tool-admin',
+            nick_name=f'system-tool-admin-{suffix}',
+            username=f'system-tool-admin-{suffix}',
             password='hashed',
             role='ADMIN',
             source='LOCAL',
@@ -132,10 +133,10 @@ class SystemResourceToolPageTests(TestCase):
         )
         self.creator = User.objects.create(
             id=uuid.uuid7(),
-            email='system-tool-creator@example.com',
+            email=f'system-tool-creator-{suffix}@example.com',
             phone='',
-            nick_name='system-tool-creator',
-            username='system-tool-creator',
+            nick_name=f'system-tool-creator-{suffix}',
+            username=f'system-tool-creator-{suffix}',
             password='hashed',
             role='USER',
             source='LOCAL',
@@ -143,28 +144,32 @@ class SystemResourceToolPageTests(TestCase):
         )
         self.other_creator = User.objects.create(
             id=uuid.uuid7(),
-            email='system-tool-other@example.com',
+            email=f'system-tool-other-{suffix}@example.com',
             phone='',
-            nick_name='system-tool-other',
-            username='system-tool-other',
+            nick_name=f'system-tool-other-{suffix}',
+            username=f'system-tool-other-{suffix}',
             password='hashed',
             role='USER',
             source='LOCAL',
             is_active=True,
         )
-        Workspace.objects.create(id='workspace-a', name='Workspace A')
-        Workspace.objects.create(id='workspace-b', name='Workspace B')
-        self.folder_a = ToolFolder.objects.create(
+        Workspace.objects.get_or_create(id='workspace-a', defaults={'name': 'Workspace A'})
+        Workspace.objects.get_or_create(id='workspace-b', defaults={'name': 'Workspace B'})
+        self.folder_a, _ = ToolFolder.objects.update_or_create(
             id='tool-folder-a',
-            name='Tool Folder A',
-            user=self.creator,
-            workspace_id='workspace-a',
+            defaults={
+                'name': 'Tool Folder A',
+                'user': self.creator,
+                'workspace_id': 'workspace-a',
+            },
         )
-        self.folder_b = ToolFolder.objects.create(
+        self.folder_b, _ = ToolFolder.objects.update_or_create(
             id='tool-folder-b',
-            name='Tool Folder B',
-            user=self.other_creator,
-            workspace_id='workspace-b',
+            defaults={
+                'name': 'Tool Folder B',
+                'user': self.other_creator,
+                'workspace_id': 'workspace-b',
+            },
         )
         self.factory = APIRequestFactory()
         self.client = create_authenticated_client(self.admin)
