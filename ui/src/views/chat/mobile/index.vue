@@ -15,7 +15,9 @@
         applicationDetail?.custom_theme?.theme_color || '#3370FF',
         0.04,
       ),
-      backgroundImage: `url(${applicationDetail?.chat_background})`,
+      backgroundImage: applicationDetail?.chat_background
+        ? `url(${applicationDetail.chat_background})`
+        : undefined,
     }"
   >
     <div class="chat-mobile__header" :style="customStyle">

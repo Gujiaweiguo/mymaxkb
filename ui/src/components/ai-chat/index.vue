@@ -225,7 +225,7 @@ const props = withDefaults(
     available?: boolean
     chatId?: string
     executionIsRightPanel?: boolean
-    chatRecord: chatType
+    chatRecord?: chatType
     selection?: boolean
   }>(),
   {

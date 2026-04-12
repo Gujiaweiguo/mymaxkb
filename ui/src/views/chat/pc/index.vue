@@ -106,7 +106,9 @@
       <div
         class="chat-pc__right chat-background"
         :style="{
-          backgroundImage: `url(${applicationDetail?.chat_background})`,
+          backgroundImage: applicationDetail?.chat_background
+            ? `url(${applicationDetail.chat_background})`
+            : undefined,
           '--execution-detail-panel-width': rightPanelSize + 'px',
         }"
       >
