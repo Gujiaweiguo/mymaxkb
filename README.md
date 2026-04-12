@@ -34,7 +34,9 @@ docker run -d --name=maxkb --restart=always -p 18080:8080 -v ~/.maxkb:/opt/maxkb
 ```bash
 # 1. Copy and configure environment
 cp .env.example .env
-# Edit .env and set MAXKB_DEFAULT_PASSWORD (required!)
+# Edit .env and set MAXKB_DEFAULT_PASSWORD, MAXKB_ALLOWED_HOSTS,
+# MAXKB_SECRET_KEY, MAXKB_HMAC_SIGNED_SERIALIZER_SECRET_KEY,
+# and MAXKB_RSA_PASSPHRASE (all required!)
 
 # 2. Initialize database
 docker compose --profile init up --abort-on-container-exit --exit-code-from maxkb-init maxkb-init
@@ -48,6 +50,8 @@ docker compose up -d
 **Required before first startup:**
 
 Set a bootstrap admin password through `MAXKB_DEFAULT_PASSWORD` in your environment or `.env` file. There is **no default password** - you must set one explicitly.
+
+For deployable runtimes, you must also set `MAXKB_ALLOWED_HOSTS` to the real hostnames or IPs that will serve MaxKB. The checked-in example uses placeholders and must be replaced before production startup.
 
 **Access URLs:**
 
@@ -83,6 +87,22 @@ Default local development convention:
 - run frontend locally from `ui/`
 - run Playwright against the local app stack
 
+### Optional local-model runtime
+
+The default web/task runtime is now **local-model opt-in**.
+
+- Keep `MAXKB_ENABLE_LOCAL_MODEL=False` for lightweight web/task deployments and normal local development
+- Set `MAXKB_ENABLE_LOCAL_MODEL=True` only when you want `python main.py start web` or `python main.py start all` to auto-start the standalone local-model subprocess
+- Run `python main.py dev local_model` directly when you are working on local-model behavior itself
+
+Runtime split summary:
+
+| Mode | Command | Local-model expectation |
+|------|---------|-------------------------|
+| Default web | `python main.py dev web` / `python main.py start web` | No local-model subprocess unless explicitly enabled |
+| Default task | `python main.py start task` | No local-model subprocess |
+| Optional local-model | `python main.py dev local_model` | Starts the standalone local-model service |
+
 For local-first development, the backend dev server defaults to `127.0.0.1:3080` (configurable via `MAXKB_DEV_HOST` / `MAXKB_DEV_PORT`). Frontend dev proxy should target the same backend (for example with `VITE_API_TARGET=http://127.0.0.1:3080`).
 
 See `DEVELOPMENT.md` for the full workflow.
@@ -111,6 +131,15 @@ Backend tests:
 .venv/bin/python apps/manage.py test --verbosity=1 --noinput
 ```
 
+Runtime safety checks:
+
+```bash
+MAXKB_ALLOWED_HOSTS=127.0.0.1,localhost,testserver \
+.venv/bin/python apps/manage.py test test_runtime_safety --verbosity=1 --noinput
+```
+
+The local development example keeps `MAXKB_DEBUG=True`, which allows local-only host defaults. Deployable runtimes should provide an explicit `MAXKB_ALLOWED_HOSTS` value instead of relying on local fallbacks.
+
 Frontend unit and component tests:
 
 ```bash
@@ -129,11 +158,16 @@ npx playwright test
 
 Note: the remote-backed chat Playwright scenario depends on SiliconCloud credentials in `.env.local-dev` via `SILICONCLOUD_API_KEY`. Without that credential, the chat-specific spec is skipped.
 
+The optional local-model runtime is not part of the default local verification contract. Enable it only when the task specifically exercises local-model behavior.
+
+Note: runtime opt-in is implemented in this change, but Python packaging is unchanged for now. Heavy local-model dependencies are still installed in the shared environment, and dependency-profile isolation is deferred to a later change.
+
 ### CI test workflow
 
 The repository CI is expected to run these layers:
 
 - backend Django test suite via `python apps/manage.py test --verbosity=1 --noinput`
+- runtime safety checks via `MAXKB_ALLOWED_HOSTS=127.0.0.1,localhost,testserver python apps/manage.py test test_runtime_safety --verbosity=1 --noinput`
 - frontend type-check via `npm run type-check`
 - frontend lint via `npm run lint`
 - frontend unit/component tests via `npm run test`
@@ -143,9 +177,18 @@ CI uses `MAXKB_*` environment variables, PostgreSQL, and Redis, matching the loc
 
 Current CI status policy:
 
-- **Required baseline**: Backend Tests, Frontend Tests
+- **Required baseline**: Backend Tests, Runtime Safety Checks, Frontend Tests
 - **Advisory**: `E2E Tests (Advisory)`
 - **Deferred**: credential-dependent Playwright coverage tagged `@deferred`, currently the remote-backed chat scenario
+
+### CI gate to local reproduction map
+
+| CI gate | Local command | Prerequisites |
+|---------|---------------|---------------|
+| Backend Tests | `.venv/bin/python apps/manage.py test --verbosity=1 --noinput` | Load `.env.local-dev`, start PostgreSQL and Redis |
+| Runtime Safety Checks | `MAXKB_ALLOWED_HOSTS=127.0.0.1,localhost,testserver .venv/bin/python apps/manage.py test test_runtime_safety --verbosity=1 --noinput` | Load `.env.local-dev`, start PostgreSQL and Redis |
+| Frontend Tests | `cd ui && npm run type-check && npm run lint && npm run test` | Install `ui/` dependencies |
+| E2E Tests (Advisory) | `cd ui && npx playwright test --grep-invert @deferred` | Backend running on local stack, PostgreSQL, Redis, frontend deps |
 
 ## Screenshots
 
