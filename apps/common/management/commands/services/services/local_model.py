@@ -7,15 +7,24 @@
     @desc:
 """
 import subprocess
+from importlib import import_module
+from typing import IO
 
-from maxkb.const import CONFIG
 from .base import BaseService
 from ..hands import *
+
+config = import_module('maxkb.const').CONFIG
 
 __all__ = ['GunicornLocalModelService']
 
 
 class GunicornLocalModelService(BaseService):
+
+    @staticmethod
+    def configure_runtime_env(env):
+        env['HF_HOME'] = '/opt/maxkb-app/model/base'
+        env['TMPDIR'] = '/opt/maxkb-app/tmp'
+        return env
 
     def __init__(self, **kwargs):
         self.worker = kwargs['worker_gunicorn']
@@ -25,8 +34,8 @@ class GunicornLocalModelService(BaseService):
     def cmd(self):
         print("\n- Start Gunicorn Local Model WSGI HTTP Server")
         log_format = '%(h)s %(t)s %(L)ss "%(r)s" %(s)s %(b)s '
-        bind = f'{CONFIG.get("LOCAL_MODEL_HOST")}:{CONFIG.get("LOCAL_MODEL_PORT")}'
-        worker = CONFIG.get("LOCAL_MODEL_HOST_WORKER", 1)
+        bind = f'{config.get("LOCAL_MODEL_HOST")}:{config.get("LOCAL_MODEL_PORT")}'
+        worker = config.get("LOCAL_MODEL_HOST_WORKER", 1)
         max_requests = 10240 if int(worker) > 1 else 0
         cmd = [
             'gunicorn', 'maxkb.wsgi:application',
@@ -54,10 +63,13 @@ class GunicornLocalModelService(BaseService):
         # 复制当前环境变量，并设置 ENABLE_SCHEDULER=1
         env = os.environ.copy()
         env['SERVER_NAME'] = 'local_model'
-        kwargs = {
-            'cwd': self.cwd,
-            'stderr': self.log_file,
-            'stdout': self.log_file,
-            'env': env
-        }
-        self._process = subprocess.Popen(self.cmd, **kwargs)
+        self.configure_runtime_env(env)
+        stdout_log: IO[str] = self.log_file
+        stderr_log: IO[str] = self.log_file
+        self._process = subprocess.Popen(
+            self.cmd,
+            cwd=self.cwd,
+            stdout=stdout_log,
+            stderr=stderr_log,
+            env=env,
+        )

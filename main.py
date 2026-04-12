@@ -25,8 +25,9 @@ def collect_static():
     try:
         management.call_command('collectstatic', '--no-input', '-c', verbosity=0, interactive=False)
         logging.info("Collect static files done")
-    except:
-        pass
+    except Exception:
+        logging.error('Collect static files failed, exit', exc_info=True)
+        sys.exit(10)
 
 
 def perform_db_migrate():
@@ -62,8 +63,9 @@ def start_services():
         logging.info('Cancel ...')
         time.sleep(2)
     except Exception as exc:
-        logging.error("Start service error {}: {}".format(services, exc))
+        logging.error("Start service error %s", services, exc_info=True)
         time.sleep(2)
+        sys.exit(12)
 
 
 def dev():
@@ -77,13 +79,17 @@ def dev():
         management.call_command('celery', 'celery')
     elif services.__contains__('local_model'):
         from maxkb.const import CONFIG
+        configure_local_model_runtime_env()
         bind = f'{CONFIG.get("LOCAL_MODEL_HOST")}:{CONFIG.get("LOCAL_MODEL_PORT")}'
         management.call_command('runserver', bind)
 
 
-if __name__ == '__main__':
+def configure_local_model_runtime_env():
     os.environ['HF_HOME'] = '/opt/maxkb-app/model/base'
     os.environ['TMPDIR'] = '/opt/maxkb-app/tmp'
+
+
+if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="""
            qabot service control tools;

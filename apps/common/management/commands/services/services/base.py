@@ -1,10 +1,14 @@
 import abc
-import time
-import shutil
-import psutil
 import datetime
-import threading
+import logging
+import shutil
 import subprocess
+import threading
+import time
+from typing import IO
+
+import psutil
+
 from ..hands import *
 
 
@@ -21,12 +25,12 @@ class BaseService(object):
 
     @property
     @abc.abstractmethod
-    def cmd(self):
+    def cmd(self) -> list[str]:
         return []
 
     @property
     @abc.abstractmethod
-    def cwd(self):
+    def cwd(self) -> str:
         return ''
 
     @property
@@ -87,6 +91,8 @@ class BaseService(object):
         return pid
 
     def write_pid(self):
+        if self.process is None:
+            raise RuntimeError(f'Unable to write pid for stopped service: {self.name}')
         with open(self.pid_filepath, 'w') as f:
             f.write(str(self.process.pid))
 
@@ -101,16 +107,22 @@ class BaseService(object):
         if not self._process:
             try:
                 self._process = psutil.Process(self.pid)
-            except:
-                pass
+            except (psutil.Error, OSError, ValueError) as exc:
+                logging.warning('Unable to load service process for %s (pid=%s): %s', self.name, self.pid, exc)
         return self._process
 
     # -- end process --
 
     # -- action --
     def open_subprocess(self):
-        kwargs = {'cwd': self.cwd, 'stderr': self.log_file, 'stdout': self.log_file}
-        self._process = subprocess.Popen(self.cmd, **kwargs)
+        stdout_log: IO[str] = self.log_file
+        stderr_log: IO[str] = self.log_file
+        self._process = subprocess.Popen(
+            self.cmd,
+            cwd=self.cwd,
+            stdout=stdout_log,
+            stderr=stderr_log,
+        )
 
     def start(self):
         if self.is_running:
@@ -139,8 +151,8 @@ class BaseService(object):
             return
         try:
             self.process.wait(1)
-        except:
-            pass
+        except (psutil.TimeoutExpired, psutil.Error, OSError) as exc:
+            logging.debug('Service %s did not stop cleanly during initial wait: %s', self.name, exc)
 
         for i in range(self.STOP_TIMEOUT):
             if i == self.STOP_TIMEOUT - 1:
@@ -163,8 +175,8 @@ class BaseService(object):
         if self.process:
             try:
                 self.process.wait(1)  # 不wait，子进程可能无法回收
-            except:
-                pass
+            except (psutil.TimeoutExpired, psutil.Error, OSError) as exc:
+                logging.debug('Service %s wait check skipped: %s', self.name, exc)
 
         if self.is_running:
             logging.debug(f"{now} Check service status: {self.name} -> running at {self.pid}")

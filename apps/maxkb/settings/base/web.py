@@ -24,7 +24,7 @@ SECRET_KEY = CONFIG.get_required_secret("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = CONFIG.get_debug()
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = CONFIG.get_allowed_hosts()
 
 # Application definition
 

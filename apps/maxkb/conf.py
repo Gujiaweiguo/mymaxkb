@@ -18,6 +18,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROJECT_DIR = os.path.dirname(BASE_DIR)
 logger = logging.getLogger("maxkb.conf")
 
+LOCAL_ALLOWED_HOSTS = ["127.0.0.1", "localhost", "[::1]", "testserver"]
+
 
 class Config(dict[str, Any]):
     defaults = {
@@ -31,7 +33,7 @@ class Config(dict[str, Any]):
         "LOCAL_MODEL_PORT": "11636",
         "LOCAL_MODEL_PROTOCOL": "http",
         "LOCAL_MODEL_HOST_WORKER": 1,
-        "ENABLE_LOCAL_MODEL": True,
+        "ENABLE_LOCAL_MODEL": False,
         # 语言
         "LANGUAGE_CODE": "zh-CN",
         "DEBUG": False,
@@ -101,8 +103,25 @@ class Config(dict[str, Any]):
     def get_debug(self) -> bool:
         return self.get_bool("DEBUG", True)
 
+    def get_allowed_hosts(self) -> list[str]:
+        value = self.get("ALLOWED_HOSTS")
+        if self._is_blank(value):
+            if self.get_debug():
+                return LOCAL_ALLOWED_HOSTS.copy()
+            raise ImportError("Missing required configuration: MAXKB_ALLOWED_HOSTS")
+
+        if isinstance(value, str):
+            hosts = [item.strip() for item in value.split(",") if item.strip()]
+            return hosts or LOCAL_ALLOWED_HOSTS.copy()
+
+        if isinstance(value, (list, tuple, set)):
+            hosts = [str(item).strip() for item in value if str(item).strip()]
+            return hosts or LOCAL_ALLOWED_HOSTS.copy()
+
+        return [str(value).strip()] if str(value).strip() else LOCAL_ALLOWED_HOSTS.copy()
+
     def get_enable_local_model(self) -> bool:
-        return self.get_bool("ENABLE_LOCAL_MODEL", True)
+        return self.get_bool("ENABLE_LOCAL_MODEL", False)
 
     def get_time_zone(self) -> str:
         return self.get_str("TIME_ZONE", "Asia/Shanghai")
