@@ -100,7 +100,13 @@ async function fillLoginForm(page: Page) {
 }
 
 export async function gotoLogin(page: Page) {
-  await page.goto(ADMIN_LOGIN_PATH)
+  await Promise.all([
+    page.waitForResponse((response) => response.url().includes('/admin/api/profile') && response.ok()),
+    page.waitForResponse(
+      (response) => response.url().includes('/admin/api/login/auth/setting') && response.ok(),
+    ),
+    page.goto(ADMIN_LOGIN_PATH),
+  ])
   await page.waitForLoadState('networkidle')
   await expect(page).toHaveURL(ADMIN_LOGIN_URL)
   await expect(page.getByPlaceholder('Please enter username')).toBeVisible()
