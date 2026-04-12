@@ -1,8 +1,13 @@
 import uuid_utils.compat as uuid
-from django.test import TestCase
+from types import SimpleNamespace
+from unittest.mock import patch
+
+from django.test import SimpleTestCase, TestCase
 
 from common.utils.common import password_encrypt
 from knowledge.models import (
+    State,
+    Status,
     Knowledge,
     KnowledgeFolder,
     KnowledgeType,
@@ -10,6 +15,7 @@ from knowledge.models import (
     Document,
     Paragraph,
     Problem,
+    TaskType,
     Tag,
 )
 from users.models import User
@@ -59,6 +65,43 @@ class KnowledgeModelTests(TestCase):
         )
 
         self.assertEqual(str(knowledge), "Str Knowledge")
+
+
+class StatusTests(SimpleTestCase):
+    def test_default_status_marks_all_task_types_as_ignored(self):
+        status = Status()
+
+        self.assertEqual(status[TaskType.EMBEDDING], State.IGNORED)
+        self.assertEqual(status[TaskType.GENERATE_PROBLEM], State.IGNORED)
+        self.assertEqual(status[TaskType.SYNC], State.IGNORED)
+        self.assertEqual(str(status), 'nnn')
+
+    def test_status_of_round_trips_full_status_string(self):
+        status = Status.of('210')
+
+        self.assertEqual(status[TaskType.EMBEDDING], State.PENDING)
+        self.assertEqual(status[TaskType.GENERATE_PROBLEM], State.STARTED)
+        self.assertEqual(status[TaskType.SYNC], State.SUCCESS)
+        self.assertEqual(str(status), '210')
+
+    def test_short_status_string_defaults_missing_task_types_to_ignored(self):
+        status = Status.of('2')
+
+        self.assertEqual(status[TaskType.EMBEDDING], State.SUCCESS)
+        self.assertEqual(status[TaskType.GENERATE_PROBLEM], State.IGNORED)
+        self.assertEqual(status[TaskType.SYNC], State.IGNORED)
+        self.assertEqual(str(status), 'nn2')
+
+    def test_setitem_and_update_status_change_only_target_task(self):
+        status = Status()
+
+        status[TaskType.EMBEDDING] = State.STARTED
+        status.update_status(TaskType.SYNC, State.REVOKED)
+
+        self.assertEqual(status[TaskType.EMBEDDING], State.STARTED)
+        self.assertEqual(status[TaskType.GENERATE_PROBLEM], State.IGNORED)
+        self.assertEqual(status[TaskType.SYNC], State.REVOKED)
+        self.assertEqual(str(status), '5n1')
 
 
 class KnowledgeFolderModelTests(TestCase):

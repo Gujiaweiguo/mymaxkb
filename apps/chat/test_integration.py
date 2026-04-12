@@ -114,6 +114,29 @@ class ChatAPIIntegrationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    def test_edit_historical_conversation_abstract(self):
+        chat = Chat.objects.create(
+            id=uuid.uuid7(),
+            application=self.application,
+            abstract="Before Update",
+            chat_user_id=self.chat_user_id,
+            chat_user_type=ChatUserType.ANONYMOUS_USER,
+        )
+
+        response = self.client.put(
+            f'{CHAT_API_PREFIX}/historical_conversation/{chat.id}',
+            {'abstract': 'Updated Abstract'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+        self.assertTrue(payload['data'])
+
+        chat.refresh_from_db()
+        self.assertEqual(chat.abstract, 'Updated Abstract')
+
     def test_chat_message_uses_online_source_for_anonymous_user(self):
         chat = Chat.objects.create(
             id=uuid.uuid7(),

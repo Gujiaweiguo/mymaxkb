@@ -87,7 +87,7 @@ From `ui/package.json`:
 Backend test modules exist at:
 `apps/application/tests.py`, `apps/chat/tests.py`, `apps/knowledge/tests.py`, `apps/local_model/tests.py`, `apps/models_provider/tests.py`, `apps/oss/tests.py`, `apps/system_manage/tests.py`, `apps/tools/tests.py`, `apps/trigger/tests.py`, `apps/users/tests.py`.
 
-These files are currently placeholder `django.test.TestCase` stubs, so coverage is sparse.
+Coverage is mixed rather than placeholder-only. There are real backend tests in `apps/application/test_integration.py`, `apps/chat/test_integration.py`, `apps/knowledge/test_integration.py`, plus targeted unit-style tests in app-local `tests.py` modules.
 Likely Django test commands via `apps/manage.py`:
 ```bash
 python apps/manage.py test
@@ -98,9 +98,18 @@ python apps/manage.py test users.tests.SomeTestCase.test_method
 ```
 Treat single-test forms as Django-standard and verify exact labels locally before relying on them in automation.
 
-No frontend test runner was found in `ui/package.json`.
-No `vitest`, `jest`, or Playwright command is configured.
-Do not invent frontend unit-test commands.
+Verified frontend test and quality commands from `ui/package.json`:
+
+```bash
+cd ui && npm run test
+cd ui && npm run type-check
+cd ui && npm run lint
+cd ui && npx playwright test
+```
+
+Playwright coverage is tiered:
+- **Advisory stable baseline**: login and entry-routing flows, plus broader Playwright CRUD flows such as workspace, application, user management, and knowledge
+- **Deferred**: credential-dependent flows tagged `@deferred`, currently the remote-backed chat scenario
 
 ## Lint / format / type-check
 Verified frontend quality commands:
@@ -115,8 +124,15 @@ Backend tooling is much looser:
 Do not claim a standardized Python lint, format, or type-check command unless you add and verify it.
 
 ## CI signal
-`.github/workflows/typos_check.yml` runs `crate-ci/typos` and excludes migrations plus a few generated files.
-Use that as a spelling reminder only; do not infer broader CI coverage from it.
+Primary CI coverage lives in `.github/workflows/ci.yml` with four layers:
+- `Backend Tests`
+- `Runtime Safety Checks`
+- `Frontend Tests`
+- `E2E Tests (Advisory)`
+
+`E2E Tests (Advisory)` uses `continue-on-error: true` and excludes deferred scenarios with `--grep-invert @deferred`, so do not treat all Playwright coverage as merge-blocking.
+
+`.github/workflows/typos_check.yml` is a separate spelling check only.
 
 ## Backend style guidance
 Observed in `apps/common/handle/handle_exception.py`, `apps/knowledge/views/document.py`, and related files:
@@ -159,12 +175,17 @@ Frontend editing guidance:
 - do not mass-clean import order or naming in untouched files
 
 ## Validation expectations
-Because automated tests are sparse, validate changes with the nearest real signal:
+Validate changes with the nearest real signal:
 - backend change: run the narrowest relevant Django test if one exists, otherwise run the relevant startup or management command
-- frontend change: run `npm run type-check` and `npm run lint`
+- frontend change: normally run `npm run type-check && npm run lint && npm run test`
 - startup-sensitive change: validate the startup path you touched
-Default verification rule: frontend edits should normally run `npm run type-check && npm run lint`; backend edits should normally run the narrowest related Django test, or the closest relevant management/startup command when no meaningful test exists.
-Do not overstate confidence from placeholder tests.
+
+Default verification rule:
+- frontend edits should normally run `npm run type-check && npm run lint && npm run test`
+- backend edits should normally run the narrowest related Django test, or the closest relevant management/startup command when no meaningful test exists
+- E2E should be treated as **advisory by default** unless the repository testing contract and CI workflow explicitly promote a scenario to a required baseline
+
+Use the CI gate-to-local mapping from `README.md` and `DEVELOPMENT.md` when reproducing failures locally.
 
 ## Practical do / do-not
 Do:

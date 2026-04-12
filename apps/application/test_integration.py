@@ -606,6 +606,8 @@ class SystemResourceApplicationAPIIntegrationTests(TestCase):
         self.assertEqual(self.application.desc, "Updated Description")
 
     def test_system_resource_publish_application(self):
+        previous_version_count = ApplicationVersion.objects.filter(application=self.application).count()
+
         response = self.client.put(
             f"/admin/api/system/resource/application/{self.application.id}/publish",
             {},
@@ -618,6 +620,19 @@ class SystemResourceApplicationAPIIntegrationTests(TestCase):
         self.application.refresh_from_db()
         self.assertTrue(self.application.is_publish)
         self.assertIsNotNone(self.application.publish_time)
+
+        self.assertEqual(
+            ApplicationVersion.objects.filter(application=self.application).count(),
+            previous_version_count + 1,
+        )
+        latest_version = ApplicationVersion.objects.filter(application=self.application).order_by('-create_time').first()
+        self.assertIsNotNone(latest_version)
+        self.assertEqual(latest_version.application_id, self.application.id)
+        self.assertEqual(latest_version.workspace_id, self.application.workspace_id)
+        self.assertEqual(latest_version.publish_user_id, self.admin_user.id)
+        self.assertEqual(latest_version.publish_user_name, self.admin_user.username)
+        self.assertEqual(latest_version.application_name, self.application.name)
+        self.assertEqual(latest_version.desc, self.application.desc)
 
     def test_system_resource_application_stats_endpoints(self):
         params = {

@@ -1370,12 +1370,24 @@ class KnowledgeAPIIntegrationTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_create_knowledge(self):
+        embedding_model = Model.objects.create(
+            id=uuid.uuid7(),
+            name='workspace-knowledge-embedding-model',
+            workspace_id='default',
+            model_type='EMBEDDING',
+            model_name='test-embedding-model',
+            provider='openai',
+            credential='{}',
+            user=self.admin_user,
+        )
+
         response = self.client.post(
-            f"{ADMIN_API_PREFIX}/workspace/default/knowledge",
+            f"{ADMIN_API_PREFIX}/workspace/default/knowledge/base",
             {
                 "name": "Test Knowledge",
                 "desc": "Test Description",
                 "folder_id": str(self.folder.id),
+                "embedding_model_id": str(embedding_model.id),
                 "type": KnowledgeType.BASE,
             },
             format="json",
@@ -1384,9 +1396,14 @@ class KnowledgeAPIIntegrationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
         self.assertIn("data", data)
+        self.assertEqual(data['code'], 200)
+        self.assertEqual(data['data']['name'], 'Test Knowledge')
+        self.assertEqual(data['data']['desc'], 'Test Description')
+        self.assertEqual(data['data']['workspace_id'], 'default')
+        self.assertTrue(Knowledge.objects.filter(id=data['data']['id'], name='Test Knowledge').exists())
 
     def test_get_knowledge_list(self):
-        Knowledge.objects.create(
+        kb = Knowledge.objects.create(
             id=uuid.uuid7(),
             name="List Knowledge",
             desc="List Description",
@@ -1402,6 +1419,10 @@ class KnowledgeAPIIntegrationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
         self.assertIn("data", data)
+        matched = [item for item in data['data'] if item['id'] == str(kb.id)]
+        self.assertEqual(len(matched), 1)
+        self.assertEqual(matched[0]['name'], 'List Knowledge')
+        self.assertEqual(matched[0]['desc'], 'List Description')
 
     def test_get_knowledge_detail(self):
         kb = Knowledge.objects.create(
@@ -1420,6 +1441,12 @@ class KnowledgeAPIIntegrationTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+        self.assertEqual(payload['data']['id'], str(kb.id))
+        self.assertEqual(payload['data']['name'], 'Detail Knowledge')
+        self.assertEqual(payload['data']['desc'], 'Detail Description')
+        self.assertEqual(payload['data']['workspace_id'], 'default')
 
     def test_update_knowledge(self):
         kb = Knowledge.objects.create(
@@ -1435,11 +1462,19 @@ class KnowledgeAPIIntegrationTests(TestCase):
 
         response = self.client.put(
             f"{ADMIN_API_PREFIX}/workspace/default/knowledge/{kb.id}",
-            {"name": "Updated Knowledge Name"},
+            {"name": "Updated Knowledge Name", "desc": "Updated Knowledge Description"},
             format="json",
         )
 
         self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+        self.assertEqual(payload['data']['name'], 'Updated Knowledge Name')
+        self.assertEqual(payload['data']['desc'], 'Updated Knowledge Description')
+
+        kb.refresh_from_db()
+        self.assertEqual(kb.name, 'Updated Knowledge Name')
+        self.assertEqual(kb.desc, 'Updated Knowledge Description')
 
     def test_delete_knowledge(self):
         kb = Knowledge.objects.create(
@@ -1458,6 +1493,9 @@ class KnowledgeAPIIntegrationTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload['code'], 200)
+        self.assertFalse(Knowledge.objects.filter(id=kb.id).exists())
 
 
 class KnowledgeFolderIntegrationTests(TestCase):
