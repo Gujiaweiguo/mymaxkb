@@ -1,50 +1,51 @@
-import { describe, it, expect, vi } from 'vitest'
-import { login, logout, getUserInfo } from '@/api/user/login'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/api/user/login', () => ({
-  login: vi.fn(),
-  logout: vi.fn(),
-  getUserInfo: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  get: vi.fn(),
+  post: vi.fn(),
 }))
 
+vi.mock('@/request/index', () => ({
+  get: mocks.get,
+  post: mocks.post,
+}))
+
+import LoginApi from '@/api/user/login'
+
 describe('User API', () => {
-  it('should call login API with correct parameters', async () => {
-    const mockLogin = vi.fn().mockResolvedValue({ data: { token: 'test-token' } })
-    vi.mocked(login).mockImplementation(mockLogin)
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
 
-    const result = await login({
+  it('calls the login endpoint through the shared request client', async () => {
+    mocks.post.mockResolvedValue({ data: { token: 'test-token' } })
+
+    const payload = {
       username: 'testuser',
       password: 'password123',
       login_type: 'LOCAL',
-    })
+    }
 
-    expect(mockLogin).toHaveBeenCalledWith({
-      username: 'testuser',
-      password: 'password123',
-      login_type: 'LOCAL',
-    })
+    const result = await LoginApi.login(payload)
+
+    expect(mocks.post).toHaveBeenCalledWith('/user/login', payload, undefined, undefined)
     expect(result.data.token).toBe('test-token')
   })
 
-  it('should call logout API', async () => {
-    const mockLogout = vi.fn().mockResolvedValue({ success: true })
-    vi.mocked(logout).mockImplementation(mockLogout)
+  it('calls the logout endpoint through the shared request client', async () => {
+    mocks.post.mockResolvedValue({ data: true })
 
-    const result = await logout()
+    await LoginApi.logout()
 
-    expect(mockLogout).toHaveBeenCalled()
-    expect(result.success).toBe(true)
+    expect(mocks.post).toHaveBeenCalledWith('/user/logout', undefined, undefined, undefined)
   })
 
-  it('should call getUserInfo API', async () => {
-    const mockGetUserInfo = vi.fn().mockResolvedValue({
-      data: { id: '1', username: 'testuser' },
-    })
-    vi.mocked(getUserInfo).mockImplementation(mockGetUserInfo)
+  it('requests user captcha with the username query parameter', async () => {
+    mocks.get.mockResolvedValue({ data: { captcha_svg: '<svg />' } })
 
-    const result = await getUserInfo()
+    const result = await LoginApi.getCaptcha('testuser')
 
-    expect(mockGetUserInfo).toHaveBeenCalled()
-    expect(result.data.username).toBe('testuser')
+    expect(mocks.get).toHaveBeenCalledWith('/user/captcha', { username: 'testuser' }, undefined)
+    expect(result.data.captcha_svg).toBe('<svg />')
   })
 })

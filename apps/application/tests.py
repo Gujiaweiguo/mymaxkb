@@ -1,10 +1,22 @@
 import uuid_utils.compat as uuid
-from django.test import TestCase
 import importlib.util
 from pathlib import Path
+from unittest.mock import patch
 
+from django.test import TestCase
+from django.utils import timezone
+from rest_framework import serializers
+
+from application.chat_pipeline.I_base_chat_pipeline import IBaseChatPipelineStep
+from application.chat_pipeline.pipeline_manage import PipelineManage
 from application.models import Application, ApplicationFolder, ApplicationTypeChoices
+from application.models.application_chat import Chat, ChatRecord, ChatSourceChoices, VoteChoices
 from application.models.application_api_key import ApplicationApiKey
+from application.serializers.application_chat import (
+    ApplicationChatQuerySerializers,
+    ChatCountSerializer,
+    get_source_display,
+)
 from application.serializers.application_api_key import ApplicationKeySerializer
 from application.serializers.system_resource_application import (
     SystemResourceApplicationQuerySerializer,
@@ -248,6 +260,190 @@ class ApplicationApiKeyMaskingTests(TestCase):
 
         stored = ApplicationApiKey.objects.get(id=created["id"])
         self.assertEqual(stored.secret_key, created["secret_key"])
+
+
+class _PipelineStepSerializer(serializers.Serializer):
+    problem_text = serializers.CharField(required=True)
+
+
+class _CollectingStep(IBaseChatPipelineStep):
+    def get_step_serializer(self, manage):
+        return _PipelineStepSerializer
+
+    def _run(self, manage):
+        problem_text = self.context['step_args']['problem_text']
+        manage.context.setdefault('executed_steps', []).append(problem_text)
+        self.context['detail'] = {
+            'step_type': 'collect',
+            'type': 'question-node',
+            'answer': f'handled:{problem_text}',
+        }
+
+    def get_details(self, manage, **kwargs):
+        return self.context.get('detail')
+
+
+class _SecondCollectingStep(_CollectingStep):
+    def _run(self, manage):
+        super()._run(manage)
+        self.context['detail'] = {
+            'step_type': 'search_step',
+            'type': 'search-dataset-node',
+            'paragraph_list': [{'title': 'Doc', 'content': 'Paragraph'}],
+        }
+
+
+class PipelineManageTests(TestCase):
+    def test_run_merges_context_and_executes_steps_in_order(self):
+        manage = PipelineManage.builder().append_step(_CollectingStep).append_step(_SecondCollectingStep).build()
+
+        manage.run({'problem_text': 'How are you?'})
+
+        self.assertEqual(manage.context['problem_text'], 'How are you?')
+        self.assertEqual(manage.context['executed_steps'], ['How are you?', 'How are you?'])
+        self.assertEqual(len(manage.run_step_list), 2)
+        self.assertIn('start_time', manage.context)
+
+    def test_get_details_aggregates_step_details_by_step_type(self):
+        manage = PipelineManage.builder().append_step(_CollectingStep).append_step(_SecondCollectingStep).build()
+
+        manage.run({'problem_text': 'What changed?'})
+
+        details = manage.get_details()
+
+        self.assertEqual(details['collect']['answer'], 'handled:What changed?')
+        self.assertEqual(details['search_step']['paragraph_list'][0]['title'], 'Doc')
+
+
+class ApplicationChatSerializerUtilityTests(TestCase):
+    def test_get_source_display_returns_dash_for_missing_source(self):
+        self.assertEqual(get_source_display(None), '-')
+        self.assertEqual(get_source_display({}), '-')
+
+    def test_get_source_display_maps_known_source_types(self):
+        self.assertEqual(
+            get_source_display({'type': ChatSourceChoices.ONLINE.value}),
+            'Online Usage',
+        )
+        self.assertEqual(
+            get_source_display({'type': ChatSourceChoices.DINGTALK.value}),
+            'DingTalk',
+        )
+
+    def test_to_row_formats_details_feedback_and_source(self):
+        row = ApplicationChatQuerySerializers.to_row(
+            {
+                'chat_id': uuid.uuid7(),
+                'abstract': 'Conversation summary',
+                'problem_text': 'Original problem',
+                'answer_text': 'Resolved answer',
+                'vote_status': '0',
+                'vote_reason': 'accurate',
+                'vote_other_content': 'n/a',
+                'details': {
+                    'question-step': {
+                        'type': 'question-node',
+                        'answer': 'Refined question',
+                    },
+                    'search_step': {
+                        'step_type': 'search_step',
+                        'paragraph_list': [{'title': 'Reference', 'content': 'Reference content'}],
+                    },
+                },
+                'improve_paragraph_list': [{'title': 'Improved', 'content': 'Improved content'}],
+                'asker': {'username': 'qa-user'},
+                'message_tokens': 12,
+                'answer_tokens': 20,
+                'ip_address': '127.0.0.1',
+                'source': {'type': ChatSourceChoices.API_CALL.value},
+                'run_time': 1.5,
+                'create_time': timezone.now(),
+            }
+        )
+
+        self.assertEqual(row[0].count('-'), 4)
+        self.assertEqual(row[2], 'Original problem')
+        self.assertEqual(row[3], 'Refined question')
+        self.assertEqual(row[5], '赞同')
+        self.assertEqual(row[6], 'accurate')
+        self.assertEqual(row[8], '1')
+        self.assertIn('Reference:\nReference content', row[9])
+        self.assertEqual(row[10], 'Improved\nImproved content')
+        self.assertEqual(row[14], 'API Call')
+        self.assertEqual(row[15], 1.5)
+
+
+class ChatCountSerializerTests(TestCase):
+    def create_chat(self):
+        user = User.objects.create(
+            id=uuid.uuid7(),
+            email='chat-count@example.com',
+            phone='',
+            nick_name='chat-count-nick',
+            username='chat-count-user',
+            password=password_encrypt('Secret1!'),
+            role='ADMIN',
+            source='LOCAL',
+            is_active=True,
+        )
+        folder = ApplicationFolder.objects.create(
+            id='chat-count-folder',
+            name='Chat Count Folder',
+            user=user,
+            workspace_id='default',
+        )
+        application = Application.objects.create(
+            id=uuid.uuid7(),
+            name='Chat Count App',
+            desc='Chat count description',
+            user=user,
+            folder=folder,
+            workspace_id='default',
+            type=ApplicationTypeChoices.SIMPLE,
+            icon='./favicon.ico',
+        )
+        return Chat.objects.create(
+            id=uuid.uuid7(),
+            application=application,
+            abstract='Count me',
+            chat_user_id='anonymous',
+            source={'type': ChatSourceChoices.ONLINE.value},
+        )
+
+    def test_update_chat_uses_aggregated_counts_with_zero_fallback(self):
+        chat = self.create_chat()
+        ChatRecord.objects.create(
+            id=uuid.uuid7(),
+            chat=chat,
+            vote_status=VoteChoices.STAR,
+            vote_reason='accurate',
+            problem_text='Problem 1',
+            answer_text='Answer 1',
+            improve_paragraph_id_list=[uuid.uuid7(), uuid.uuid7()],
+            index=1,
+            source={'type': ChatSourceChoices.ONLINE.value},
+        )
+        ChatRecord.objects.create(
+            id=uuid.uuid7(),
+            chat=chat,
+            vote_status=VoteChoices.TRAMPLE,
+            vote_reason='inaccurate',
+            problem_text='Problem 2',
+            answer_text='Answer 2',
+            improve_paragraph_id_list=[],
+            index=2,
+            source={'type': ChatSourceChoices.API_CALL.value},
+        )
+
+        serializer = ChatCountSerializer(data={'chat_id': chat.id})
+
+        serializer.update_chat()
+        chat.refresh_from_db()
+
+        self.assertEqual(chat.star_num, 1)
+        self.assertEqual(chat.trample_num, 1)
+        self.assertEqual(chat.chat_record_count, 2)
+        self.assertEqual(chat.mark_sum, 2)
 
 
 _platform_test_path = Path(__file__).with_name('tests').joinpath('test_platform_integration.py')
