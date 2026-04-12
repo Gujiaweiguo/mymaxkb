@@ -57,7 +57,7 @@ npx playwright test
 Before starting new development work, run this minimal check to confirm local alignment:
 
 ```bash
-# 1) Backend (expects http://127.0.0.1:3080/)
+# 1) Backend API (expects http://127.0.0.1:3080/ locally, or http://<host>:3080/ when bound to 0.0.0.0)
 set -a && source .env.local-dev && set +a
 .venv/bin/python main.py dev web
 
@@ -66,8 +66,16 @@ cd ui
 npm run type-check && npm run lint && npm run test
 
 # 3) Manual smoke check
-# Open /admin/ and /chat/ in your local browser
+# Open http://127.0.0.1:3000/admin/ and http://127.0.0.1:3001/chat/ in your local browser
 ```
+
+### Important routing note for dev mode
+
+- `main.py dev web` starts Django on the backend API port (`3080` by default)
+- `npm run dev` serves the admin UI on `3000`
+- `npm run chat` serves the chat UI on `3001`
+- in dev mode, `3080/admin/` and `3080/chat/` are not the primary entrypoints; use the Vite ports for UI access
+- when you need to access the dev environment from another machine or via the server public IP, bind both backend and Vite to `0.0.0.0`
 
 ## Testing Workflow
 
@@ -147,8 +155,9 @@ Note: local development commonly uses a Redis password from `.env.local-dev`, wh
 |---------|------|-------------|
 | PostgreSQL | 5432 | User: `maxkb`, Password: `maxkb123`, DB: `maxkb` |
 | Redis | 6379 | Password: `maxkb123` |
-| Backend | 3080 | - |
-| Frontend | 5173 | - |
+| Backend API | 3080 | - |
+| Admin Frontend | 3000 | - |
+| Chat Frontend | 3001 | - |
 
 ## Environment Variables
 
@@ -166,7 +175,7 @@ MAXKB_REDIS_HOST=127.0.0.1
 MAXKB_REDIS_PORT=6379
 MAXKB_REDIS_PASSWORD=maxkb123
 MAXKB_DEFAULT_PASSWORD=TestPassword123!
-MAXKB_DEV_HOST=127.0.0.1
+MAXKB_DEV_HOST=0.0.0.0
 MAXKB_DEV_PORT=3080
 ```
 
