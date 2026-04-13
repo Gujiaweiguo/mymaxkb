@@ -3,15 +3,17 @@ import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.db import IntegrityError
 from rest_framework.test import APIRequestFactory, force_authenticate
 
 from common.constants.permission_constants import Group
+from common.exception.app_exception import AppApiException
 from common.utils.rsa_util import rsa_long_encrypt
 from models_provider.models import Model, Status
 from models_provider.tools import get_provider, get_model_default_params
 from models_provider.constants.model_provider_constants import ModelProvideConstants
+from models_provider.serializers.model_serializer import ModelSerializer
 from models_provider.views.model import SystemSharedModelSetting, SystemResourceModelView
 from system_manage.models import Workspace
 from system_manage.models.resource_mapping import ResourceMapping
@@ -35,7 +37,7 @@ class StatusEnumTests(TestCase):
         self.assertEqual(len(Status.choices), 4)
 
 
-class ProviderConstantsTests(TestCase):
+class ProviderConstantsTests(SimpleTestCase):
     def test_openai_provider_exists(self):
         provider = get_provider("model_openai_provider")
         self.assertIsNotNone(provider)
@@ -51,6 +53,40 @@ class ProviderConstantsTests(TestCase):
     def test_invalid_provider_raises_key_error(self):
         with self.assertRaises(KeyError):
             get_provider("nonexistent_provider")
+
+    def test_removed_local_provider_fails_fast(self):
+        with self.assertRaises(AppApiException) as context:
+            get_provider("model_local_provider")
+
+        self.assertIn("model_local_provider", str(context.exception))
+
+    def test_removed_local_provider_not_in_registry(self):
+        self.assertNotIn("model_local_provider", ModelProvideConstants.__members__)
+
+
+class LegacyLocalProviderStateTests(SimpleTestCase):
+    def test_model_to_dict_fails_fast_for_removed_local_provider(self):
+        model = SimpleNamespace(
+            id=uuid.uuid4(),
+            name="legacy-local-model",
+            model_type="EMBEDDING",
+            model_name="legacy-local-model",
+            provider="model_local_provider",
+            credential="encrypted-legacy-credential",
+            workspace_id="default",
+            status="SUCCESS",
+            meta={},
+            user=None,
+        )
+
+        with patch(
+            'models_provider.serializers.model_serializer.rsa_long_decrypt',
+            return_value=json.dumps({"cache_folder": "/tmp/models"}),
+        ):
+            with self.assertRaises(AppApiException) as context:
+                ModelSerializer.model_to_dict(model)
+
+        self.assertIn("model_local_provider", str(context.exception))
 
     def test_providers_have_get_model(self):
         for provider_enum in ModelProvideConstants:
