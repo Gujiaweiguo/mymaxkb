@@ -47,7 +47,6 @@ Supported by `main.py`:
 ```bash
 python main.py dev web
 python main.py dev celery
-python main.py dev local_model
 python main.py start all
 python main.py start web
 python main.py start task
@@ -85,7 +84,7 @@ From `ui/package.json`:
 
 ## Tests
 Backend test modules exist at:
-`apps/application/tests.py`, `apps/chat/tests.py`, `apps/knowledge/tests.py`, `apps/local_model/tests.py`, `apps/models_provider/tests.py`, `apps/oss/tests.py`, `apps/system_manage/tests.py`, `apps/tools/tests.py`, `apps/trigger/tests.py`, `apps/users/tests.py`.
+`apps/application/tests.py`, `apps/chat/tests.py`, `apps/knowledge/tests.py`, `apps/models_provider/tests.py`, `apps/oss/tests.py`, `apps/system_manage/tests.py`, `apps/tools/tests.py`, `apps/trigger/tests.py`, `apps/users/tests.py`.
 
 Coverage is mixed rather than placeholder-only. There are real backend tests in `apps/application/test_integration.py`, `apps/chat/test_integration.py`, `apps/knowledge/test_integration.py`, plus targeted unit-style tests in app-local `tests.py` modules.
 Likely Django test commands via `apps/manage.py`:
