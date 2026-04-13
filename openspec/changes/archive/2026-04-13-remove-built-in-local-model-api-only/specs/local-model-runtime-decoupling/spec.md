@@ -1,9 +1,5 @@
-# local-model-runtime-decoupling Specification
+## MODIFIED Requirements
 
-## Purpose
-Define the runtime contract after removing the built-in `local_model` service and enforcing external-API-only model integration.
-
-## Requirements
 ### Requirement: local-model runtime SHALL NOT be bundled with the main application
 The system SHALL NOT provide a built-in `local_model` runtime, startup mode, service orchestration path, or `SERVER_NAME == 'local_model'` execution profile as part of the supported main-application deployment model.
 
