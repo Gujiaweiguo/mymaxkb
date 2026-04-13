@@ -27,11 +27,6 @@ class Config(dict[str, Any]):
         "DB_USER": "root",
         "DB_ENGINE": "dj_db_conn_pool.backends.postgresql",
         "DB_MAX_OVERFLOW": 80,
-        "LOCAL_MODEL_HOST": "127.0.0.1",
-        "LOCAL_MODEL_PORT": "11636",
-        "LOCAL_MODEL_PROTOCOL": "http",
-        "LOCAL_MODEL_HOST_WORKER": 1,
-        "ENABLE_LOCAL_MODEL": True,
         # 语言
         "LANGUAGE_CODE": "zh-CN",
         "DEBUG": False,
@@ -100,9 +95,6 @@ class Config(dict[str, Any]):
 
     def get_debug(self) -> bool:
         return self.get_bool("DEBUG", True)
-
-    def get_enable_local_model(self) -> bool:
-        return self.get_bool("ENABLE_LOCAL_MODEL", True)
 
     def get_time_zone(self) -> str:
         return self.get_str("TIME_ZONE", "Asia/Shanghai")

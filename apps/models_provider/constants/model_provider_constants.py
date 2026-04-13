@@ -10,7 +10,6 @@ from models_provider.impl.deepseek_model_provider.deepseek_model_provider import
 from models_provider.impl.docker_ai_model_provider.docker_ai_model_provider import DockerModelProvider
 from models_provider.impl.gemini_model_provider.gemini_model_provider import GeminiModelProvider
 from models_provider.impl.kimi_model_provider.kimi_model_provider import KimiModelProvider
-from models_provider.impl.local_model_provider.local_model_provider import LocalModelProvider
 from models_provider.impl.ollama_model_provider.ollama_model_provider import OllamaModelProvider
 from models_provider.impl.openai_model_provider.openai_model_provider import OpenAIModelProvider
 from models_provider.impl.regolo_model_provider.regolo_model_provider import RegoloModelProvider
@@ -41,7 +40,6 @@ class ModelProvideConstants(Enum):
     model_tencent_provider = TencentModelProvider()
     model_tencent_cloud_provider = TencentCloudModelProvider()
     model_aws_bedrock_provider = BedrockModelProvider()
-    model_local_provider = LocalModelProvider()
     model_xinference_provider = XinferenceModelProvider()
     model_vllm_provider = VllmModelProvider()
     aliyun_bai_lian_model_provider = AliyunBaiLianModelProvider()
