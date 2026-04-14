@@ -17,6 +17,7 @@ The system SHALL provide an enforceable first-use hardening path for bootstrap a
 #### Scenario: Bootstrap account signs in for the first time
 - **WHEN** a bootstrap account authenticates using an initialization credential
 - **THEN** the system requires credential rotation or equivalent hardening before allowing normal ongoing administrative use
+- **AND** the account remains restricted to the enforced password-change flow until that hardening step succeeds
 
 #### Scenario: Bootstrap credential has already been rotated
 - **WHEN** the administrator account has completed the required first-use hardening step

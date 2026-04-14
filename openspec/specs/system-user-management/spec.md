@@ -4,9 +4,10 @@
 The system SHALL provide explicit administrative user lifecycle management for community edition, including creation, update, status control, search, and credential-maintenance operations.
 
 #### Scenario: administrator creates a system user
-- **WHEN** an authorized administrator creates a new administrative user
+- **WHEN** an authorized administrator creates a new administrative user with a local password credential
 - **THEN** the system stores the user with the configured identity fields and source information
 - **AND** the new user becomes governable through the administrative user-management surface
+- **AND** the new local user is marked as requiring a password change before normal administrative use
 
 #### Scenario: administrator disables a system user
 - **WHEN** an authorized administrator disables an existing administrative user
@@ -53,6 +54,7 @@ The system SHALL provide explicit administrative user lifecycle management for c
 - **WHEN** an authorized administrator submits a supported password and matching confirmation for a managed user
 - **THEN** the system updates the target user's password
 - **AND** the target user is marked as requiring a password change
+- **AND** the target user's next successful local sign-in enters the mandatory password-change flow before normal administrative use
 
 #### Scenario: administrator cannot reset a managed user password with invalid input
 - **WHEN** an authorized administrator submits mismatched or unsupported password values for a managed user
