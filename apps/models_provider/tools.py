@@ -11,6 +11,7 @@ from django.db.models import QuerySet
 
 from common.config.embedding_config import ModelManage
 from common.database_model_manage.database_model_manage import DatabaseModelManage
+from common.exception.app_exception import AppApiException
 from models_provider.models import Model
 from django.utils.translation import gettext_lazy as _
 
@@ -19,6 +20,18 @@ from typing import Dict
 
 from common.utils.rsa_util import rsa_long_decrypt
 from models_provider.constants.model_provider_constants import ModelProvideConstants
+
+
+REMOVED_LOCAL_MODEL_PROVIDER = 'model_local_provider'
+
+
+def raise_removed_provider_error(provider):
+    raise AppApiException(
+        500,
+        _('Provider %(provider)s is no longer supported. Configure an external API provider instead.') % {
+            'provider': provider
+        },
+    )
 
 
 def get_model_(provider, model_type, model_name, credential, model_id, use_local=False, **kwargs):
@@ -56,6 +69,10 @@ def get_provider(provider):
     @param provider: 供应商字符串
     @return: 供应商实例
     """
+    # `model_local_provider` is intentionally blocked here so persisted legacy state
+    # fails fast with an actionable error before later registry/runtime deletions land.
+    if provider == REMOVED_LOCAL_MODEL_PROVIDER:
+        raise_removed_provider_error(provider)
     return ModelProvideConstants[provider].value
 
 

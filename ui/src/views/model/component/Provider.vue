@@ -101,7 +101,7 @@
                     effect="plain"
                     class="ml-8 local-provider-tip"
                   >
-                    需要本地/外部模型服务
+                    需要外部模型服务
                   </el-tag>
                 </div>
               </template>
@@ -131,8 +131,6 @@ const online_provider_list = ref<Array<Provider>>([])
 const local_provider_list = ref<Array<Provider>>([])
 const local_provider = [
   'model_ollama_provider',
-  'model_local_provider',
-  'local_model_provider',
   'model_xinference_provider',
   'model_vllm_provider',
   'model_docker_ai_provider'

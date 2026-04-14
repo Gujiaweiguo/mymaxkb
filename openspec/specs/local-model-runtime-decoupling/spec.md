@@ -1,30 +1,26 @@
 # local-model-runtime-decoupling Specification
 
 ## Purpose
-TBD - created by archiving change ollama-local-model-decoupling-2026-04-10. Update Purpose after archive.
+Define the runtime contract after removing the built-in `local_model` service and enforcing external-API-only model integration.
+
 ## Requirements
-### Requirement: local_model startup SHALL be explicitly configurable
-The system SHALL support `MAXKB_ENABLE_LOCAL_MODEL` to control whether local_model participates in web startup orchestration.
+### Requirement: local-model runtime SHALL NOT be bundled with the main application
+The system SHALL NOT provide a built-in `local_model` runtime, startup mode, service orchestration path, or `SERVER_NAME == 'local_model'` execution profile as part of the supported main-application deployment model.
 
-#### Scenario: local_model disabled for web startup
-- **WHEN** `MAXKB_ENABLE_LOCAL_MODEL=false` and web startup command is executed
-- **THEN** local_model process is not started as part of web startup
+#### Scenario: unsupported local_model startup mode is invoked
+- **WHEN** an operator or code path attempts to start or resolve the removed `local_model` runtime mode
+- **THEN** the system rejects the mode as unsupported instead of starting a bundled local-model service
 
-#### Scenario: local_model enabled for web startup
-- **WHEN** `MAXKB_ENABLE_LOCAL_MODEL=true` and web startup command is executed
-- **THEN** local_model process is started according to configured startup strategy
+### Requirement: built-in local-model routing and profile branching SHALL be absent
+The system SHALL remove built-in local-model URL inclusion, WSGI branching, settings branching, and service registration from production runtime paths.
 
-### Requirement: local_model standalone startup SHALL remain available
-The system SHALL keep standalone startup of local_model available independent of web startup mode.
+#### Scenario: supported runtime initializes after removal
+- **WHEN** the supported web/task runtime paths initialize after this change
+- **THEN** they do so without any built-in `local_model` route inclusion or `SERVER_NAME == 'local_model'` branch dependency
 
-#### Scenario: standalone local_model startup
-- **WHEN** operator runs local_model standalone startup command
-- **THEN** local_model starts successfully without requiring web process startup
+### Requirement: model integration SHALL remain external-API-only
+The system SHALL support model integration only through external API providers and SHALL NOT own embedded local embedding/reranker runtime execution.
 
-### Requirement: runtime profile SHALL be observable
-The system SHALL emit deterministic runtime markers for `runtime_profile` and local_model enablement state during startup.
-
-#### Scenario: runtime marker emitted on startup
-- **WHEN** any startup entrypoint initializes runtime profile
-- **THEN** logs include machine-parseable markers for profile and local_model state
-
+#### Scenario: external provider runtime remains supported
+- **WHEN** a supported external API provider is configured and used after this change
+- **THEN** model access proceeds through the external provider path without requiring a bundled local-model runtime

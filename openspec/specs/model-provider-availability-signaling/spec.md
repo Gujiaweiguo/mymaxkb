@@ -1,30 +1,26 @@
 # model-provider-availability-signaling Specification
 
 ## Purpose
-TBD - created by archiving change ollama-local-model-decoupling-2026-04-10. Update Purpose after archive.
+Define provider-availability behavior after removal of the built-in local-model provider.
+
 ## Requirements
-### Requirement: local model provider calls SHALL fail gracefully
-The system SHALL return controlled, standardized errors when local_model provider endpoints are unreachable, without terminating the web process.
+### Requirement: legacy built-in local-model provider state SHALL fail fast with actionable guidance
+The system SHALL detect persisted or requested `model_local_provider` usage after built-in local-model removal and SHALL raise a deterministic, actionable unsupported-provider error instead of failing through opaque import or lookup errors.
 
-#### Scenario: local_model endpoint unreachable
-- **WHEN** local_model provider request times out or connection is refused
-- **THEN** API returns controlled error response and web process remains healthy
+#### Scenario: legacy local-model provider record is resolved
+- **WHEN** provider resolution encounters persisted or requested `provider='model_local_provider'`
+- **THEN** the system returns the defined unsupported-provider failure path with actionable guidance
 
-### Requirement: provider availability SHALL be signaled in UI
-The system SHALL display explicit availability hints for providers that depend on local/external model services.
+### Requirement: UI SHALL expose only supported external provider options
+The system SHALL NOT present the removed built-in local-model provider as a configurable provider option in the model-management UI.
 
-#### Scenario: local capability unavailable
-- **WHEN** local model capability is disabled or unreachable
-- **THEN** model management UI shows clear non-blocking availability warning
+#### Scenario: provider list is rendered after removal
+- **WHEN** the model-management UI renders provider metadata and grouping
+- **THEN** it excludes the built-in local-model provider and only shows supported external provider options
 
-#### Scenario: local capability available
-- **WHEN** local model capability is enabled and reachable
-- **THEN** UI shows normal available state for local providers
+### Requirement: supported external providers SHALL remain available during removal
+The system SHALL preserve supported external provider registration and validation behavior while removing the built-in local-model provider.
 
-### Requirement: Ollama provider behavior SHALL remain backward compatible
-The system SHALL preserve existing Ollama provider API-base behavior and validation semantics during this change.
-
-#### Scenario: Ollama provider listed and usable
-- **WHEN** provider list and credential validation flows execute
-- **THEN** `model_ollama_provider` remains available with unchanged behavior
-
+#### Scenario: external provider remains listed and usable
+- **WHEN** provider list and credential validation flows execute after this change
+- **THEN** supported external providers remain available with their documented behavior intact

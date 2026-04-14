@@ -12,6 +12,7 @@ from common.constants.permission_constants import PermissionConstants
 from models_provider.api.provide import ProvideApi
 from models_provider.constants.model_provider_constants import ModelProvideConstants
 from models_provider.serializers.model_serializer import get_default_model_params_setting
+from models_provider.tools import get_provider
 
 
 class Provide(APIView):
@@ -48,7 +49,7 @@ class Provide(APIView):
                        tags=[_('Model')])  # type: ignore
         def get(self, request: Request):
             provider = request.query_params.get('provider')
-            return result.success(ModelProvideConstants[provider].value.get_model_type_list())
+            return result.success(get_provider(provider).get_model_type_list())
 
     class ModelList(APIView):
         authentication_classes = [TokenAuth]
@@ -65,7 +66,7 @@ class Provide(APIView):
             model_type = request.query_params.get('model_type')
 
             return result.success(
-                ModelProvideConstants[provider].value.get_model_list(
+                get_provider(provider).get_model_list(
                     model_type))
 
     class ModelParamsForm(APIView):
@@ -100,4 +101,4 @@ class Provide(APIView):
             model_type = request.query_params.get('model_type')
             model_name = request.query_params.get('model_name')
             return result.success(
-                ModelProvideConstants[provider].value.get_model_credential(model_type, model_name).to_form_list())
+                get_provider(provider).get_model_credential(model_type, model_name).to_form_list())

@@ -167,7 +167,7 @@
   <!-- <UserPwdDialog ref="UserPwdDialogRef" /> -->
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed } from 'vue'
 import useStore from '@/stores'
 import { useRouter } from 'vue-router'
 import { t } from '@/locales'
@@ -231,11 +231,6 @@ const logout = () => {
   })
 }
 
-onMounted(() => {
-  if (user.userInfo?.is_edit_password) {
-    resetPasswordRef.value?.open()
-  }
-})
 </script>
 <style lang="scss" scoped>
 .avatar-dropdown {

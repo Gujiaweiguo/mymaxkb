@@ -12,6 +12,24 @@ import {
 import useStore from '@/stores'
 import { routes } from '@/router/routes'
 NProgress.configure({ showSpinner: false, speed: 500, minimum: 0.3 })
+
+export const FORCE_PASSWORD_CHANGE_ROUTE_NAME = 'ForcePasswordChange'
+
+export function getPasswordChangeRedirect(
+  toName?: string | symbol | null,
+  requiresPasswordChange?: boolean,
+) {
+  if (requiresPasswordChange && toName !== FORCE_PASSWORD_CHANGE_ROUTE_NAME) {
+    return { name: FORCE_PASSWORD_CHANGE_ROUTE_NAME }
+  }
+
+  if (!requiresPasswordChange && toName === FORCE_PASSWORD_CHANGE_ROUTE_NAME) {
+    return { name: 'home' }
+  }
+
+  return null
+}
+
 const router = createRouter({
   history: createWebHistory(window.MaxKB?.prefix ? window.MaxKB?.prefix : import.meta.env.BASE_URL),
   routes: routes,
@@ -41,6 +59,16 @@ router.beforeEach(
       }
       if (!user.userInfo) {
         await user.profile()
+      }
+
+      const passwordChangeRedirect = getPasswordChangeRedirect(
+        to.name ? to.name.toString() : null,
+        !!user.userInfo?.is_edit_password,
+      )
+
+      if (passwordChangeRedirect) {
+        next(passwordChangeRedirect)
+        return
       }
     }
     set_next_route(to)

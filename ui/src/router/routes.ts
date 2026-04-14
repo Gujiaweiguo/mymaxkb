@@ -84,6 +84,11 @@ export const routes: Array<RouteRecordRaw> = [
     component: () => import('@/views/login/ResetPassword.vue'),
   },
   {
+    path: '/force-password-change',
+    name: 'ForcePasswordChange',
+    component: () => import('@/views/login/ForcePasswordChange.vue'),
+  },
+  {
     path: '/permission',
     name: 'permission',
     component: () => import('@/views/Permission.vue'),

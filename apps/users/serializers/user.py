@@ -435,7 +435,7 @@ class UserManageSerializer(serializers.Serializer):
             role=RoleConstants.USER.name,
             source=instance.get("source", "LOCAL"),
             is_active=True,
-            require_password_change=False,  # TODO: Implement proper first-login password change flow in frontend
+            require_password_change=instance.get("source", "LOCAL") == "LOCAL",
         )
         update_user_role(instance, user, user_id)
         set_default_permission(user.id, instance)
