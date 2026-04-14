@@ -265,11 +265,13 @@ jobs:
           python apps/manage.py migrate
 
       - name: Start backend server
+        id: start-backend
         run: |
           . .venv/bin/activate
           nohup python apps/manage.py runserver 0.0.0.0:8080 >/tmp/maxkb-web.log 2>&1 &
+          echo "backend_pid=$!" >> "$GITHUB_OUTPUT"
 
-      - name: Wait for backend server
+      - name: Wait for backend readiness
         run: |
           . .venv/bin/activate
           python - <<'PY'
@@ -277,29 +279,77 @@ jobs:
           import urllib.error
           import urllib.request
 
-          url = 'http://127.0.0.1:8080/admin/api/user/profile'
-          for _ in range(60):
+          log_path = '/tmp/maxkb-web.log'
+          max_wait = 120
+          interval = 2
+          base_url = 'http://127.0.0.1:8080'
+
+          public_health_url = f'{base_url}/admin/api/login/auth/setting'
+          protected_app_url = f'{base_url}/admin/api/user/profile'
+
+          waited = 0
+          while waited < max_wait:
+              public_ready = False
               try:
-                  with urllib.request.urlopen(url, timeout=3) as response:
-                      print(response.status)
-                      break
-              except urllib.error.HTTPError as exc:
-                  if exc.code == 401:
-                      print(exc.code)
-                      break
+                  with urllib.request.urlopen(public_health_url, timeout=3) as response:
+                      public_ready = response.status == 200
               except Exception:
-                  time.sleep(2)
+                  pass
+
+              if public_ready:
+                  try:
+                      with urllib.request.urlopen(protected_app_url, timeout=3) as response:
+                          if response.status in (200, 401):
+                              print(f'Backend ready after {waited}s')
+                              break
+                  except urllib.error.HTTPError as exc:
+                      if exc.code == 401:
+                          print(f'Backend ready after {waited}s')
+                          break
+                  except Exception:
+                      pass
+
+              time.sleep(interval)
+              waited += interval
           else:
-              raise SystemExit('Backend server did not become reachable in time')
+              print('=== Backend failed to become ready ===')
+              print(f'Timeout after {max_wait}s waiting for {public_health_url}')
+              try:
+                  with open(log_path, encoding='utf-8', errors='replace') as log_file:
+                      lines = log_file.readlines()
+                  print('--- Last 80 lines of backend log ---')
+                  for line in lines[-80:]:
+                      print(line.rstrip())
+              except Exception as exc:
+                  print(f'Could not read backend log: {exc}')
+              raise SystemExit('Backend readiness check failed')
           PY
+
+      - name: Upload backend log on readiness failure
+        if: failure() && steps.start-backend.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-server-log
+          path: /tmp/maxkb-web.log
+          retention-days: 7
 
       - name: Run advisory E2E tests
         working-directory: ui
         run: npx playwright test --grep-invert @deferred
 
+      - name: Detect Playwright report output
+        if: always()
+        run: |
+          if [ -d ui/playwright-report ]; then
+            echo "playwright_report_exists=true" >> "$GITHUB_ENV"
+          else
+            echo "playwright_report_exists=false" >> "$GITHUB_ENV"
+            echo "Playwright report directory not found; skipping upload."
+          fi
+
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && env.playwright_report_exists == 'true'
         with:
           name: playwright-report
           path: ui/playwright-report/
