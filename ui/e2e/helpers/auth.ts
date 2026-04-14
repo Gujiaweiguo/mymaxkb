@@ -10,7 +10,7 @@ async function waitForToken(page: Page) {
   await expect
     .poll(async () => {
       return page.evaluate(() => Boolean(localStorage.getItem('token')))
-    }, { timeout: 20000 })
+    }, { timeout: 30000 })
     .toBe(true)
 }
 

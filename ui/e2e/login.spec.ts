@@ -45,7 +45,7 @@ test.describe('@advisory Login Flow', () => {
             username,
             password: initialPassword,
             email: `${username}@example.com`,
-            role: 'USER',
+            nick_name: username,
           }),
         })
 
