@@ -14,6 +14,11 @@ The system MUST run the repository's supported validation commands in continuous
 - **WHEN** a validation scenario is marked advisory, phased, or deferred in the repository testing contract
 - **THEN** continuous integration does not treat that scenario as a required merge-blocking gate unless the repository explicitly promotes it
 
+#### Scenario: Advisory E2E startup failure remains distinguishable from test failure
+- **WHEN** the advisory E2E job cannot complete backend startup or readiness checks before browser tests begin
+- **THEN** CI reports the advisory job failure as a startup/readiness problem without changing its advisory status
+- **AND** the job leaves enough diagnostic output to identify whether the backend process or readiness probe failed
+
 ### Requirement: CI failures block merge readiness
 The system MUST treat required validation job failures as merge-blocking signals until the failing checks pass on the updated revision.
 
@@ -34,6 +39,10 @@ The system MUST allow end-to-end validation to be introduced or promoted in phas
 #### Scenario: Initial CI rollout excludes full E2E blocking
 - **WHEN** the repository introduces the first required CI quality gates
 - **THEN** the baseline required checks remain explicit even if some Playwright scenarios are initially advisory, scoped, or promoted in a later phase
+
+#### Scenario: Advisory E2E artifact handling does not obscure the primary failure mode
+- **WHEN** an advisory E2E run exits before Playwright generates its normal report output
+- **THEN** CI handles report upload intentionally without surfacing a secondary missing-artifact warning as the primary diagnostic signal
 
 ### Requirement: Deploy-oriented repository safety checks participate in the CI baseline
 The system MUST run repository-supported deploy-oriented safety checks in continuous integration when a change affects runtime configuration, startup behavior, or CI enforcement itself.

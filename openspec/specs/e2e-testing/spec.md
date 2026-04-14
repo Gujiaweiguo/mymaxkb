@@ -24,6 +24,11 @@ The system MUST have E2E tests for the most important user journeys, and the rep
 - **WHEN** contributors review the repository testing contract
 - **THEN** they can determine which E2E scenarios are required for CI pass/fail decisions and which remain phased or advisory
 
+#### Scenario: Advisory E2E runtime assumptions are explicit in CI
+- **WHEN** the advisory E2E suite runs in CI
+- **THEN** the job defines how backend availability is established before Playwright scenarios begin
+- **AND** contributors can tell whether a failure happened during environment startup or during browser execution
+
 ### Requirement: E2E tests run in isolation
 The system MUST have E2E tests that do not interfere with each other.
 
@@ -50,6 +55,10 @@ The system MUST allow the CI pipeline to introduce end-to-end coverage increment
 #### Scenario: Credential-dependent E2E scenarios are not forced prematurely
 - **WHEN** an E2E scenario depends on external credentials, unstable infrastructure, or non-deterministic setup
 - **THEN** the scenario is not treated as part of the mandatory CI baseline until the repository explicitly promotes it to required status
+
+#### Scenario: Advisory startup failures do not masquerade as browser test failures
+- **WHEN** the CI runtime cannot make the backend reachable within the advisory E2E startup contract
+- **THEN** the advisory E2E job fails before test execution with startup diagnostics rather than reporting a misleading browser-test failure
 
 ### Requirement: The stable critical-flow E2E baseline must be explicit
 The system MUST define a stable minimum end-to-end regression baseline for critical user flows that can participate in regression protection without depending on deferred or credential-dependent scenarios. The stable baseline MUST explicitly identify which repository-supported user-visible flows remain advisory and which stay deferred because they depend on external credentials or unstable setup, while keeping the required CI baseline explicit in the repository testing contract.
