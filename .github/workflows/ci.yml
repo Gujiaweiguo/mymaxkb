@@ -195,6 +195,7 @@ jobs:
       MAXKB_DEBUG: False
       MAXKB_LOG_DIR: /tmp/maxkb/logs
       MAXKB_CELERY_DATA_DIR: /tmp/maxkb/celery_task
+      VITE_API_TARGET: 'http://127.0.0.1:8080'
 
     steps:
       - uses: actions/checkout@v6.0.2
