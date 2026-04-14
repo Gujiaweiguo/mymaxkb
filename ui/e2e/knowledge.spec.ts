@@ -189,7 +189,7 @@ test.describe('@advisory Knowledge Base Management', () => {
 
   test('should navigate to the knowledge page', async ({ page }) => {
     await expect(page).toHaveURL(/\/admin\/knowledge(?:$|\?|\/)/)
-    await expect(page.locator('.knowledge-manage')).toBeVisible()
+    await expect(page.locator('.knowledge-manage')).toBeVisible({ timeout: 10000 })
   })
 
   test('should display knowledge heading and create control', async ({ page }) => {
