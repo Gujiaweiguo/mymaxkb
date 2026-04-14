@@ -9,6 +9,11 @@ const useLoginStore = defineStore('login', {
     token: '',
   }),
   actions: {
+    clearToken() {
+      this.token = ''
+      localStorage.removeItem('token')
+    },
+
     getToken(): string | null {
       if (this.token) {
         return this.token
@@ -66,9 +71,8 @@ const useLoginStore = defineStore('login', {
     },
 
     async logout() {
-      return LoginApi.logout().then(() => {
-        localStorage.removeItem('token')
-        return true
+      return LoginApi.logout().finally(() => {
+        this.clearToken()
       })
     },
     async getAuthType() {
