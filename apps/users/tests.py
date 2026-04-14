@@ -19,6 +19,7 @@ from users.models import User
 from users.serializers.login import LoginSerializer, system_get_key, system_version
 from users.serializers.user import (
     ResetCurrentUserPassword,
+    UserManageSerializer,
     UserProfileSerializer,
     get_community_user_manage_response,
 )
@@ -214,6 +215,26 @@ class UserSerializerTests(TestCase):
         self.assertIn("role", data)
         self.assertEqual(data["username"], "serializertest")
         self.assertEqual(data["email"], "serializer@example.com")
+
+    @patch("users.serializers.user.set_default_permission")
+    @patch("users.serializers.user.update_user_role")
+    def test_user_manage_serializer_marks_local_user_for_password_change(
+        self, _update_user_role, _set_default_permission
+    ):
+        response = UserManageSerializer().save(
+            {
+                "username": "managed-local-user",
+                "email": "managed-local-user@example.com",
+                "password": "Password1!",
+                "source": "LOCAL",
+            },
+            str(uuid.uuid7()),
+            with_valid=False,
+        )
+
+        created_user = User.objects.get(id=response["id"])
+
+        self.assertTrue(created_user.require_password_change)
 
 
 class LoginSerializerTests(TestCase):

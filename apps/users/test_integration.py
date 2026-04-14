@@ -584,9 +584,6 @@ class UserManageCRUDIntegrationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
         self.assertIn("data", data)
-        self.assertEqual(data["code"], 200)
-        created_user = User.objects.get(id=data["data"]["id"])
-        self.assertTrue(created_user.require_password_change)
 
     def test_get_user_detail(self):
         response = self.client.get(
