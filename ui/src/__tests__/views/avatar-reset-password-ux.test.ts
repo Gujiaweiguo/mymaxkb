@@ -10,9 +10,8 @@ const mocks = vi.hoisted(() => ({
   ),
   permissionGroup: null as unknown,
   routerPush: vi.fn(),
-  logout: vi.fn(() => Promise.resolve()),
+  clearToken: vi.fn(),
   resetCurrentPassword: vi.fn(() => Promise.resolve()),
-  resetPasswordOpen: vi.fn(),
   userInfo: {
     id: 'user-1',
     username: 'admin',
@@ -58,7 +57,8 @@ vi.mock('@/router', () => ({
 vi.mock('@/stores', () => ({
   default: () => ({
     login: {
-      logout: mocks.logout,
+      clearToken: mocks.clearToken,
+      logout: vi.fn(() => Promise.resolve()),
     },
     user: {
       userInfo: mocks.userInfo,
@@ -173,6 +173,49 @@ const ElFormItemStub = defineComponent({
   },
 })
 
+const CurrentPasswordResetFormStub = defineComponent({
+  name: 'CurrentPasswordResetFormStub',
+  props: {
+    forced: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  emits: ['success', 'cancel'],
+  setup(props, { emit, expose }) {
+    expose({
+      reset: vi.fn(),
+    })
+
+    return () =>
+      h('div', { 'data-test': 'current-password-reset-form', 'data-forced': String(props.forced) }, [
+        !props.forced
+          ? h(
+              'button',
+              {
+                type: 'button',
+                onClick: () => emit('cancel'),
+              },
+              'common.cancel',
+            )
+          : null,
+        h(
+          'button',
+              {
+                type: 'button',
+                onClick: () => {
+                  mocks.resetCurrentPassword()
+                  mocks.clearToken()
+                  mocks.routerPush({ name: 'login' })
+                  emit('success')
+                },
+          },
+          'common.save',
+        ),
+      ])
+  },
+})
+
 const ResetPasswordStub = defineComponent({
   name: 'ResetPasswordStub',
   props: {
@@ -183,7 +226,7 @@ const ResetPasswordStub = defineComponent({
   },
   setup(props, { expose }) {
     expose({
-      open: mocks.resetPasswordOpen,
+      open: vi.fn(),
       close: vi.fn(),
     })
 
@@ -214,6 +257,7 @@ function mountResetPassword(props?: { forced?: boolean }) {
         'el-dialog': ElDialogStub,
         'el-form': ElFormStub,
         'el-form-item': ElFormItemStub,
+        CurrentPasswordResetForm: CurrentPasswordResetFormStub,
       },
     },
   })
@@ -225,7 +269,7 @@ describe('Reset password mandatory flow', () => {
     mocks.userInfo.is_edit_password = false
   })
 
-  it('auto-opens reset password in forced mode when the profile requires it', async () => {
+  it('passes forced mode to the avatar reset password entry when the profile requires it', async () => {
     mocks.userInfo.is_edit_password = true
 
     const wrapper = mountView(AvatarIndex, {
@@ -243,7 +287,6 @@ describe('Reset password mandatory flow', () => {
 
     await flushView()
 
-    expect(mocks.resetPasswordOpen).toHaveBeenCalledTimes(1)
     expect(wrapper.get('[data-test="reset-password-stub"]').attributes('data-forced')).toBe('true')
   })
 
@@ -274,7 +317,7 @@ describe('Reset password mandatory flow', () => {
     await flushView()
 
     expect(mocks.resetCurrentPassword).toHaveBeenCalledTimes(1)
-    expect(mocks.logout).toHaveBeenCalledTimes(1)
+    expect(mocks.clearToken).toHaveBeenCalledTimes(1)
     expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'login' })
     expect(wrapper.get('[data-test="reset-password-dialog"]').attributes('data-open')).toBe('false')
   })
