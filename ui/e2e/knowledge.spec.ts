@@ -3,9 +3,17 @@ import { testWithCleanup as test, expect } from './fixtures'
 import { loginAsAdmin } from './helpers/auth'
 import { uniqueKnowledgeName } from './helpers/data'
 import { getChatProviderConfig } from './helpers/chat'
+import { exactText } from './helpers/i18n'
 
 const KNOWLEDGE_UPLOAD_FIXTURE = '/opt/code/mymaxkb/ui/e2e/fixtures/knowledge-upload.txt'
 const DEFAULT_EMBEDDING_MODEL = 'BAAI/bge-m3'
+const KNOWLEDGE_HEADING = exactText('Knowledge', '知识库')
+const CREATE_BUTTON = exactText('Create', '创建')
+const UPLOAD_DOCUMENT_BUTTON = exactText('Upload Document', '上传文档')
+const NEXT_BUTTON = exactText('Next', '下一步')
+const START_IMPORT_BUTTON = exactText('Start Import', '开始导入')
+const SEARCH_BY_NAME_PLACEHOLDER = exactText('Search by name', '按名称搜索')
+const SEGMENT_RULES_TEXT = exactText('Set Segment Rules', '设置分段规则')
 
 async function ensureEmbeddingModel(page, resourceTracker) {
   return page.evaluate(
@@ -193,8 +201,8 @@ test.describe('@advisory Knowledge Base Management', () => {
   })
 
   test('should display knowledge heading and create control', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Knowledge' })).toBeVisible({ timeout: 10000 })
-    await expect(page.getByRole('button', { name: 'Create' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: KNOWLEDGE_HEADING })).toBeVisible({ timeout: 10000 })
+    await expect(page.getByRole('button', { name: CREATE_BUTTON })).toBeVisible()
   })
 
   test('should upload a document into a knowledge base', async ({ page, resourceTracker }) => {
@@ -206,26 +214,26 @@ test.describe('@advisory Knowledge Base Management', () => {
     const knowledgeName = uniqueKnowledgeName()
     const { id: knowledgeId } = await getKnowledgeTarget(page, resourceTracker, knowledgeName)
 
-    await page.goto(`/knowledge/${knowledgeId}/default/0/document`)
-    await expect(page.getByRole('button', { name: 'Upload Document' })).toBeVisible()
-    await page.getByRole('button', { name: 'Upload Document' }).click()
+    await page.goto(`/admin/knowledge/${knowledgeId}/default/0/document`)
+    await expect(page.getByRole('button', { name: UPLOAD_DOCUMENT_BUTTON })).toBeVisible()
+    await page.getByRole('button', { name: UPLOAD_DOCUMENT_BUTTON }).click()
 
     await expect(page).toHaveURL(new RegExp(`/admin/knowledge/document/upload/default/0\\?id=${knowledgeId}$`))
-    await expect(page.locator('.upload-document')).toContainText('Upload Document')
+    await expect(page.locator('.upload-document').getByText(UPLOAD_DOCUMENT_BUTTON).first()).toBeVisible()
 
     await page.locator('.el-upload__input').setInputFiles(KNOWLEDGE_UPLOAD_FIXTURE)
     await expect(page.getByText('knowledge-upload.txt', { exact: true })).toBeVisible()
 
-    await page.getByRole('button', { name: 'Next' }).click()
-    await expect(page.getByText('Set Segment Rules', { exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Start Import' })).toBeVisible()
+    await page.getByRole('button', { name: NEXT_BUTTON }).click()
+    await expect(page.getByText(SEGMENT_RULES_TEXT)).toBeVisible()
+    await expect(page.getByRole('button', { name: START_IMPORT_BUTTON })).toBeVisible()
 
-    await page.getByRole('button', { name: 'Start Import' }).click()
-    await expect(page).toHaveURL(new RegExp(`/knowledge/${knowledgeId}/default/0/document`), {
+    await page.getByRole('button', { name: START_IMPORT_BUTTON }).click()
+    await expect(page).toHaveURL(new RegExp(`/admin/knowledge/${knowledgeId}/default/0/document`), {
       timeout: 15000,
     })
 
-    const searchInput = page.getByPlaceholder('Search by name')
+    const searchInput = page.getByPlaceholder(SEARCH_BY_NAME_PLACEHOLDER)
     await searchInput.fill('knowledge-upload.txt')
     await searchInput.blur()
 
