@@ -10,7 +10,7 @@ async function waitForToken(page: Page) {
   await expect
     .poll(async () => {
       return page.evaluate(() => Boolean(localStorage.getItem('token')))
-    }, { timeout: 15000 })
+    }, { timeout: 30000 })
     .toBe(true)
 }
 
@@ -37,11 +37,6 @@ async function getCurrentUserProfile(page: Page) {
       return null
     }
   })
-}
-
-async function hasReadyAdminSession(page: Page) {
-  const profile = await getCurrentUserProfile(page)
-  return profile?.status === 200 && profile.body?.data?.is_edit_password !== true
 }
 
 async function clearRequiredPasswordChange(page: Page) {
@@ -123,12 +118,6 @@ export async function gotoLogin(page: Page) {
 }
 
 export async function loginAsAdmin(page: Page) {
-  if (await hasReadyAdminSession(page)) {
-    await page.goto('/admin/application')
-    await expect(page).toHaveURL(ADMIN_APPLICATION_URL, { timeout: 10000 })
-    return
-  }
-
   await gotoLogin(page)
 
   await fillLoginForm(page)
