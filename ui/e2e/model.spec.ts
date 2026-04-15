@@ -29,6 +29,6 @@ test.describe('@advisory Model Management', () => {
   test('should open Select Provider dialog when Add Model clicked', async ({ page }) => {
     await page.getByRole('button', { name: ADD_MODEL }).click()
     // Use el-dialog__header to avoid matching the entire dialog body with anchored regex
-    await expect(page.locator('.el-dialog__header').filter({ hasText: SELECT_PROVIDER_TITLE })).toBeVisible()
+    await expect(page.locator('.el-dialog__header h4').filter({ hasText: SELECT_PROVIDER_TITLE })).toBeVisible()
   })
 })

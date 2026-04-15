@@ -35,8 +35,7 @@ test.describe('@advisory Role Management', () => {
   test('should switch to Members tab', async ({ page }) => {
     // Wait for initial page loading to complete
     await expect(page.locator('.el-loading-mask')).toHaveCount(0, { timeout: 30000 })
-    // Click the Members radio button
-    await page.getByRole('radio', { name: MEMBER_TAB }).click()
+    await page.locator('.el-radio-button__inner').filter({ hasText: MEMBER_TAB }).click()
     // Wait for member data to load and table to appear
     await expect(page.locator('.el-table')).toBeVisible({ timeout: 15000 })
   })
