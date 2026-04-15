@@ -121,19 +121,28 @@ export async function loginAsAdmin(page: Page) {
   await gotoLogin(page)
 
   await fillLoginForm(page)
-  await page.getByRole('button', { name: 'Login' }).click()
+  await Promise.all([
+    page.waitForResponse((r) => r.url().includes('/admin/api/user/login') && r.ok()),
+    page.getByRole('button', { name: 'Login' }).click(),
+  ])
   await waitForToken(page)
 
   if (await clearRequiredPasswordChangeDialog(page)) {
     await fillLoginForm(page)
-    await page.getByRole('button', { name: 'Login' }).click()
+    await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/admin/api/user/login') && r.ok()),
+      page.getByRole('button', { name: 'Login' }).click(),
+    ])
     await waitForToken(page)
   }
 
   if (await clearRequiredPasswordChange(page)) {
     await gotoLogin(page)
     await fillLoginForm(page)
-    await page.getByRole('button', { name: 'Login' }).click()
+    await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/admin/api/user/login') && r.ok()),
+      page.getByRole('button', { name: 'Login' }).click(),
+    ])
     await waitForToken(page)
   }
 
