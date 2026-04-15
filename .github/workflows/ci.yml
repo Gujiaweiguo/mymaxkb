@@ -269,7 +269,7 @@ jobs:
         id: start-backend
         run: |
           . .venv/bin/activate
-          nohup python apps/manage.py runserver 0.0.0.0:8080 >/tmp/maxkb-web.log 2>&1 &
+          nohup gunicorn maxkb.wsgi:application -b 0.0.0.0:8080 -k gthread --threads 8 -w 1 --timeout 60 --chdir apps --access-logfile /dev/null --error-logfile /tmp/maxkb-web.log >/tmp/maxkb-web.log 2>&1 &
           echo "backend_pid=$!" >> "$GITHUB_OUTPUT"
 
       - name: Wait for backend readiness
