@@ -2,6 +2,21 @@ import { testWithCleanup as test, expect } from './fixtures'
 
 import { ADMIN_APPLICATION_URL, loginAsAdmin } from './helpers/auth'
 import { uniqueApplicationName } from './helpers/data'
+import { exactText } from './helpers/i18n'
+
+const APPLICATION_HEADING = exactText('Agent', '智能体')
+const CREATE_BUTTON = exactText('Create', '创建')
+const SIMPLE_AGENT_OPTION = exactText('Simple Agent', '简易智能体')
+const ADVANCED_AGENT_OPTION = exactText('Advanced Agent', '高级智能体')
+const IMPORT_AGENT_OPTION = exactText('Import Agent', '导入智能体')
+const SETTING_HEADING = exactText('Setting', '设置')
+const AGENT_NAME_PLACEHOLDER = exactText('Please enter the agent name', '请输入智能体名称')
+const AGENT_DESCRIPTION_PLACEHOLDER = exactText(
+  'Describe the Agent scenario and use, e.g.: XXX assistant answering user questions about XXX product usage',
+  '描述该智能体的应用场景及用途，如：XXX 小助手回答用户提出的 XXX 产品使用问题',
+)
+const SEARCH_BY_NAME_PLACEHOLDER = exactText('Search by name', '按名称搜索')
+const SAVE_BUTTON = exactText('Save', '保存')
 
 async function trackCreatedApplication(page, resourceTracker, applicationName: string) {
   let applicationId: string | null = null
@@ -45,53 +60,49 @@ test.describe('@advisory Application Management', () => {
   test('should land on the application page after login', async ({ page }) => {
     await expect(page).toHaveURL(ADMIN_APPLICATION_URL)
     await expect(page.locator('.application-manage')).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Agent' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: APPLICATION_HEADING })).toBeVisible()
   })
 
   test('should display application search and create controls', async ({ page }) => {
     await expect(page.locator('.application-manage .complex-search')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Create' })).toBeVisible()
+    await expect(page.getByRole('button', { name: CREATE_BUTTON })).toBeVisible()
   })
 
   test('should open the create application menu', async ({ page }) => {
-    await page.getByRole('button', { name: 'Create' }).click()
+    await page.getByRole('button', { name: CREATE_BUTTON }).click()
 
-    await expect(page.getByText('Simple Agent', { exact: true })).toBeVisible()
-    await expect(page.getByText('Advanced Agent', { exact: true })).toBeVisible()
-    await expect(page.getByText('Import Agent', { exact: true })).toBeVisible()
+    await expect(page.getByText(SIMPLE_AGENT_OPTION)).toBeVisible()
+    await expect(page.getByText(ADVANCED_AGENT_OPTION)).toBeVisible()
+    await expect(page.getByText(IMPORT_AGENT_OPTION)).toBeVisible()
   })
 
   test('should create an application and save configuration changes', async ({ page, resourceTracker }) => {
     const applicationName = uniqueApplicationName()
     const updatedDescription = `${applicationName} description updated in E2E`
 
-    await page.getByRole('button', { name: 'Create' }).click()
-    await page.getByText('Simple Agent', { exact: true }).click()
+    await page.getByRole('button', { name: CREATE_BUTTON }).click()
+    await page.getByText(SIMPLE_AGENT_OPTION).click()
 
-    const createDialog = page.locator('.el-dialog').filter({ has: page.getByRole('button', { name: 'Create' }) })
+    const createDialog = page.locator('.el-dialog').filter({ has: page.getByRole('button', { name: CREATE_BUTTON }) })
     await expect(createDialog).toBeVisible()
-    await createDialog.getByPlaceholder('Please enter the agent name').fill(applicationName)
-    await createDialog
-      .getByPlaceholder('Describe the Agent scenario and use, e.g.: XXX assistant answering user questions about XXX product usage')
-      .fill('E2E application configuration flow')
-    await createDialog.getByRole('button', { name: 'Create' }).click()
+    await createDialog.getByPlaceholder(AGENT_NAME_PLACEHOLDER).fill(applicationName)
+    await createDialog.getByPlaceholder(AGENT_DESCRIPTION_PLACEHOLDER).fill('E2E application configuration flow')
+    await createDialog.getByRole('button', { name: CREATE_BUTTON }).click()
 
     const applicationId = await trackCreatedApplication(page, resourceTracker, applicationName)
     await expect(page).toHaveURL(/\/application\/workspace\/[^/]+\/SIMPLE\/setting(?:$|\?|\/)/)
     await expect(page.locator('.application-setting')).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Setting' })).toBeVisible()
-    await expect(page.getByPlaceholder('Please enter the agent name')).toHaveValue(applicationName)
+    await expect(page.getByRole('heading', { name: SETTING_HEADING })).toBeVisible()
+    await expect(page.getByPlaceholder(AGENT_NAME_PLACEHOLDER)).toHaveValue(applicationName)
 
-    const descriptionInput = page.getByPlaceholder(
-      'Describe the Agent scenario and use, e.g.: XXX assistant answering user questions about XXX product usage',
-    )
+    const descriptionInput = page.getByPlaceholder(AGENT_DESCRIPTION_PLACEHOLDER)
     await descriptionInput.fill(updatedDescription)
-    await page.getByRole('button', { name: 'Save' }).click()
+    await page.getByRole('button', { name: SAVE_BUTTON }).click()
 
     await page.goto('/admin/application')
     await expect(page).toHaveURL(ADMIN_APPLICATION_URL)
 
-    const searchInput = page.getByPlaceholder('Search by name')
+    const searchInput = page.getByPlaceholder(SEARCH_BY_NAME_PLACEHOLDER)
     await searchInput.fill(applicationName)
     await searchInput.blur()
 
