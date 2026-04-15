@@ -1,5 +1,12 @@
 import { request } from '@playwright/test'
 
+const ADMIN_PASSWORD = 'TestPassword123!'
+const MAX_LOGIN_ATTEMPTS = 3
+
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 /**
  * Global setup runs once before all tests.
  * Clears the admin's forced-password-change flag so tests don't
@@ -9,26 +16,36 @@ async function globalSetup() {
   const baseURL = process.env.E2E_BASE_URL || 'http://localhost:3000'
   const apiContext = await request.newContext({ baseURL })
 
-  // Login as admin
-  const loginResponse = await apiContext.post('/admin/api/user/login', {
-    form: {
-      username: 'admin',
-      password: 'TestPassword123!',
-    },
-  })
+  let loginResponse = null
 
-  if (!loginResponse.ok()) {
-    console.warn('[global-setup] Admin login failed — skipping password flag clear')
+  for (let attempt = 1; attempt <= MAX_LOGIN_ATTEMPTS; attempt += 1) {
+    loginResponse = await apiContext.post('/admin/api/user/login', {
+      form: {
+        username: 'admin',
+        password: ADMIN_PASSWORD,
+      },
+    })
+
+    if (loginResponse.ok()) {
+      break
+    }
+
+    if (attempt < MAX_LOGIN_ATTEMPTS) {
+      console.warn(`[global-setup] Admin login attempt ${attempt} failed, retrying`)
+      await sleep(5000)
+    }
+  }
+
+  if (!loginResponse?.ok()) {
     await apiContext.dispose()
-    return
+    throw new Error('[global-setup] Admin login failed after retries')
   }
 
   const loginBody = await loginResponse.json()
   const token = loginBody?.data?.token
   if (!token) {
-    console.warn('[global-setup] No token in login response — skipping')
     await apiContext.dispose()
-    return
+    throw new Error('[global-setup] No token in login response')
   }
 
   // Check if password change is required
@@ -50,15 +67,16 @@ async function globalSetup() {
       'Content-Type': 'application/json',
     },
     data: {
-      password: 'TestPassword123!',
-      re_password: 'TestPassword123!',
+      password: ADMIN_PASSWORD,
+      re_password: ADMIN_PASSWORD,
     },
   })
 
   if (resetResponse.ok()) {
     console.log('[global-setup] Admin password-change flag cleared')
   } else {
-    console.warn('[global-setup] Failed to clear password-change flag')
+    await apiContext.dispose()
+    throw new Error('[global-setup] Failed to clear password-change flag')
   }
 
   await apiContext.dispose()
