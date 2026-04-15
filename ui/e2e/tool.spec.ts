@@ -16,12 +16,10 @@ async function createToolViaApi(page: import('@playwright/test').Page, toolName:
   const token = await page.evaluate(() => localStorage.getItem('token'))
   if (!token) return null
 
-  const baseURL = process.env.E2E_API_TARGET || 'http://127.0.0.1:8080'
-  const { request } = page.context()
-  const response = await request.post(`${baseURL}/admin/api/workspace/default/tool`, {
+  const apiBase = process.env.VITE_API_TARGET || 'http://127.0.0.1:8080'
+  const response = await page.request.post(`${apiBase}/admin/api/workspace/default/tool`, {
     headers: {
       AUTHORIZATION: `Bearer ${token}`,
-      'Content-Type': 'application/json',
     },
     data: {
       name: toolName,
@@ -30,6 +28,8 @@ async function createToolViaApi(page: import('@playwright/test').Page, toolName:
   })
 
   if (!response.ok()) {
+    const text = await response.text()
+    console.error(`createToolViaApi: ${response.status()} ${text}`)
     return null
   }
 
