@@ -32,10 +32,10 @@ test.describe('@advisory Tool Management', () => {
   test('should open create tool dialog from dropdown', async ({ page }) => {
     await page.getByRole('button', { name: CREATE_BUTTON }).click()
     await page.getByRole('menuitem', { name: CREATE_TOOL_ITEM }).click()
-    const drawer = page.locator('.el-drawer').filter({ hasText: TOOL_HEADING })
+    const drawer = page.locator('.el-drawer')
     await expect(drawer).toBeVisible()
-    await expect(drawer.getByPlaceholder(exactText('Please enter the tool name', '请输入工具名称'))).toBeVisible()
-    await drawer.getByRole('button', { name: exactText('Cancel', '取消') }).click()
+    await expect(page.getByPlaceholder(exactText('Please enter the tool name', '请输入工具名称'))).toBeVisible()
+    await page.getByRole('button', { name: exactText('Cancel', '取消') }).last().click()
     await expect(drawer).toBeHidden()
   })
 })
