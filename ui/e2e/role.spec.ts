@@ -25,20 +25,19 @@ test.describe('@advisory Role Management', () => {
   })
 
   test('should display permission configuration tab for selected role', async ({ page }) => {
-    // Default: first internal role (System admin) is auto-selected on load
-    // The permission config tab should show a table with "Module name" column
-    // First click the Permission configuration radio button to ensure it's active
-    await page.getByRole('radio', { name: PERMISSION_TAB }).click()
+    // Permission configuration is the default active tab
+    // Wait for initial page loading to complete (el-loading-mask blocks interaction)
+    await expect(page.locator('.el-loading-mask')).toHaveCount(0, { timeout: 30000 })
     // Verify the permission table has "Module name" header
     await expect(page.getByText(MODULE_NAME).first()).toBeVisible()
   })
 
   test('should switch to Members tab', async ({ page }) => {
+    // Wait for initial page loading to complete
+    await expect(page.locator('.el-loading-mask')).toHaveCount(0, { timeout: 30000 })
     // Click the Members radio button
     await page.getByRole('radio', { name: MEMBER_TAB }).click()
-    // Verify member-related content is visible (table or empty state)
-    // The member tab should show a table with Nick name / Username columns
-    // Use a common element that appears in the member tab
-    await expect(page.locator('.el-table')).toBeVisible()
+    // Wait for member data to load and table to appear
+    await expect(page.locator('.el-table')).toBeVisible({ timeout: 15000 })
   })
 })

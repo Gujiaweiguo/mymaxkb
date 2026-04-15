@@ -26,8 +26,8 @@ test.describe('@advisory Trigger Management', () => {
 
   test('should open Create Trigger drawer', async ({ page }) => {
     await page.getByRole('button', { name: CREATE_BUTTON }).click()
-    const drawer = page.locator('.el-drawer').filter({ hasText: CREATE_TRIGGER })
-    await expect(drawer).toBeVisible()
-    await expect(drawer.locator('.el-drawer__body')).toBeVisible()
+    // Use el-drawer__header to avoid strict-mode matches on hidden drawers
+    await expect(page.locator('.el-drawer__header').filter({ hasText: CREATE_TRIGGER })).toBeVisible()
+    await expect(page.locator('.el-drawer__body').last()).toBeVisible()
   })
 })
