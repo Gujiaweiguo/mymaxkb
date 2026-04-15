@@ -35,6 +35,10 @@ export function uniqueModelName(): string {
   return uniqueName('Model')
 }
 
+export function uniqueToolName(): string {
+  return uniqueName('Tool')
+}
+
 export function uniqueChatAppName(): string {
   return uniqueName('Chat App')
 }
@@ -48,7 +52,7 @@ export function timestampSuffix(): string {
 }
 
 export type TrackedResource = {
-  type: 'user' | 'workspace' | 'application' | 'knowledge' | 'model' | 'document'
+  type: 'user' | 'workspace' | 'application' | 'knowledge' | 'model' | 'document' | 'tool'
   id: string
   name?: string
 }

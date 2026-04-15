@@ -35,6 +35,7 @@ async function deleteResource(session: AdminSession, type: TrackedResource['type
     application: `/workspace/${session.workspaceId}/application/${id}`,
     knowledge: `/workspace/${session.workspaceId}/knowledge/${id}`,
     model: `/workspace/${session.workspaceId}/model/${id}`,
+    tool: `/workspace/${session.workspaceId}/tool/${id}`,
     document: `/workspace/${session.workspaceId}/knowledge/${id}`,
   }
 
