@@ -9,7 +9,7 @@ const CREATE_BUTTON = exactText('Create', '创建')
 const SIMPLE_AGENT_OPTION = exactText('Simple Agent', '简易智能体')
 const ADVANCED_AGENT_OPTION = exactText('Advanced Agent', '高级智能体')
 const IMPORT_AGENT_OPTION = exactText('Import Agent', '导入智能体')
-const SETTING_HEADING = exactText('Setting', '设置')
+const SETTING_HEADING = exactText('Settings', '设置')
 const AGENT_NAME_PLACEHOLDER = exactText('Please enter the agent name', '请输入智能体名称')
 const AGENT_DESCRIPTION_PLACEHOLDER = exactText(
   'Describe the Agent scenario and use, e.g.: XXX assistant answering user questions about XXX product usage',
