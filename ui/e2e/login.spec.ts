@@ -1,6 +1,15 @@
 import { test, expect } from '@playwright/test'
 
-import { ADMIN_APPLICATION_URL, gotoLogin, loginAsAdmin } from './helpers/auth'
+import {
+  ADMIN_APPLICATION_URL,
+  LOGIN_BTN_RE,
+  NEW_PASSWORD_RE,
+  PASSWORD_RE,
+  SAVE_BTN_RE,
+  USERNAME_RE,
+  gotoLogin,
+  loginAsAdmin,
+} from './helpers/auth'
 
 test.describe('@advisory Login Flow', () => {
   test.beforeEach(async ({ page }) => {
@@ -9,9 +18,9 @@ test.describe('@advisory Login Flow', () => {
 
   test('should display login form', async ({ page }) => {
     await expect(page).toHaveURL(/\/admin\/login(?:$|\?|\/)/)
-    await expect(page.getByPlaceholder('Please enter username')).toBeVisible()
-    await expect(page.getByPlaceholder('Please enter password')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Login' })).toBeVisible()
+    await expect(page.getByPlaceholder(USERNAME_RE)).toBeVisible()
+    await expect(page.getByPlaceholder(PASSWORD_RE)).toBeVisible()
+    await expect(page.getByRole('button', { name: LOGIN_BTN_RE })).toBeVisible()
   })
 
   test('should login with valid credentials', async ({ page }) => {
@@ -65,37 +74,37 @@ test.describe('@advisory Login Flow', () => {
     })
 
     await gotoLogin(page)
-    await page.getByPlaceholder('Please enter username').fill(username)
-    await page.getByPlaceholder('Please enter password').fill(initialPassword)
-    await page.getByRole('button', { name: 'Login' }).click()
+    await page.getByPlaceholder(USERNAME_RE).fill(username)
+    await page.getByPlaceholder(PASSWORD_RE).fill(initialPassword)
+    await page.getByRole('button', { name: LOGIN_BTN_RE }).click()
 
     await expect(page).toHaveURL(/\/admin\/force-password-change(?:$|\?|\/)/)
 
-    const passwordInputs = page.getByPlaceholder('Please enter your new password')
+    const passwordInputs = page.getByPlaceholder(NEW_PASSWORD_RE)
     await passwordInputs.nth(0).fill(nextPassword)
     await passwordInputs.nth(1).fill(nextPassword)
-    await page.getByRole('button', { name: 'Save' }).click()
+    await page.getByRole('button', { name: SAVE_BTN_RE }).click()
 
     await expect(page).toHaveURL(/\/admin\/login(?:$|\?|\/)/)
 
-    await page.getByPlaceholder('Please enter username').fill(username)
-    await page.getByPlaceholder('Please enter password').fill(nextPassword)
-    await page.getByRole('button', { name: 'Login' }).click()
+    await page.getByPlaceholder(USERNAME_RE).fill(username)
+    await page.getByPlaceholder(PASSWORD_RE).fill(nextPassword)
+    await page.getByRole('button', { name: LOGIN_BTN_RE }).click()
 
     await expect(page).toHaveURL(ADMIN_APPLICATION_URL)
   })
 
   test('should show error with invalid credentials', async ({ page }) => {
-    await page.getByPlaceholder('Please enter username').fill('admin')
-    await page.getByPlaceholder('Please enter password').fill('WrongPassword')
-    await page.getByRole('button', { name: 'Login' }).click()
+    await page.getByPlaceholder(USERNAME_RE).fill('nonexistent_test_user')
+    await page.getByPlaceholder(PASSWORD_RE).fill('WrongPassword123!')
+    await page.getByRole('button', { name: LOGIN_BTN_RE }).click()
 
     await expect(page).toHaveURL(/\/admin\/login(?:$|\?|\/)/)
-    await expect(page.getByPlaceholder('Please enter username')).toBeVisible()
+    await expect(page.getByPlaceholder(USERNAME_RE)).toBeVisible()
   })
 
   test('should show validation for empty fields', async ({ page }) => {
-    await page.getByRole('button', { name: 'Login' }).click()
+    await page.getByRole('button', { name: LOGIN_BTN_RE }).click()
 
     await expect(page.locator('.login-form .el-form-item__error')).toHaveCount(2)
   })
