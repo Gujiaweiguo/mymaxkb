@@ -13,28 +13,29 @@ const DELETE_MENU_ITEM = exactText('Delete', '删除')
 const CONFIRM_BUTTON = exactText('OK', '确定')
 
 async function createToolViaApi(page: import('@playwright/test').Page, toolName: string): Promise<string | null> {
-  const token = await page.evaluate(() => localStorage.getItem('token'))
-  if (!token) return null
+  const toolId = await page.evaluate(async (name) => {
+    const token = localStorage.getItem('token')
+    const workspaceId = localStorage.getItem('workspace_id') || 'default'
+    if (!token) return null
 
-  const apiBase = process.env.VITE_API_TARGET || 'http://127.0.0.1:8080'
-  const response = await page.request.post(`${apiBase}/admin/api/workspace/default/tool`, {
-    headers: {
-      AUTHORIZATION: `Bearer ${token}`,
-    },
-    data: {
-      name: toolName,
-      code: 'def main():\n    return {"result": "e2e test"}',
-    },
-  })
+    const response = await fetch(`/admin/api/workspace/${workspaceId}/tool`, {
+      method: 'POST',
+      headers: {
+        AUTHORIZATION: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name,
+        code: 'def main():\n    return {"result": "e2e test"}',
+      }),
+    })
 
-  if (!response.ok()) {
-    const text = await response.text()
-    console.error(`createToolViaApi: ${response.status()} ${text}`)
-    return null
-  }
+    if (!response.ok) return null
+    const body = await response.json()
+    return body?.data?.id ?? null
+  }, toolName)
 
-  const body = await response.json()
-  return body?.data?.id ?? null
+  return toolId
 }
 
 test.describe('@advisory Tool Management', () => {
@@ -57,6 +58,9 @@ test.describe('@advisory Tool Management', () => {
 
   test('should create a custom tool via API and verify it appears', async ({ page, resourceTracker }) => {
     const toolName = uniqueToolName()
+    const hasToken = await page.evaluate(() => Boolean(localStorage.getItem('token')))
+    expect(hasToken, 'admin token must exist in localStorage after login').toBe(true)
+
     const toolId = await createToolViaApi(page, toolName)
 
     expect(toolId).toBeTruthy()
