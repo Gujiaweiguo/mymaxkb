@@ -13,41 +13,28 @@ const DELETE_MENU_ITEM = exactText('Delete', '删除')
 const CONFIRM_BUTTON = exactText('OK', '确定')
 
 async function createToolViaApi(page: import('@playwright/test').Page, toolName: string): Promise<string | null> {
-  const toolId = await page.evaluate(async (name) => {
-    const token = localStorage.getItem('token')
-    const workspaceId = localStorage.getItem('workspace_id') || 'default'
-    if (!token) {
-      console.error('createToolViaApi: no token in localStorage')
-      return null
-    }
+  const token = await page.evaluate(() => localStorage.getItem('token'))
+  if (!token) return null
 
-    try {
-      const response = await fetch(`/admin/api/workspace/${workspaceId}/tool`, {
-        method: 'POST',
-        headers: {
-          AUTHORIZATION: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name,
-          code: 'def main():\n    return {"result": "e2e test"}',
-        }),
-      })
+  const baseURL = process.env.E2E_API_TARGET || 'http://127.0.0.1:8080'
+  const { request } = page.context()
+  const response = await request.post(`${baseURL}/admin/api/workspace/default/tool`, {
+    headers: {
+      AUTHORIZATION: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    data: {
+      name: toolName,
+      code: 'def main():\n    return {"result": "e2e test"}',
+    },
+  })
 
-      const body = await response.json()
-      if (!response.ok) {
-        console.error('createToolViaApi: API error', response.status, JSON.stringify(body))
-        return null
-      }
+  if (!response.ok()) {
+    return null
+  }
 
-      return body?.data?.id ?? null
-    } catch (err) {
-      console.error('createToolViaApi: fetch error', err)
-      return null
-    }
-  }, toolName)
-
-  return toolId
+  const body = await response.json()
+  return body?.data?.id ?? null
 }
 
 test.describe('@advisory Tool Management', () => {
