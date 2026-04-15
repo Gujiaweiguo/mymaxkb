@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { USERNAME_RE, PASSWORD_RE } from './helpers/auth'
 
 const ADMIN_LOGIN_URL = /\/admin\/login(?:$|\?|\/)/
 const CHAT_BASE = process.env.E2E_CHAT_BASE_URL || 'http://localhost:3001'
@@ -10,8 +11,8 @@ test.describe('@advisory Entry path normalization', () => {
 
     await expect(page).not.toHaveURL(/\/admin\/\.html$/)
     await expect(page.locator('.not-found-container')).toHaveCount(0)
-    await expect(page.getByPlaceholder('Please enter username')).toBeVisible()
-    await expect(page.getByPlaceholder('Please enter password')).toBeVisible()
+    await expect(page.getByPlaceholder(USERNAME_RE)).toBeVisible()
+    await expect(page.getByPlaceholder(PASSWORD_RE)).toBeVisible()
   })
 
   test('should redirect /admin.html to admin login', async ({ page }) => {
@@ -19,8 +20,8 @@ test.describe('@advisory Entry path normalization', () => {
     await page.waitForLoadState('networkidle')
 
     await expect(page).toHaveURL(ADMIN_LOGIN_URL)
-    await expect(page.getByPlaceholder('Please enter username')).toBeVisible()
-    await expect(page.getByPlaceholder('Please enter password')).toBeVisible()
+    await expect(page.getByPlaceholder(USERNAME_RE)).toBeVisible()
+    await expect(page.getByPlaceholder(PASSWORD_RE)).toBeVisible()
   })
 
   test('should redirect /chat/.html to chat root instead of showing 404', async ({ page }) => {
