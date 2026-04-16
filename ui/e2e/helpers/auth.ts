@@ -118,14 +118,28 @@ export async function gotoLogin(page: Page) {
 }
 
 async function submitLoginAndWaitForToken(page: Page) {
-  await page.getByRole('button', { name: LOGIN_BTN_RE }).click()
+  const loginBtn = page.getByRole('button', { name: LOGIN_BTN_RE })
+
+  // Ensure button is fully interactive (SPA hydration complete)
+  await expect(loginBtn).toBeEnabled()
+
+  // Click and wait for the login flow to produce a result
+  await loginBtn.click()
+
   try {
-    await waitForToken(page)
+    // Wait for either navigation away from login OR token to appear
+    await Promise.race([
+      expect(page).not.toHaveURL(ADMIN_LOGIN_URL, { timeout: 30000 }),
+      waitForToken(page),
+    ])
   } catch (e) {
+    // Retry: click may not have registered (SPA hydration race)
     const stillOnLogin = await page.getByPlaceholder(USERNAME_RE).isVisible().catch(() => false)
     if (stillOnLogin) {
+      await page.waitForTimeout(500) // Let SPA fully hydrate
       await fillLoginForm(page)
-      await page.getByRole('button', { name: LOGIN_BTN_RE }).click()
+      await expect(loginBtn).toBeEnabled()
+      await loginBtn.click()
       await waitForToken(page)
     } else {
       throw e
