@@ -117,24 +117,37 @@ export async function gotoLogin(page: Page) {
   await expect(page.getByPlaceholder(PASSWORD_RE)).toBeVisible()
 }
 
+async function submitLoginAndWaitForToken(page: Page) {
+  await page.getByRole('button', { name: LOGIN_BTN_RE }).click()
+  try {
+    await waitForToken(page)
+  } catch (e) {
+    const stillOnLogin = await page.getByPlaceholder(USERNAME_RE).isVisible().catch(() => false)
+    if (stillOnLogin) {
+      await fillLoginForm(page)
+      await page.getByRole('button', { name: LOGIN_BTN_RE }).click()
+      await waitForToken(page)
+    } else {
+      throw e
+    }
+  }
+}
+
 export async function loginAsAdmin(page: Page) {
   await gotoLogin(page)
 
   await fillLoginForm(page)
-  await page.getByRole('button', { name: LOGIN_BTN_RE }).click()
-  await waitForToken(page)
+  await submitLoginAndWaitForToken(page)
 
   if (await clearRequiredPasswordChangeDialog(page)) {
     await fillLoginForm(page)
-    await page.getByRole('button', { name: LOGIN_BTN_RE }).click()
-    await waitForToken(page)
+    await submitLoginAndWaitForToken(page)
   }
 
   if (await clearRequiredPasswordChange(page)) {
     await gotoLogin(page)
     await fillLoginForm(page)
-    await page.getByRole('button', { name: LOGIN_BTN_RE }).click()
-    await waitForToken(page)
+    await submitLoginAndWaitForToken(page)
   }
 
   await expect(page).toHaveURL(ADMIN_APPLICATION_URL, { timeout: 10000 })

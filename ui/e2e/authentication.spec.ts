@@ -15,7 +15,7 @@ test.describe('@advisory Authentication Settings', () => {
 
   test('should navigate to the authentication page', async ({ page }) => {
     await expect(page).toHaveURL(/\/admin\/system\/authentication(?:$|\?|\/)/)
-    await expect(page.getByText(AUTH_TITLE).first()).toBeVisible()
+    await expect(page.locator('.authentication-setting h5').filter({ hasText: AUTH_TITLE })).toBeVisible()
   })
 
   test('should display Login Setting tab in CE', async ({ page }) => {
