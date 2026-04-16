@@ -198,3 +198,4 @@ config.yml
 .sisyphus/
 .ruff_cache/
 .perm_check
+ui/test-results/
