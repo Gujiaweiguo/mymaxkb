@@ -19,7 +19,7 @@ test.describe('@advisory Shared Resources', () => {
 
     await expect(page).toHaveURL(/\/admin\/system\/shared\/knowledge(?:$|\?|\/)/)
     await expect(page.locator('.el-breadcrumb').getByText(SHARED_RESOURCES).first()).toBeVisible()
-    await expect(page.locator('.content-container')).toBeVisible()
+    await expect(page.locator('.complex-search__left')).toBeVisible()
   })
 
   test('should display shared tool page', async ({ page }) => {
@@ -28,7 +28,7 @@ test.describe('@advisory Shared Resources', () => {
 
     await expect(page).toHaveURL(/\/admin\/system\/shared\/tool(?:$|\?|\/)/)
     await expect(page.locator('.el-breadcrumb').getByText(SHARED_RESOURCES).first()).toBeVisible()
-    await expect(page.locator('.content-container')).toBeVisible()
+    await expect(page.locator('.complex-search__left')).toBeVisible()
     await expect(page.getByText(TOOL).first()).toBeVisible()
     await expect(page.getByText('Skills').first()).toBeVisible()
     await expect(page.getByText('MCP').first()).toBeVisible()
