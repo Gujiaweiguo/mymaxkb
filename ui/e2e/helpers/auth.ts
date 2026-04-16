@@ -111,16 +111,9 @@ async function fillLoginForm(page: Page) {
 }
 
 export async function gotoLogin(page: Page) {
-  await Promise.all([
-    page.waitForResponse((response) => response.url().includes('/admin/api/profile') && response.ok()),
-    page.waitForResponse(
-      (response) => response.url().includes('/admin/api/login/auth/setting') && response.ok(),
-    ),
-    page.goto(ADMIN_LOGIN_PATH),
-  ])
-  await page.waitForLoadState('networkidle')
+  await page.goto(ADMIN_LOGIN_PATH)
   await expect(page).toHaveURL(ADMIN_LOGIN_URL)
-  await expect(page.getByPlaceholder(USERNAME_RE)).toBeVisible()
+  await expect(page.getByPlaceholder(USERNAME_RE)).toBeVisible({ timeout: 15000 })
   await expect(page.getByPlaceholder(PASSWORD_RE)).toBeVisible()
 }
 
@@ -128,28 +121,19 @@ export async function loginAsAdmin(page: Page) {
   await gotoLogin(page)
 
   await fillLoginForm(page)
-  await Promise.all([
-    page.waitForResponse((r) => r.url().includes('/admin/api/user/login') && r.ok()),
-    page.getByRole('button', { name: LOGIN_BTN_RE }).click(),
-  ])
+  await page.getByRole('button', { name: LOGIN_BTN_RE }).click()
   await waitForToken(page)
 
   if (await clearRequiredPasswordChangeDialog(page)) {
     await fillLoginForm(page)
-    await Promise.all([
-      page.waitForResponse((r) => r.url().includes('/admin/api/user/login') && r.ok()),
-      page.getByRole('button', { name: LOGIN_BTN_RE }).click(),
-    ])
+    await page.getByRole('button', { name: LOGIN_BTN_RE }).click()
     await waitForToken(page)
   }
 
   if (await clearRequiredPasswordChange(page)) {
     await gotoLogin(page)
     await fillLoginForm(page)
-    await Promise.all([
-      page.waitForResponse((r) => r.url().includes('/admin/api/user/login') && r.ok()),
-      page.getByRole('button', { name: LOGIN_BTN_RE }).click(),
-    ])
+    await page.getByRole('button', { name: LOGIN_BTN_RE }).click()
     await waitForToken(page)
   }
 

@@ -7,7 +7,7 @@ export default defineConfig({
   retries: 2,
   timeout: process.env.CI ? 60000 : 30000,
   workers: process.env.CI ? 2 : 1,
-  globalSetup: process.env.CI ? './e2e/global-setup.ts' : undefined,
+  globalSetup: './e2e/global-setup.ts',
   reporter: [
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
     ['json', { outputFile: 'playwright-report/results.json' }],

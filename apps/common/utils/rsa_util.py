@@ -73,6 +73,16 @@ def generate_rsa_key_pair():
     return key_pair["value"].decode(), key_pair["key"].decode()
 
 
+def _reset_key_pair(system_setting: SystemSetting) -> None:
+    kv = generate()
+    system_setting.meta = {
+        **system_setting.meta,
+        "key": kv["key"].decode(),
+        "value": kv["value"].decode(),
+    }
+    system_setting.save(update_fields=["meta"])
+
+
 def get_key_pair():
     rsa_value = rsa_cache.get(cache_key)
     if rsa_value is None:
@@ -101,7 +111,10 @@ def get_key_pair_by_sql():
         )
         system_setting.save()
     else:
-        _ensure_private_key_secret(system_setting, secret_code)
+        try:
+            _ensure_private_key_secret(system_setting, secret_code)
+        except (ValueError, TypeError, IndexError):
+            _reset_key_pair(system_setting)
     return system_setting.meta
 
 
