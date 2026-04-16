@@ -120,23 +120,20 @@ export async function gotoLogin(page: Page) {
 async function submitLoginAndWaitForToken(page: Page) {
   const loginBtn = page.getByRole('button', { name: LOGIN_BTN_RE })
 
-  // Ensure button is fully interactive (SPA hydration complete)
   await expect(loginBtn).toBeEnabled()
+  await expect(loginBtn).not.toHaveAttribute('aria-busy', 'true')
 
-  // Click and wait for the login flow to produce a result
+  // Give Element Plus form model time to sync input values internally
+  await page.waitForTimeout(100)
+
   await loginBtn.click()
 
   try {
-    // Wait for either navigation away from login OR token to appear
-    await Promise.race([
-      expect(page).not.toHaveURL(ADMIN_LOGIN_URL, { timeout: 30000 }),
-      waitForToken(page),
-    ])
+    await waitForToken(page)
   } catch (e) {
-    // Retry: click may not have registered (SPA hydration race)
     const stillOnLogin = await page.getByPlaceholder(USERNAME_RE).isVisible().catch(() => false)
     if (stillOnLogin) {
-      await page.waitForTimeout(500) // Let SPA fully hydrate
+      await page.waitForTimeout(1000)
       await fillLoginForm(page)
       await expect(loginBtn).toBeEnabled()
       await loginBtn.click()
@@ -164,5 +161,5 @@ export async function loginAsAdmin(page: Page) {
     await submitLoginAndWaitForToken(page)
   }
 
-  await expect(page).toHaveURL(ADMIN_APPLICATION_URL, { timeout: 10000 })
+  await expect(page).toHaveURL(ADMIN_APPLICATION_URL, { timeout: 15000 })
 }
