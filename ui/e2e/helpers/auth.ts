@@ -113,6 +113,7 @@ async function fillLoginForm(page: Page) {
 export async function gotoLogin(page: Page) {
   await page.goto(ADMIN_LOGIN_PATH)
   await expect(page).toHaveURL(ADMIN_LOGIN_URL)
+  await page.waitForLoadState('networkidle')
   await expect(page.getByPlaceholder(USERNAME_RE)).toBeVisible({ timeout: 15000 })
   await expect(page.getByPlaceholder(PASSWORD_RE)).toBeVisible()
 }
@@ -124,7 +125,7 @@ async function submitLoginAndWaitForToken(page: Page) {
   await expect(loginBtn).not.toHaveAttribute('aria-busy', 'true')
 
   // Give Element Plus form model time to sync input values internally
-  await page.waitForTimeout(100)
+  await page.waitForTimeout(300)
 
   await loginBtn.click()
 
