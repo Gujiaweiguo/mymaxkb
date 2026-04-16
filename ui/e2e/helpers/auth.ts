@@ -132,16 +132,12 @@ async function submitLoginAndWaitForToken(page: Page) {
   try {
     await waitForToken(page)
   } catch (e) {
-    const stillOnLogin = await page.getByPlaceholder(USERNAME_RE).isVisible().catch(() => false)
-    if (stillOnLogin) {
-      await page.waitForTimeout(1000)
-      await fillLoginForm(page)
-      await expect(loginBtn).toBeEnabled()
-      await loginBtn.click()
-      await waitForToken(page)
-    } else {
-      throw e
-    }
+    // Click may not have registered — re-navigate for a clean SPA state
+    await gotoLogin(page)
+    await fillLoginForm(page)
+    await expect(loginBtn).toBeEnabled()
+    await loginBtn.click()
+    await waitForToken(page)
   }
 }
 
