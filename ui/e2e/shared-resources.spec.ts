@@ -15,7 +15,7 @@ test.describe('@advisory Shared Resources', () => {
 
   test('should display shared knowledge page', async ({ page }) => {
     await page.goto('/admin/system/shared/knowledge')
-    await expect(page.locator('.el-loading-mask')).toHaveCount(0, { timeout: 30000 })
+    await expect(page.locator('.el-loading-mask')).toHaveCount(0, { timeout: 30_000 })
 
     await expect(page).toHaveURL(/\/admin\/system\/shared\/knowledge(?:$|\?|\/)/)
     await expect(page.locator('.el-breadcrumb').getByText(SHARED_RESOURCES).first()).toBeVisible()
@@ -25,7 +25,7 @@ test.describe('@advisory Shared Resources', () => {
 
   test('should display shared tool page', async ({ page }) => {
     await page.goto('/admin/system/shared/tool')
-    await expect(page.locator('.el-loading-mask')).toHaveCount(0, { timeout: 30000 })
+    await expect(page.locator('.el-loading-mask')).toHaveCount(0, { timeout: 30_000 })
 
     await expect(page).toHaveURL(/\/admin\/system\/shared\/tool(?:$|\?|\/)/)
     await expect(page.locator('.el-breadcrumb').getByText(SHARED_RESOURCES).first()).toBeVisible()
@@ -38,7 +38,7 @@ test.describe('@advisory Shared Resources', () => {
 
   test('should display shared model page', async ({ page }) => {
     await page.goto('/admin/system/shared/model')
-    await expect(page.locator('.el-loading-mask')).toHaveCount(0, { timeout: 30000 })
+    await expect(page.locator('.el-loading-mask')).toHaveCount(0, { timeout: 30_000 })
 
     await expect(page).toHaveURL(/\/admin\/system\/shared\/model(?:$|\?|\/)/)
     await expect(page.locator('.el-breadcrumb').getByText(SHARED_RESOURCES).first()).toBeVisible()
