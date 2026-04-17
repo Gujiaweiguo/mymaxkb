@@ -1,7 +1,7 @@
 import { testWithCleanup as test, expect } from './fixtures'
 
 import { loginAsAdmin } from './helpers/auth'
-import { uniqueKnowledgeName } from './helpers/data'
+import { uniqueKnowledgeName, uniqueDocumentName } from './helpers/data'
 import { getChatProviderConfig } from './helpers/chat'
 import { exactText } from './helpers/i18n'
 
@@ -189,6 +189,72 @@ async function deleteUploadedDocument(page, knowledgeId: string, documentName: s
   }, { targetKnowledgeId: knowledgeId, targetDocumentName: documentName })
 }
 
+interface CreatedDocument {
+  id: string
+  name: string
+}
+
+async function createDocumentViaApi(
+  page: import('@playwright/test').Page,
+  knowledgeId: string,
+  documentName: string,
+): Promise<CreatedDocument> {
+  const result = await page.evaluate(
+    async ({ targetKnowledgeId, targetDocumentName }) => {
+      const token = localStorage.getItem('token')
+      const workspaceId = localStorage.getItem('workspace_id') || 'default'
+      if (!token) {
+        throw new Error('Missing admin token while creating document')
+      }
+
+      const response = await fetch(
+        `/admin/api/workspace/${workspaceId}/knowledge/${targetKnowledgeId}/document`,
+        {
+          method: 'POST',
+          headers: {
+            AUTHORIZATION: `Bearer ${token}`,
+            'Accept-Language': 'en-US',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: targetDocumentName,
+            paragraphs: [{ content: `E2E test content for ${targetDocumentName}` }],
+          }),
+        },
+      )
+      const body = await response.json()
+      return { id: body?.data?.id ?? null, name: targetDocumentName }
+    },
+    { targetKnowledgeId: knowledgeId, targetDocumentName: documentName },
+  )
+  if (!result.id) {
+    throw new Error(`Failed to create document "${documentName}" via API`)
+  }
+  return result as CreatedDocument
+}
+
+async function deleteDocumentById(page: import('@playwright/test').Page, knowledgeId: string, documentId: string) {
+  await page.evaluate(
+    async ({ targetKnowledgeId, targetDocumentId }) => {
+      const token = localStorage.getItem('token')
+      const workspaceId = localStorage.getItem('workspace_id') || 'default'
+      if (!token) return
+
+      await fetch(
+        `/admin/api/workspace/${workspaceId}/knowledge/${targetKnowledgeId}/document/${targetDocumentId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            AUTHORIZATION: `Bearer ${token}`,
+            'Accept-Language': 'en-US',
+          },
+        },
+      )
+    },
+    { targetKnowledgeId: knowledgeId, targetDocumentId: documentId },
+  )
+}
+
 test.describe('@advisory Knowledge Base Management', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page)
@@ -239,5 +305,149 @@ test.describe('@advisory Knowledge Base Management', () => {
 
     await expect(page.locator('tr', { hasText: 'knowledge-upload.txt' })).toBeVisible()
     await deleteUploadedDocument(page, knowledgeId, 'knowledge-upload.txt')
+  })
+
+  test('should list a newly created document', async ({ page, resourceTracker }) => {
+    test.skip(
+      !(await hasAvailableEmbeddingPrerequisite(page)),
+      'Requires an existing embedding model or SiliconCloud credentials to provision one.',
+    )
+
+    const knowledgeName = uniqueKnowledgeName()
+    const { id: knowledgeId } = await getKnowledgeTarget(page, resourceTracker, knowledgeName)
+    const docName = uniqueDocumentName()
+
+    const doc = await createDocumentViaApi(page, knowledgeId, docName)
+
+    const found = await page.evaluate(
+      async ({ targetKnowledgeId, targetDocName }) => {
+        const token = localStorage.getItem('token')
+        const workspaceId = localStorage.getItem('workspace_id') || 'default'
+        if (!token) return false
+
+        const response = await fetch(
+          `/admin/api/workspace/${workspaceId}/knowledge/${targetKnowledgeId}/document/1/50`,
+          {
+            headers: {
+              AUTHORIZATION: `Bearer ${token}`,
+              'Accept-Language': 'en-US',
+            },
+          },
+        )
+        const body = await response.json()
+        return (body?.data?.records ?? []).some(
+          (item: { name: string }) => item.name === targetDocName,
+        )
+      },
+      { targetKnowledgeId: knowledgeId, targetDocName: docName },
+    )
+    expect(found).toBe(true)
+
+    await page.goto(`/admin/knowledge/${knowledgeId}/default/0/document`)
+    await expect(page.locator('tr', { hasText: docName })).toBeVisible()
+
+    await deleteDocumentById(page, knowledgeId, doc.id)
+  })
+
+  test('should delete a document and verify it disappears', async ({ page, resourceTracker }) => {
+    test.skip(
+      !(await hasAvailableEmbeddingPrerequisite(page)),
+      'Requires an existing embedding model or SiliconCloud credentials to provision one.',
+    )
+
+    const knowledgeName = uniqueKnowledgeName()
+    const { id: knowledgeId } = await getKnowledgeTarget(page, resourceTracker, knowledgeName)
+    const docName = uniqueDocumentName()
+
+    const doc = await createDocumentViaApi(page, knowledgeId, docName)
+
+    await deleteDocumentById(page, knowledgeId, doc.id)
+
+    const foundAfterDelete = await page.evaluate(
+      async ({ targetKnowledgeId, targetDocName }) => {
+        const token = localStorage.getItem('token')
+        const workspaceId = localStorage.getItem('workspace_id') || 'default'
+        if (!token) return false
+
+        const response = await fetch(
+          `/admin/api/workspace/${workspaceId}/knowledge/${targetKnowledgeId}/document/1/50`,
+          {
+            headers: {
+              AUTHORIZATION: `Bearer ${token}`,
+              'Accept-Language': 'en-US',
+            },
+          },
+        )
+        const body = await response.json()
+        return (body?.data?.records ?? []).some(
+          (item: { name: string }) => item.name === targetDocName,
+        )
+      },
+      { targetKnowledgeId: knowledgeId, targetDocName: docName },
+    )
+    expect(foundAfterDelete).toBe(false)
+  })
+
+  test('should edit document name and verify persistence', async ({ page, resourceTracker }) => {
+    test.skip(
+      !(await hasAvailableEmbeddingPrerequisite(page)),
+      'Requires an existing embedding model or SiliconCloud credentials to provision one.',
+    )
+
+    const knowledgeName = uniqueKnowledgeName()
+    const { id: knowledgeId } = await getKnowledgeTarget(page, resourceTracker, knowledgeName)
+    const docName = uniqueDocumentName()
+    const updatedName = uniqueDocumentName()
+
+    const doc = await createDocumentViaApi(page, knowledgeId, docName)
+
+    const editResult = await page.evaluate(
+      async ({ targetKnowledgeId, targetDocumentId, newName }) => {
+        const token = localStorage.getItem('token')
+        const workspaceId = localStorage.getItem('workspace_id') || 'default'
+        if (!token) return null
+
+        const response = await fetch(
+          `/admin/api/workspace/${workspaceId}/knowledge/${targetKnowledgeId}/document/${targetDocumentId}`,
+          {
+            method: 'PUT',
+            headers: {
+              AUTHORIZATION: `Bearer ${token}`,
+              'Accept-Language': 'en-US',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name: newName }),
+          },
+        )
+        const body = await response.json()
+        return body?.data?.name ?? null
+      },
+      { targetKnowledgeId: knowledgeId, targetDocumentId: doc.id, newName: updatedName },
+    )
+    expect(editResult).toBe(updatedName)
+
+    const persistedName = await page.evaluate(
+      async ({ targetKnowledgeId, targetDocumentId }) => {
+        const token = localStorage.getItem('token')
+        const workspaceId = localStorage.getItem('workspace_id') || 'default'
+        if (!token) return null
+
+        const response = await fetch(
+          `/admin/api/workspace/${workspaceId}/knowledge/${targetKnowledgeId}/document/${targetDocumentId}`,
+          {
+            headers: {
+              AUTHORIZATION: `Bearer ${token}`,
+              'Accept-Language': 'en-US',
+            },
+          },
+        )
+        const body = await response.json()
+        return body?.data?.name ?? null
+      },
+      { targetKnowledgeId: knowledgeId, targetDocumentId: doc.id },
+    )
+    expect(persistedName).toBe(updatedName)
+
+    await deleteDocumentById(page, knowledgeId, doc.id)
   })
 })
