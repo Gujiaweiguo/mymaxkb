@@ -28,6 +28,33 @@ test.describe('@advisory Login Flow', () => {
     await expect(page).toHaveURL(ADMIN_APPLICATION_URL)
   })
 
+  test('form inputs retain values after fill — guards page readiness', async ({ page }) => {
+    const usernameInput = page.getByPlaceholder(USERNAME_RE)
+    const passwordInput = page.getByPlaceholder(PASSWORD_RE)
+
+    await usernameInput.fill('admin')
+    await passwordInput.fill('TestPassword123!')
+
+    await expect(usernameInput).toHaveValue('admin')
+    await expect(passwordInput).toHaveValue('TestPassword123!')
+  })
+
+  test('raw form submit persists auth token in localStorage', async ({ page }) => {
+    await page.getByPlaceholder(USERNAME_RE).fill('admin')
+    await page.getByPlaceholder(PASSWORD_RE).fill('TestPassword123!')
+
+    await page.waitForTimeout(300)
+    await page.getByRole('button', { name: LOGIN_BTN_RE }).click()
+
+    await expect
+      .poll(async () => page.evaluate(() => Boolean(localStorage.getItem('token'))), {
+        timeout: 30000,
+      })
+      .toBe(true)
+
+    await expect(page).toHaveURL(ADMIN_APPLICATION_URL, { timeout: 15000 })
+  })
+
   test('should force a newly created local user to change password on first login', async ({ page }) => {
     await loginAsAdmin(page)
 
