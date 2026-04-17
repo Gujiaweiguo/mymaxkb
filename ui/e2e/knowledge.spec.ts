@@ -14,6 +14,8 @@ const NEXT_BUTTON = exactText('Next', '下一步')
 const START_IMPORT_BUTTON = exactText('Start Import', '开始导入')
 const SEARCH_BY_NAME_PLACEHOLDER = exactText('Search by name', '按名称搜索')
 const SEGMENT_RULES_TEXT = exactText('Set Segment Rules', '设置分段规则')
+const FILE_STATUS_HEADING = exactText('File Status', '文件状态')
+const DOCUMENT_HEADING = exactText('Documents', '文档')
 
 async function ensureEmbeddingModel(page, resourceTracker) {
   return page.evaluate(
@@ -447,6 +449,64 @@ test.describe('@advisory Knowledge Base Management', () => {
       { targetKnowledgeId: knowledgeId, targetDocumentId: doc.id },
     )
     expect(persistedName).toBe(updatedName)
+
+    await deleteDocumentById(page, knowledgeId, doc.id)
+  })
+
+  test('should filter documents by name via search input', async ({ page, resourceTracker }) => {
+    test.skip(
+      !(await hasAvailableEmbeddingPrerequisite(page)),
+      'Requires an existing embedding model or SiliconCloud credentials to provision one.',
+    )
+
+    const knowledgeName = uniqueKnowledgeName()
+    const { id: knowledgeId } = await getKnowledgeTarget(page, resourceTracker, knowledgeName)
+    const docNameA = uniqueDocumentName()
+    const docNameB = uniqueDocumentName()
+
+    const docA = await createDocumentViaApi(page, knowledgeId, docNameA)
+    const docB = await createDocumentViaApi(page, knowledgeId, docNameB)
+
+    await page.goto(`/admin/knowledge/${knowledgeId}/default/0/document`)
+    await expect(page.locator('tr', { hasText: docNameA })).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('tr', { hasText: docNameB })).toBeVisible()
+
+    const searchInput = page.getByPlaceholder(SEARCH_BY_NAME_PLACEHOLDER)
+    await searchInput.fill(docNameA)
+    await searchInput.blur()
+
+    await expect(page.locator('tr', { hasText: docNameA })).toBeVisible()
+    await expect(page.locator('tr', { hasText: docNameB })).not.toBeVisible()
+
+    await searchInput.fill('')
+    await searchInput.blur()
+
+    await expect(page.locator('tr', { hasText: docNameA })).toBeVisible()
+    await expect(page.locator('tr', { hasText: docNameB })).toBeVisible()
+
+    await deleteDocumentById(page, knowledgeId, docA.id)
+    await deleteDocumentById(page, knowledgeId, docB.id)
+  })
+
+  test('should display document table shell and status column header for a created document', async ({
+    page,
+    resourceTracker,
+  }) => {
+    test.skip(
+      !(await hasAvailableEmbeddingPrerequisite(page)),
+      'Requires an existing embedding model or SiliconCloud credentials to provision one.',
+    )
+
+    const knowledgeName = uniqueKnowledgeName()
+    const { id: knowledgeId } = await getKnowledgeTarget(page, resourceTracker, knowledgeName)
+    const docName = uniqueDocumentName()
+
+    const doc = await createDocumentViaApi(page, knowledgeId, docName)
+
+    await page.goto(`/admin/knowledge/${knowledgeId}/default/0/document`)
+    await expect(page.getByRole('heading', { name: DOCUMENT_HEADING })).toBeVisible()
+    await expect(page.locator('th', { hasText: FILE_STATUS_HEADING })).toBeVisible()
+    await expect(page.locator('tr', { hasText: docName })).toBeVisible({ timeout: 15000 })
 
     await deleteDocumentById(page, knowledgeId, doc.id)
   })
