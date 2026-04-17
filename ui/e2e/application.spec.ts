@@ -1,7 +1,9 @@
+import { type Page } from '@playwright/test'
+
 import { testWithCleanup as test, expect } from './fixtures'
 
 import { ADMIN_APPLICATION_URL, loginAsAdmin } from './helpers/auth'
-import { uniqueApplicationName } from './helpers/data'
+import { uniqueApplicationName, type ResourceTracker } from './helpers/data'
 import { exactText } from './helpers/i18n'
 
 const APPLICATION_HEADING = exactText('Agent', '智能体')
@@ -17,8 +19,10 @@ const AGENT_DESCRIPTION_PLACEHOLDER = exactText(
 )
 const SEARCH_BY_NAME_PLACEHOLDER = exactText('Search by name', '按名称搜索')
 const SAVE_BUTTON = exactText('Save', '保存')
+const OVERVIEW_HEADING = exactText('Overview', '概览')
+const ACCESS_HEADING = exactText('Third-Party Access', '接入第三方')
 
-async function trackCreatedApplication(page, resourceTracker, applicationName: string) {
+async function trackCreatedApplication(page: Page, resourceTracker: ResourceTracker, applicationName: string) {
   let applicationId: string | null = null
 
   await expect
@@ -41,7 +45,7 @@ async function trackCreatedApplication(page, resourceTracker, applicationName: s
         )
 
         const body = await response.json()
-        return body?.data?.records?.find((item) => item.name === targetName)?.id ?? null
+        return body?.data?.records?.find((item: { name: string }) => item.name === targetName)?.id ?? null
       }, applicationName)
 
       return applicationId
@@ -50,6 +54,24 @@ async function trackCreatedApplication(page, resourceTracker, applicationName: s
 
   resourceTracker.track({ type: 'application', id: applicationId!, name: applicationName })
   return applicationId!
+}
+
+async function createSimpleApplication(page: Page, resourceTracker: ResourceTracker) {
+  const applicationName = uniqueApplicationName()
+
+  await page.getByRole('button', { name: CREATE_BUTTON }).click()
+  await page.getByText(SIMPLE_AGENT_OPTION).click()
+
+  const createDialog = page.locator('.el-dialog').filter({ has: page.getByRole('button', { name: CREATE_BUTTON }) })
+  await expect(createDialog).toBeVisible()
+  await createDialog.getByPlaceholder(AGENT_NAME_PLACEHOLDER).fill(applicationName)
+  await createDialog.getByPlaceholder(AGENT_DESCRIPTION_PLACEHOLDER).fill('E2E detail page test')
+  await createDialog.getByRole('button', { name: CREATE_BUTTON }).click()
+
+  const applicationId = await trackCreatedApplication(page, resourceTracker, applicationName)
+  await expect(page).toHaveURL(/\/application\/workspace\/[^/]+\/SIMPLE\/setting(?:$|\?|\/)/)
+
+  return { applicationId, applicationName }
 }
 
 test.describe('@advisory Application Management', () => {
@@ -130,5 +152,32 @@ test.describe('@advisory Application Management', () => {
         }, applicationId)
       }, { timeout: 10000 })
       .toBe(updatedDescription)
+  })
+
+  test('should load the overview page for a created application', async ({ page, resourceTracker }) => {
+    const { applicationId, applicationName } = await createSimpleApplication(page, resourceTracker)
+
+    await page.goto(`/admin/application/workspace/${applicationId}/SIMPLE/overview`)
+    await expect(page).toHaveURL(new RegExp(`/application/workspace/${applicationId}/SIMPLE/overview`))
+    await expect(page.getByRole('heading', { name: OVERVIEW_HEADING })).toBeVisible()
+    await expect(page.getByRole('heading', { name: applicationName, exact: true })).toBeVisible()
+  })
+
+  test('should load the setting page for a created application', async ({ page, resourceTracker }) => {
+    const { applicationId, applicationName } = await createSimpleApplication(page, resourceTracker)
+
+    await page.goto(`/admin/application/workspace/${applicationId}/SIMPLE/setting`)
+    await expect(page).toHaveURL(new RegExp(`/application/workspace/${applicationId}/SIMPLE/setting`))
+    await expect(page.locator('.application-setting')).toBeVisible()
+    await expect(page.getByRole('heading', { name: SETTING_HEADING })).toBeVisible()
+    await expect(page.getByPlaceholder(AGENT_NAME_PLACEHOLDER)).toHaveValue(applicationName)
+  })
+
+  test('should load the access page for a created application', async ({ page, resourceTracker }) => {
+    const { applicationId } = await createSimpleApplication(page, resourceTracker)
+
+    await page.goto(`/admin/application/workspace/${applicationId}/SIMPLE/access`)
+    await expect(page).toHaveURL(new RegExp(`/application/workspace/${applicationId}/SIMPLE/access`))
+    await expect(page.getByRole('heading', { name: ACCESS_HEADING })).toBeVisible()
   })
 })
