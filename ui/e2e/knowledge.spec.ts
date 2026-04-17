@@ -510,4 +510,33 @@ test.describe('@advisory Knowledge Base Management', () => {
 
     await deleteDocumentById(page, knowledgeId, doc.id)
   })
+
+  test('should navigate to the paragraph page when clicking a document row', async ({
+    page,
+    resourceTracker,
+  }) => {
+    test.skip(
+      !(await hasAvailableEmbeddingPrerequisite(page)),
+      'Requires an existing embedding model or SiliconCloud credentials to provision one.',
+    )
+
+    const knowledgeName = uniqueKnowledgeName()
+    const { id: knowledgeId } = await getKnowledgeTarget(page, resourceTracker, knowledgeName)
+    const docName = uniqueDocumentName()
+
+    const doc = await createDocumentViaApi(page, knowledgeId, docName)
+
+    await page.goto(`/admin/knowledge/${knowledgeId}/default/0/document`)
+    await expect(page.locator('tr', { hasText: docName })).toBeVisible({ timeout: 15000 })
+
+    await page.locator('tr', { hasText: docName }).getByText(docName).click()
+
+    await expect(page).toHaveURL(new RegExp(`/admin/paragraph/${knowledgeId}/${doc.id}`), {
+      timeout: 15000,
+    })
+    await expect(page.locator('.paragraph')).toBeVisible()
+    await expect(page.locator('.paragraph h3')).toContainText(docName)
+
+    await deleteDocumentById(page, knowledgeId, doc.id)
+  })
 })
