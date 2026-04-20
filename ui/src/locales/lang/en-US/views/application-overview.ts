@@ -10,6 +10,11 @@ export default {
     displaySetting: 'Display Settings',
     apiAccessCredentials: 'API Access Credentials',
     apiKey: 'API Key',
+    orchestratorIntegration: 'Orchestrator Integration',
+    copyIntegrationJson: 'Copy JSON',
+    endpointUrl: 'Endpoint URL',
+    authToken: 'Auth Token',
+    defaultParams: 'Default Params',
     refreshToken: {
       msgConfirm1: 'Are you sure you want to regenerate the public URL?',
       msgConfirm2:

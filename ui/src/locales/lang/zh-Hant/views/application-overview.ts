@@ -10,6 +10,11 @@ export default {
     displaySetting: '顯示設定',
     apiAccessCredentials: 'API 存取憑證',
     apiKey: 'API Key',
+    orchestratorIntegration: 'Orchestrator 整合設定',
+    copyIntegrationJson: '複製 JSON',
+    endpointUrl: 'Endpoint URL',
+    authToken: 'Auth Token',
+    defaultParams: '預設參數',
     refreshToken: {
       msgConfirm1: '是否重新產生公開訪問連結?',
       msgConfirm2:

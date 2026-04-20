@@ -10,6 +10,11 @@ export default {
     displaySetting: '显示设置',
     apiAccessCredentials: 'API 访问凭据',
     apiKey: 'API Key',
+    orchestratorIntegration: 'Orchestrator 集成配置',
+    copyIntegrationJson: '复制 JSON',
+    endpointUrl: 'Endpoint URL',
+    authToken: 'Auth Token',
+    defaultParams: '默认参数',
     refreshToken: {
       msgConfirm1: '是否重新生成公开访问链接?',
       msgConfirm2:
