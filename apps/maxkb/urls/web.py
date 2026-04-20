@@ -25,6 +25,7 @@ from rest_framework import status
 from chat.urls import urlpatterns as chat_urlpatterns
 from common.init.init_doc import init_doc
 from common.result import Result
+from knowledge.views.orchestrator_query import OrchestratorQueryView
 from maxkb import settings
 from maxkb.conf import PROJECT_DIR
 from maxkb.const import CONFIG
@@ -34,6 +35,7 @@ admin_ui_prefix = CONFIG.get_admin_path()
 chat_api_prefix = CONFIG.get_chat_path()[1:] + '/api/'
 chat_ui_prefix = CONFIG.get_chat_path()
 urlpatterns = [
+    path('api/knowledge/query', OrchestratorQueryView.as_view()),
     path(admin_api_prefix, include("users.urls")),
     path(admin_api_prefix, include("tools.urls")),
     path(admin_api_prefix, include("models_provider.urls")),
