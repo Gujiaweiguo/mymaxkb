@@ -19,3 +19,4 @@ from .system_resource_application import *
 from .system_resource_application_chat import *
 from .application_chat_user_authorize import *
 from .application_platform import *
+from .orchestrator_integration import *

@@ -297,6 +297,10 @@ urlpatterns = [
         views.McpServers.as_view(),
     ),
     path(
+        "workspace/<str:workspace_id>/application/<str:application_id>/orchestrator_integration",
+        views.OrchestratorIntegrationConfigView.as_view(),
+    ),
+    path(
         "workspace/<str:workspace_id>/application/<str:application_id>/model/<str:model_id>/prompt_generate",
         views.PromptGenerateView.as_view(),
     ),
