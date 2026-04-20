@@ -1,7 +1,12 @@
-import uuid_utils.compat as uuid
-from django.test import TestCase
+# pyright: reportAttributeAccessIssue=false, reportCallIssue=false, reportArgumentType=false, reportImplicitRelativeImport=false, reportUninitializedInstanceVariable=false
+
 import importlib.util
+import json
+import uuid_utils.compat as uuid
 from pathlib import Path
+
+from django.test import TestCase
+from rest_framework.test import APIClient
 
 from application.models import Application, ApplicationFolder, ApplicationTypeChoices
 from application.models.application_api_key import ApplicationApiKey
@@ -9,6 +14,7 @@ from application.serializers.application_api_key import ApplicationKeySerializer
 from application.serializers.system_resource_application import (
     SystemResourceApplicationQuerySerializer,
 )
+from application.test_integration import set_system_user_auth
 from common.utils.common import password_encrypt
 from system_manage.models import Workspace
 from users.models import User
@@ -248,6 +254,87 @@ class ApplicationApiKeyMaskingTests(TestCase):
 
         stored = ApplicationApiKey.objects.get(id=created["id"])
         self.assertEqual(stored.secret_key, created["secret_key"])
+
+
+class OrchestratorIntegrationConfigTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.admin_user = User.objects.create(
+            id=uuid.uuid7(),
+            email="orch-int-admin@example.com",
+            phone="",
+            nick_name="Orch Int Admin",
+            username="orch-int-admin",
+            password=password_encrypt("Admin123!"),
+            role="ADMIN",
+            source="LOCAL",
+            is_active=True,
+        )
+        self.folder = ApplicationFolder.objects.create(
+            id="orch-int-folder",
+            name="Orch Int Folder",
+            user=self.admin_user,
+            workspace_id="default",
+        )
+        self.application = Application.objects.create(
+            id=uuid.uuid7(),
+            name="Orch Int App",
+            desc="Orchestrator integration test app",
+            user=self.admin_user,
+            folder=self.folder,
+            workspace_id="default",
+            type=ApplicationTypeChoices.SIMPLE,
+            icon="./favicon.ico",
+            knowledge_setting={'top_n': 5, 'similarity': 0.7, 'search_mode': 'embedding',
+                               'max_paragraph_char_number': 5000,
+                               'no_references_setting': {'status': 'ai_questioning', 'value': '{question}'}},
+        )
+        set_system_user_auth(self.client, self.admin_user)
+
+    def _endpoint_url(self):
+        return f"/admin/api/workspace/default/application/{self.application.id}/orchestrator_integration"
+
+    def test_returns_endpoint_token_and_default_params(self):
+        api_key = ApplicationApiKey.objects.create(
+            id=uuid.uuid7(),
+            secret_key='agent-testkey1234567890abcdef1234',
+            application_id=self.application.id,
+            is_active=True,
+            is_permanent=True,
+        )
+
+        response = self.client.get(self._endpoint_url())
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)['data']
+        self.assertIn('endpoint_url', data)
+        self.assertTrue(data['endpoint_url'].endswith('/api/knowledge'))
+        self.assertEqual(data['auth_token'], api_key.secret_key)
+        self.assertIn('default_params', data)
+        self.assertIsInstance(data['default_params']['kb_scope'], list)
+        self.assertEqual(data['default_params']['top_n'], 5)
+        self.assertEqual(data['default_params']['similarity'], 0.7)
+
+    def test_missing_api_key_auto_generates_one(self):
+        self.assertFalse(
+            ApplicationApiKey.objects.filter(application_id=self.application.id).exists()
+        )
+
+        response = self.client.get(self._endpoint_url())
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)['data']
+        self.assertTrue(data['auth_token'].startswith('agent-'))
+        self.assertTrue(
+            ApplicationApiKey.objects.filter(
+                application_id=self.application.id,
+                secret_key=data['auth_token'],
+                is_active=True,
+                is_permanent=True,
+            ).exists()
+        )
+        self.assertEqual(data['default_params']['top_n'], 5)
+        self.assertEqual(data['default_params']['similarity'], 0.7)
 
 
 _platform_test_path = Path(__file__).with_name('tests').joinpath('test_platform_integration.py')
