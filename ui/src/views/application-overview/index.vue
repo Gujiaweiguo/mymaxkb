@@ -137,6 +137,56 @@
                     {{ $t('views.applicationOverview.appInfo.apiKey') }}
                   </el-button>
                 </div>
+                <div class="mt-16" v-if="orchestratorConfig">
+                  <div class="flex">
+                    <el-text type="info">Orchestrator Integration</el-text>
+                  </div>
+                  <div class="mt-4">
+                    <div class="flex align-center mb-4">
+                      <el-text style="width: 80px">Endpoint：</el-text>
+                      <span class="vertical-middle lighter break-all ellipsis-1">
+                        {{ orchestratorConfig.endpoint_url }}
+                      </span>
+                      <el-tooltip effect="dark" :content="$t('common.copy')" placement="top">
+                        <el-button type="primary" text @click="copyClick(orchestratorConfig.endpoint_url)">
+                          <AppIcon iconName="app-copy"></AppIcon>
+                        </el-button>
+                      </el-tooltip>
+                    </div>
+                    <div class="flex align-center mb-4">
+                      <el-text style="width: 80px">Token：</el-text>
+                      <span class="vertical-middle lighter break-all ellipsis-1">
+                        {{ orchestratorConfig.auth_token }}
+                      </span>
+                      <el-tooltip effect="dark" :content="$t('common.copy')" placement="top">
+                        <el-button type="primary" text @click="copyClick(orchestratorConfig.auth_token)">
+                          <AppIcon iconName="app-copy"></AppIcon>
+                        </el-button>
+                      </el-tooltip>
+                    </div>
+                    <div>
+                      <div class="flex align-center mb-4">
+                        <el-text style="width: 80px">Params：</el-text>
+                        <el-tooltip effect="dark" :content="$t('common.copy')" placement="top">
+                          <el-button
+                            type="primary"
+                            text
+                            @click="copyClick(formatOrchestratorParams(orchestratorConfig.default_params))"
+                          >
+                            <AppIcon iconName="app-copy"></AppIcon>
+                          </el-button>
+                        </el-tooltip>
+                      </div>
+                      <div class="layout-bg p-8 pre-wrap lighter break-all">
+                        {{ formatOrchestratorParams(orchestratorConfig.default_params) }}
+                      </div>
+                    </div>
+                    <el-button class="mt-8" @click="copyOrchestratorConfig">
+                      <AppIcon iconName="app-copy" class="mr-4"></AppIcon>
+                      Copy Integration Config
+                    </el-button>
+                  </div>
+                </div>
               </el-col>
             </el-row>
           </el-card>
@@ -236,6 +286,7 @@ const EmbedDialogRef = ref()
 
 const accessToken = ref<any>({})
 const detail = ref<any>(null)
+const orchestratorConfig = ref<any>(null)
 
 const loading = ref(false)
 
@@ -425,6 +476,27 @@ function getAccessToken() {
     })
 }
 
+function getOrchestratorConfig() {
+  loadSharedApi({ type: 'application', systemType: apiType.value })
+    .getOrchestratorIntegration(id)
+    .then((res: any) => {
+      orchestratorConfig.value = res?.data
+    })
+    .catch(() => {
+      orchestratorConfig.value = null
+    })
+}
+
+function formatOrchestratorParams(params: any) {
+  return JSON.stringify(params || {}, null, 2)
+}
+
+function copyOrchestratorConfig() {
+  if (orchestratorConfig.value) {
+    copyClick(JSON.stringify(orchestratorConfig.value, null, 2))
+  }
+}
+
 function getDetail() {
   loadSharedApi({ type: 'application', systemType: apiType.value })
     .getApplicationDetail(id, loading)
@@ -461,6 +533,7 @@ function refresh() {
 onMounted(() => {
   getDetail()
   getAccessToken()
+  getOrchestratorConfig()
   changeDayHandle(history_day.value)
 })
 </script>
