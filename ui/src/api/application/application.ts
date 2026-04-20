@@ -113,6 +113,13 @@ const getAccessToken: (application_id: string, loading?: Ref<boolean>) => Promis
 ) => {
   return get(`${prefix.value}/${application_id}/access_token`, undefined, loading)
 }
+
+const getOrchestratorIntegration: (
+  application_id: string,
+  loading?: Ref<boolean>,
+) => Promise<Result<any>> = (application_id, loading) => {
+  return get(`${prefix.value}/${application_id}/orchestrator_integration`, undefined, loading)
+}
 /**
  * 获取应用设置
  * @param application_id 应用id
@@ -431,6 +438,7 @@ export default {
   delApplication,
   getApplicationDetail,
   getAccessToken,
+  getOrchestratorIntegration,
   putAccessToken,
   putXpackAccessToken,
   exportApplication,

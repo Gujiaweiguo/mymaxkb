@@ -75,6 +75,13 @@ const getAccessToken: (application_id: string, loading?: Ref<boolean>) => Promis
 ) => {
   return get(`${prefix}/${application_id}/access_token`, undefined, loading)
 }
+
+const getOrchestratorIntegration: (
+  application_id: string,
+  loading?: Ref<boolean>,
+) => Promise<Result<any>> = (application_id, loading) => {
+  return get(`${prefix}/${application_id}/orchestrator_integration`, undefined, loading)
+}
 /**
  * 修改AccessToken
  * @param 参数 application_id
@@ -325,6 +332,7 @@ export default {
   delApplication,
   getApplicationDetail,
   getAccessToken,
+  getOrchestratorIntegration,
   putAccessToken,
   exportApplication,
   getStatistics,
