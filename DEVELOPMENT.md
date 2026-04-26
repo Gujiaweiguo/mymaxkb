@@ -15,20 +15,38 @@ This is the default development convention for this repo:
 
 ## Quick Start
 
-### 1. Start Infrastructure (Docker Compose)
+### 1. Fast path: start the full local dev stack
+
+```bash
+cp .env.local-dev.example .env.local-dev
+./dev.sh
+./dev.sh --with-celery
+```
+
+This single command starts PostgreSQL, Redis, the Django backend, the admin Vite app, and the chat Vite app. Add `--with-celery` when you also need the local Celery worker. Use `Ctrl+C` to stop the app processes; Docker infra stays running.
+
+You can also start a subset:
+
+```bash
+./dev.sh backend admin
+./dev.sh backend --with-celery
+./dev.sh chat --skip-infra
+```
+
+### 2. Start Infrastructure manually (Docker Compose)
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d
 ```
 
-### 2. Prepare local app env
+### 3. Prepare local app env
 
 ```bash
 cp .env.local-dev.example .env.local-dev
 # Fill in real local secrets for SECRET_KEY / HMAC / RSA values.
 ```
 
-### 3. Start Backend
+### 4. Start Backend
 
 ```bash
 set -a
@@ -38,14 +56,15 @@ set +a
 python main.py dev web
 ```
 
-### 4. Start Frontend
+### 5. Start Frontend
 
 ```bash
 cd ui
 npm run dev
+npm run chat
 ```
 
-### 5. Run E2E Tests
+### 6. Run E2E Tests
 
 ```bash
 cd ui
@@ -153,8 +172,8 @@ Note: local development commonly uses a Redis password from `.env.local-dev`, wh
 
 | Service | Port | Credentials |
 |---------|------|-------------|
-| PostgreSQL | 5432 | User: `maxkb`, Password: `maxkb123`, DB: `maxkb` |
-| Redis | 6379 | Password: `maxkb123` |
+| PostgreSQL | 25432 | User: `maxkb`, Password: `maxkb123`, DB: `maxkb` |
+| Redis | 26379 | Password: `maxkb123` |
 | Backend API | 3080 | - |
 | Admin Frontend | 3000 | - |
 | Chat Frontend | 3001 | - |
@@ -168,11 +187,11 @@ If your local setup previously used backend `8080`, update `.env.local-dev` to `
 ```env
 MAXKB_CONFIG_TYPE=ENV
 MAXKB_DB_HOST=127.0.0.1
-MAXKB_DB_PORT=5432
+MAXKB_DB_PORT=25432
 MAXKB_DB_USER=maxkb
 MAXKB_DB_PASSWORD=maxkb123
 MAXKB_REDIS_HOST=127.0.0.1
-MAXKB_REDIS_PORT=6379
+MAXKB_REDIS_PORT=26379
 MAXKB_REDIS_PASSWORD=maxkb123
 MAXKB_DEFAULT_PASSWORD=TestPassword123!
 MAXKB_DEV_HOST=0.0.0.0
@@ -197,13 +216,13 @@ docker compose -f docker-compose.dev.yml down -v
 
 1. Check if PostgreSQL is running: `docker ps | grep postgres`
 2. Check logs: `docker logs maxkb-postgres`
-3. Verify connection: `psql -h localhost -U maxkb -d maxkb`
+3. Verify connection: `psql -h localhost -p 25432 -U maxkb -d maxkb`
 
 ### Redis Connection Issues
 
 1. Check if Redis is running: `docker ps | grep redis`
 2. Check logs: `docker logs maxkb-redis`
-3. Test connection: `redis-cli -a maxkb123 ping`
+3. Test connection: `redis-cli -p 26379 -a maxkb123 ping`
 
 ### Backend Won't Start
 

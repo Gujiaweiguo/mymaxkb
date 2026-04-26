@@ -77,6 +77,7 @@ This repository follows a local-first development workflow. The backend should u
 
 Default local development convention:
 
+- start the full local stack with `./dev.sh`
 - start PostgreSQL and Redis with `docker compose -f docker-compose.dev.yml up -d`
 - copy `.env.local-dev.example` to `.env.local-dev` and load it before starting Django
 - run backend locally from `.venv`
