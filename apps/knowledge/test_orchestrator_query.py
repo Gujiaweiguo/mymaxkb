@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from django.core.cache import cache
 from django.http import HttpResponse
-from django.test import SimpleTestCase, TestCase, override_settings
+from django.test import SimpleTestCase, TestCase
 from rest_framework.test import APIClient
 
 from maxkb.test_runner import MaxKBDiscoverRunner
@@ -79,7 +79,6 @@ class OrchestratorQueryContractTests(SimpleTestCase):
 
         self.assertIn(response.json()['error_code'], self.error_codes)
 
-    @override_settings(APPS_DIR='/opt/code/mymaxkb/apps')
     def test_runner_expands_apps_prefixed_labels_to_test_modules(self):
         labels = MaxKBDiscoverRunner._expand_test_labels(['apps.application', 'apps.knowledge'])
 
