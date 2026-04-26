@@ -36,6 +36,31 @@ const normalizeEntryRedirectPlugin = (basePath: string, entry: string): Plugin =
   const malformedEntryPath = `${normalizedBasePath}.html`
   const validPaths = new Set([normalizedBasePath, malformedEntryPath])
   const targetLocation = `/${entry}`
+  const shouldServeEntryForRoute = (requestUrl: string) => {
+    if (!requestUrl.startsWith(normalizedBasePath)) {
+      return false
+    }
+
+    const subPath = requestUrl.slice(normalizedBasePath.length)
+    if (!subPath) {
+      return false
+    }
+
+    if (subPath === 'api' || subPath.startsWith('api/')) {
+      return false
+    }
+
+    if (subPath.includes('oss/file') || subPath.includes('oss/get_url')) {
+      return false
+    }
+
+    const lastSegment = subPath.split('/').pop() || ''
+    if (/\.[^/]+$/.test(lastSegment)) {
+      return false
+    }
+
+    return true
+  }
 
   return {
     name: 'normalize-entry-redirect',
@@ -43,6 +68,9 @@ const normalizeEntryRedirectPlugin = (basePath: string, entry: string): Plugin =
       server.middlewares.use((req, res, next) => {
         const requestUrl = req.url ? req.url.split('?')[0] : ''
         if (!validPaths.has(requestUrl)) {
+          if (shouldServeEntryForRoute(requestUrl)) {
+            req.url = targetLocation
+          }
           next()
           return
         }
